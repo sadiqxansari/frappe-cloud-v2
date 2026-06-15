@@ -4,18 +4,17 @@
       class="relative flex shrink-0 flex-col border-r border-outline-gray-1 bg-surface-menu-bar p-2 transition-all duration-300 ease-in-out"
       :class="collapsed ? 'w-14' : 'w-60'"
     >
-      <!-- Brand — manages one server's sites; the dropdown switches servers -->
+      <!-- Brand — the server you're managing; the dropdown jumps to Central -->
       <Dropdown :options="serverMenu" placement="bottom-start">
         <button
           class="mb-3 flex h-12 w-full shrink-0 items-center gap-2 rounded-lg px-1.5 hover:bg-surface-gray-2"
-          :title="collapsed ? server?.name || 'Site Manager' : undefined"
+          :title="collapsed ? server?.name : undefined"
         >
-          <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0 rounded-md" />
+          <span class="grid size-7 shrink-0 place-items-center rounded-md bg-[var(--ink-gray-9)] text-ink-white">
+            <span class="lucide-server size-4" />
+          </span>
           <template v-if="!collapsed">
-            <span class="min-w-0 flex-1 text-left">
-              <span class="block truncate text-sm font-semibold text-ink-gray-9">Site Manager</span>
-              <span class="block truncate text-xs text-ink-gray-5">{{ server?.name }}</span>
-            </span>
+            <span class="min-w-0 flex-1 truncate text-left text-sm font-semibold text-ink-gray-9">{{ server?.name }}</span>
             <span class="lucide-chevrons-up-down size-3.5 shrink-0 text-ink-gray-5" />
           </template>
         </button>
@@ -25,7 +24,7 @@
         <button
           v-for="item in items"
           :key="item.label"
-          class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+          class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
           :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
           :title="collapsed ? item.label : undefined"
           @click="router.push(item.to)"
@@ -70,7 +69,7 @@
       </nav>
 
       <Dropdown :options="userOptions" placement="top-start">
-        <button class="flex w-full shrink-0 items-center gap-2 rounded-lg p-1.5 hover:bg-surface-gray-2">
+        <button class="flex w-full shrink-0 items-center gap-2 rounded-[8px] p-1.5 hover:bg-surface-gray-2">
           <Avatar :label="store.user.name || 'You'" size="sm" />
           <template v-if="!collapsed">
             <span class="min-w-0 flex-1 truncate text-left text-sm text-ink-gray-8">{{ store.user.name || 'You' }}</span>
@@ -122,7 +121,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dropdown } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
@@ -162,7 +161,6 @@ const items = computed(() => {
     { label: 'Sites', icon: 'lucide-layout-grid', to: b, active: route.path === b || route.path.startsWith(`${b}/sites`) },
     { label: 'Insights', icon: 'lucide-chart-line', to: `${b}/analytics`, active: route.path.startsWith(`${b}/analytics`) },
     { label: 'Settings', icon: 'lucide-settings', to: `${b}/settings`, active: route.path.startsWith(`${b}/settings`) },
-    { label: 'Billing', icon: 'lucide-wallet', to: `${b}/billing`, active: route.path.startsWith(`${b}/billing`) },
     { label: 'Marketplace', icon: 'lucide-store', to: `${b}/marketplace`, active: route.path.startsWith(`${b}/marketplace`) },
   ]
 })
@@ -187,25 +185,18 @@ function openLiveSite() {
   router.push('/app')
 }
 
-// Brand dropdown — jump back to all servers, or switch to another server.
-const serverMenu = computed(() => {
-  const others = store.servers.filter((s) => s.id !== server.value?.id)
-  return [
-    {
-      label: 'All servers',
-      icon: 'lucide-layout-grid',
-      onClick: () => {
-        store.currentServerId = null
-        router.push('/servers')
-      },
+// Brand dropdown — a single way out, back to the Central account view.
+// (No server-switcher list: accounts can have many servers; switch via Central.)
+const serverMenu = computed(() => [
+  {
+    label: 'Central',
+    slots: { prefix: () => h('img', { src: cloudLogo, alt: '', class: 'size-4 shrink-0 rounded' }) },
+    onClick: () => {
+      store.currentServerId = null
+      router.push('/servers')
     },
-    ...others.map((s) => ({
-      label: s.name,
-      icon: 'lucide-server',
-      onClick: () => router.push(`/manage/${s.id}`),
-    })),
-  ]
-})
+  },
+])
 
 const userOptions = computed(() => [
   {

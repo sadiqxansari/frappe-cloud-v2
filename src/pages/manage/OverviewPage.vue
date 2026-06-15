@@ -136,31 +136,32 @@
           <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Specifications</div>
           <dl class="mt-2 space-y-1.5 text-sm">
             <div class="grid grid-cols-[7rem_1fr] gap-2">
-              <dt class="text-ink-gray-5">Provider</dt>
-              <dd class="flex items-center gap-1.5 text-ink-gray-8">
+              <dt class="text-ink-gray-5 text-p-sm">Provider</dt>
+              <dd class="flex items-center gap-1.5 text-ink-gray-8 text-p-sm">
                 <span class="grid size-4 shrink-0 place-items-center rounded text-[8px] font-bold leading-none" :class="prov.tile">{{ prov.mono }}</span>
                 {{ region.provider }}
               </dd>
             </div>
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5">Region</dt><dd class="truncate text-ink-gray-8">{{ region.name }}</dd></div>
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5">Frappe version</dt><dd class="text-ink-gray-8">{{ versionLabel }}</dd></div>
+            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Region</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ region.name }}</dd></div>
+            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Frappe version</dt><dd class="text-ink-gray-8 text-p-sm">{{ versionLabel }}</dd></div>
+            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Monthly cost</dt><dd class="text-ink-gray-8 text-p-sm">{{ inr(monthlyPrice) }} <span class="text-ink-gray-5 text-p-sm">({{ inr(store.perDayOf(server)) }}/day)</span></dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2">
-              <dt class="flex items-center gap-1 text-ink-gray-5">
+              <dt class="flex items-center gap-1 text-ink-gray-5 text-p-sm">
                 Inbound IP
                 <Tooltip text="The address visitors and DNS records point at to reach your sites.">
                   <span class="lucide-info size-3.5 text-ink-gray-4" />
                 </Tooltip>
               </dt>
-              <dd class="tabular-nums text-ink-gray-8">{{ server.inboundIp }}</dd>
+              <dd class="tabular-nums text-ink-gray-8 text-p-sm">{{ server.inboundIp }}</dd>
             </div>
             <div class="grid grid-cols-[7rem_1fr] gap-2">
-              <dt class="flex items-center gap-1 text-ink-gray-5">
+              <dt class="flex items-center gap-1 text-ink-gray-5 text-p-sm">
                 Outbound IP
                 <Tooltip text="The address your server uses when it calls out to other services.">
                   <span class="lucide-info size-3.5 text-ink-gray-4" />
                 </Tooltip>
               </dt>
-              <dd class="tabular-nums text-ink-gray-8">{{ server.outboundIp }}</dd>
+              <dd class="tabular-nums text-ink-gray-8 text-p-sm">{{ server.outboundIp }}</dd>
             </div>
           </dl>
         </div>
@@ -184,9 +185,9 @@
         <div class="border-b border-outline-gray-2 p-4">
           <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Details</div>
           <dl class="mt-2 space-y-1.5 text-sm">
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5">Created by</dt><dd class="truncate text-ink-gray-8">{{ store.user.name || 'You' }}</dd></div>
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5">Created on</dt><dd class="text-ink-gray-8">{{ fmtDateTime(server.createdAt) }}</dd></div>
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5">Owned by</dt><dd class="truncate text-ink-gray-8">{{ store.user.email || '—' }}</dd></div>
+            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Created by</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ store.user.name || 'You' }}</dd></div>
+            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Created on</dt><dd class="text-ink-gray-8 text-p-sm">{{ fmtDateTime(server.createdAt) }}</dd></div>
+            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Owned by</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ store.user.email || '—' }}</dd></div>
           </dl>
         </div>
 
