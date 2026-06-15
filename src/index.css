@@ -1,0 +1,16 @@
+/* Gentle reveal used for the structure explainer and new site cards. */
+.reveal-enter-active {
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease;
+}
+.reveal-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.reveal-leave-active {
+  transition: opacity 0.2s ease;
+}
+.reveal-leave-to {
+  opacity: 0;
+}
