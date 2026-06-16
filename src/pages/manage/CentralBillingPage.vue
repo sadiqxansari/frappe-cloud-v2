@@ -4,87 +4,131 @@
       <!-- Billing content — centered in whatever space the panel leaves it -->
       <div class="min-w-0 flex-1 overflow-y-auto">
         <div class="mx-auto max-w-3xl px-6 py-8">
-          <h1 class="text-xl font-semibold text-ink-gray-9">Billing</h1>
-          <p class="mt-1 text-base leading-6 text-ink-gray-5">One balance funds all your servers.</p>
+          <div>
+            <h1 class="text-xl font-semibold text-ink-gray-9">Billing</h1>
+            <p class="mt-1 text-base leading-6 text-ink-gray-5">One account funds every server.</p>
+          </div>
+
+          <Alert v-if="store.creditExpired" theme="red" class="mt-5" title="Your credit ran out, so your sites are paused" :dismissible="false">
+            <template #description>Nothing is deleted — add a card and they're back in seconds, exactly as they were.</template>
+            <template #footer><Button variant="solid" size="sm" label="Add a card" @click="addCardOpen = true" /></template>
+          </Alert>
 
           <div class="mt-5 space-y-5">
-            <Alert v-if="store.creditExpired" theme="red" title="Your credit ran out, so your sites are paused" :dismissible="false">
-              <template #description>Nothing is deleted — add a card and they're back in seconds, exactly as they were.</template>
-              <template #footer><Button variant="solid" size="sm" label="Add a card" @click="addCardOpen = true" /></template>
-            </Alert>
-            <Alert
-              v-else-if="lowBalance && !store.cardOnFile"
-              theme="yellow"
-              title="Your credit is running low"
-              description="Add a card to keep everything running when it's gone."
-              :dismissible="false"
-            >
-              <template #footer><Button variant="solid" size="sm" label="Add a card" @click="addCardOpen = true" /></template>
-            </Alert>
+            <!-- What it'll cost + what funds it -->
+            <div class="grid gap-4 sm:grid-cols-2">
+              <!-- Estimated this cycle -->
+              <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
+                  <button class="text-xs text-ink-gray-5 underline-offset-2 hover:text-ink-gray-7 hover:underline" @click="budgetOpen = true">Set alert</button>
+                </div>
+                <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
+                <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                  <span class="text-ink-gray-5">Bills on {{ billingDueDate }}</span>
+                  <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-3' : 'text-ink-green-3'">
+                    <span class="size-3" :class="deltaUp ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
+                    {{ Math.abs(store.estimateDeltaPct) }}% vs last month
+                  </span>
+                </div>
+              </section>
 
-            <!-- Balance + payment methods -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-ink-gray-6">Credit balance</span>
-                <span class="font-medium text-ink-gray-8">{{ usd(store.accountCredit) }} of {{ usd(store.accountCreditTotal) }}</span>
-              </div>
-              <Progress :value="creditPct" size="sm" class="mt-2" />
-
-              <div class="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-outline-gray-1 pt-3">
-                <span v-if="store.cardOnFile" class="flex items-center gap-2 text-sm text-ink-gray-7">
-                  <span class="lucide-credit-card size-4 text-ink-gray-5" />
-                  Visa ending 4242
-                  <Badge theme="green" variant="subtle" label="Active" />
-                </span>
-                <span v-else class="text-sm text-ink-gray-5">No card on file yet.</span>
-                <div class="flex items-center gap-2">
-                  <Button variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
-                  <Button v-if="!store.cardOnFile" variant="subtle" size="sm" label="Add a card" @click="addCardOpen = true" />
+              <!-- Wallet — clickable → history panel -->
+              <div
+                role="button"
+                tabindex="0"
+                class="cursor-pointer rounded-xl border bg-surface-white p-5 text-left transition-colors"
+                :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:border-outline-gray-3'"
+                @click="openPanel = { type: 'wallet' }"
+                @keydown.enter="openPanel = { type: 'wallet' }"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-ink-gray-5">Wallet</span>
+                  <span class="lucide-chevron-right size-4 text-ink-gray-4" />
+                </div>
+                <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</div>
+                <div class="mt-1.5 flex items-center justify-between gap-2">
+                  <span class="text-xs text-ink-gray-5">Applied to your monthly invoice</span>
+                  <Button variant="subtle" size="sm" label="Add" icon-left="lucide-plus" @click.stop="creditOpen = true" />
                 </div>
               </div>
+            </div>
 
-              <!-- UPI autopay -->
-              <div class="mt-3 flex items-center justify-between gap-3 border-t border-outline-gray-1 pt-3">
-                <div class="flex items-center gap-2">
-                  <span class="lucide-smartphone size-4 text-ink-gray-5" />
-                  <div>
-                    <div class="flex items-center gap-2 text-sm font-medium text-ink-gray-8">
-                      UPI Autopay
-                      <Badge v-if="store.upiAutopay" theme="green" variant="subtle" label="Active" />
+            <!-- Payment methods -->
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <h2 class="text-base font-semibold text-ink-gray-8">Payment methods</h2>
+                  <Tooltip text="If the primary fails, we automatically try the next one in line.">
+                    <span class="lucide-info size-3.5 text-ink-gray-4" />
+                  </Tooltip>
+                </div>
+                <Button variant="ghost" size="sm" icon="lucide-plus" aria-label="Add payment method" @click="openPm" />
+              </div>
+
+              <div v-if="store.paymentMethods.length" class="mt-2 divide-y divide-outline-gray-1">
+                <div v-for="pm in store.paymentMethods" :key="pm.id" class="flex items-center gap-3 py-2.5">
+                  <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-gray-2 text-ink-gray-6">
+                    <span class="size-4" :class="pm.kind === 'upi' ? 'lucide-smartphone' : 'lucide-credit-card'" />
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm font-medium text-ink-gray-9">{{ pm.label }}</div>
+                    <div class="text-p-sm text-ink-gray-5">{{ pm.detail }}</div>
+                  </div>
+                  <Badge v-if="pm.primary" theme="green" variant="subtle" label="Primary" />
+                  <Badge v-else theme="gray" variant="subtle" label="Backup" />
+                  <Dropdown :options="pmMenu(pm)" placement="bottom-end">
+                    <button class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Actions for ${pm.label}`"><span class="lucide-ellipsis size-4" /></button>
+                  </Dropdown>
+                </div>
+              </div>
+              <p v-else class="mt-2 text-sm text-ink-gray-5">No payment method yet — add one to keep things running.</p>
+            </section>
+
+            <!-- Subscriptions (one per server) -->
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
+              <div class="flex items-center justify-between gap-3">
+                <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
+                <Button v-if="hasActive" variant="ghost" size="sm" label="Stop all billing" @click="stopAllOpen = true" />
+                <Button v-else-if="store.allServers.some((s) => s.status === 'suspended')" variant="ghost" size="sm" label="Resume all" @click="resumeAll" />
+              </div>
+              <div class="mt-2 divide-y divide-outline-gray-1">
+                <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
+                  <div class="flex min-w-0 items-center gap-2.5">
+                    <span class="lucide-server size-4 shrink-0 text-ink-gray-5" />
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="truncate text-base font-medium text-ink-gray-9">{{ srv.name }}</span>
+                        <span v-if="srv.status === 'suspended'" class="shrink-0 text-p-xs text-ink-amber-3">Stopped</span>
+                      </div>
+                      <div class="truncate text-p-sm text-ink-gray-5">{{ store.planOf(srv).name }} · {{ store.regionOf(srv).name }} ({{ store.regionOf(srv).provider }})</div>
                     </div>
-                    <div class="text-xs text-ink-gray-5">Let us auto-debit your UPI app when the balance runs low.</div>
+                  </div>
+                  <div class="shrink-0 text-right">
+                    <div class="text-base font-medium tabular-nums" :class="srv.status === 'suspended' ? 'text-ink-gray-4 line-through' : 'text-ink-gray-9'">{{ inr(store.monthlyPriceOf(srv)) }}/mo</div>
+                    <div class="text-p-sm tabular-nums text-ink-gray-5">{{ daysElapsed }} of {{ cycleDays }} days · {{ inr(store.perDayOf(srv)) }}/day</div>
                   </div>
                 </div>
-                <Switch :modelValue="store.upiAutopay" @update:modelValue="setUpi" />
-              </div>
-
-              <!-- Auto-recharge -->
-              <div class="mt-3 flex items-center justify-between border-t border-outline-gray-1 pt-3">
-                <div>
-                  <div class="text-sm font-medium text-ink-gray-8">Auto-recharge</div>
-                  <div class="text-xs text-ink-gray-5">Top up automatically when the balance runs low.</div>
-                </div>
-                <Switch :modelValue="store.autoRecharge" @update:modelValue="store.setAutoRecharge" />
               </div>
             </section>
 
-            <!-- Invoices — front and centre -->
+            <!-- Invoices -->
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
               <div class="flex items-center justify-between">
                 <h2 class="text-base font-semibold text-ink-gray-8">Invoices</h2>
                 <span class="text-xs text-ink-gray-5">Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }}</span>
               </div>
-              <div class="mt-2 divide-y divide-outline-gray-1">
+              <div v-if="store.invoices.length" class="mt-2 divide-y divide-outline-gray-1">
                 <button
-                  v-for="inv in invoices"
+                  v-for="inv in store.invoices"
                   :key="inv.number"
-                  class="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-left text-sm transition-colors"
-                  :class="openInvoice?.number === inv.number ? 'bg-surface-gray-2' : 'hover:bg-surface-gray-1'"
-                  @click="openInvoice = inv"
+                  class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
+                  :class="openPanel?.type === 'invoice' && openPanel.data.number === inv.number ? 'bg-surface-gray-2' : 'hover:bg-surface-gray-1'"
+                  @click="openPanel = { type: 'invoice', data: inv }"
                 >
                   <div class="min-w-0">
                     <div class="font-medium text-ink-gray-8">{{ inv.period }}</div>
-                    <div class="truncate text-xs text-ink-gray-5">{{ inv.number }} · Issued {{ inv.issued }}</div>
+                    <div class="truncate text-p-sm text-ink-gray-5">{{ inv.number }} · Issued {{ inv.issued }}</div>
                   </div>
                   <div class="flex shrink-0 items-center gap-3">
                     <span class="tabular-nums text-ink-gray-8">{{ inr(total(inv)) }}</span>
@@ -93,97 +137,149 @@
                   </div>
                 </button>
               </div>
+              <p v-else class="mt-2 text-sm text-ink-gray-5">No invoices yet — your first one arrives at the end of the cycle.</p>
             </section>
 
-            <!-- What each server costs -->
+            <!-- Marketplace payouts -->
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
-              <h2 class="text-base font-semibold text-ink-gray-8">Your servers</h2>
-              <div class="mt-3 divide-y divide-outline-gray-1">
-                <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
-                  <div class="flex min-w-0 items-center gap-2.5">
-                    <span class="lucide-server size-4 shrink-0 text-ink-gray-5" />
-                    <div class="min-w-0">
-                      <div class="truncate text-sm font-medium text-ink-gray-9">{{ srv.name }}</div>
-                      <div class="text-xs text-ink-gray-5">{{ store.planOf(srv).name }} · {{ store.regionOf(srv).name }} ({{ store.regionOf(srv).provider }})</div>
-                    </div>
-                  </div>
-                  <div class="flex shrink-0 items-center gap-3">
-                    <span v-if="srv.status === 'suspended'" class="text-xs font-medium text-ink-amber-3">Stopped</span>
-                    <span class="text-sm tabular-nums" :class="srv.status === 'suspended' ? 'text-ink-gray-4 line-through' : 'text-ink-gray-7'">{{ inr(store.monthlyPriceOf(srv)) }}/mo</span>
-                    <Button v-if="srv.status === 'suspended'" variant="ghost" size="sm" label="Resume" @click="resume(srv)" />
-                    <Button v-else variant="ghost" size="sm" label="Stop billing" @click="askStop(srv)" />
-                  </div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-semibold text-ink-gray-8">Marketplace payouts</h2>
+                <Badge theme="gray" variant="subtle" label="For app publishers" />
+              </div>
+              <p class="mt-1 text-sm text-ink-gray-5">Earnings from apps you publish on the marketplace.</p>
+              <div class="mt-3 flex items-center justify-between gap-3">
+                <div class="flex items-baseline gap-2">
+                  <span class="text-xl font-semibold text-ink-gray-9">{{ usd(store.payoutBalance) }}</span>
+                  <span class="text-sm text-ink-gray-5">available to withdraw</span>
                 </div>
-              </div>
-              <div class="mt-3 flex items-center justify-between border-t border-outline-gray-1 pt-3">
-                <span class="text-sm font-medium text-ink-gray-8">Total</span>
-                <span class="text-sm font-semibold tabular-nums text-ink-gray-9">{{ inr(totalMonthly) }}/mo</span>
+                <Button variant="subtle" size="sm" label="Request payout" :disabled="store.payoutBalance <= 0" @click="requestPayout" />
               </div>
             </section>
 
-            <!-- Billing details -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
+            <!-- Tax & compliance -->
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
               <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-ink-gray-8">Billing details</h2>
-                <Button variant="ghost" size="sm" label="Edit" icon-left="lucide-pencil" @click="openDetails" />
+                <h2 class="text-base font-semibold text-ink-gray-8">Tax &amp; compliance</h2>
+                <Button variant="ghost" size="sm" icon="lucide-pencil" aria-label="Edit tax & compliance" @click="openTax" />
               </div>
-              <dl class="mt-3 space-y-1.5 text-sm">
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax ID</dt><dd class="text-ink-gray-8">{{ store.billingProfile.taxId || 'Not added' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">GSTIN</dt><dd class="text-ink-gray-8">{{ store.billingProfile.gstin || 'Not added' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd class="text-ink-gray-8">{{ store.billingProfile.billingEmail || 'Not added' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Invoice recipient</dt><dd class="text-ink-gray-8">{{ store.billingProfile.invoiceRecipient || 'Not added' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Invoice language</dt><dd class="text-ink-gray-8">{{ langLabel(store.billingProfile.invoiceLanguage) }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
+              <dl class="mt-3 space-y-1.5 text-p-sm">
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-ink-gray-8 text-p-sm">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
+              </dl>
+            </section>
+
+            <!-- Contact & address -->
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-base font-semibold text-ink-gray-8">Contact &amp; address</h2>
+                <Button variant="ghost" size="sm" icon="lucide-pencil" aria-label="Edit contact & address" @click="openDetails" />
+              </div>
+              <dl class="mt-3 space-y-1.5 text-p-sm">
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing email</dt><dd class="text-ink-gray-8 text-p-sm">{{ store.billingProfile.billingEmail || 'Not added' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice recipient</dt><dd class="text-ink-gray-8 text-p-sm">{{ store.billingProfile.invoiceRecipient || 'Not added' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice language</dt><dd class="text-ink-gray-8 text-p-sm">{{ langLabel(store.billingProfile.invoiceLanguage) }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8 text-p-sm">{{ store.billingProfile.address || 'Not added' }}</dd></div>
               </dl>
             </section>
           </div>
         </div>
       </div>
 
-      <!-- Invoice detail — docked panel inside the page -->
+      <!-- Docked panel — invoice detail OR wallet history -->
       <Transition name="slide">
-        <aside v-if="openInvoice" class="flex w-[24rem] shrink-0 flex-col border-l border-outline-gray-2 bg-surface-white">
-          <div class="flex items-start justify-between gap-3 border-b border-outline-gray-2 p-4">
-            <div class="min-w-0">
-              <div class="truncate text-base font-semibold text-ink-gray-9">{{ openInvoice.number }}</div>
-              <div class="text-sm text-ink-gray-5">{{ openInvoice.period }} · Issued {{ openInvoice.issued }}</div>
-            </div>
-            <button class="grid size-7 shrink-0 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" aria-label="Close" @click="openInvoice = null">
-              <span class="lucide-x size-4" />
-            </button>
-          </div>
-
-          <div class="flex-1 space-y-4 overflow-y-auto p-4">
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-ink-gray-5">Status</span>
-              <Badge theme="green" variant="subtle" :label="openInvoice.status" />
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-ink-gray-5">Billed to</span>
-              <span class="text-ink-gray-8">{{ store.billingProfile.billingEmail || store.user.email }}</span>
-            </div>
-
-            <div class="overflow-hidden rounded-lg border border-outline-gray-2">
-              <div class="flex items-center justify-between gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
-                <span>Item</span><span>Amount</span>
+        <aside v-if="openPanel" class="flex w-[24rem] shrink-0 flex-col border-l border-outline-gray-2 bg-surface-white">
+          <!-- Invoice -->
+          <template v-if="openPanel.type === 'invoice'">
+            <div class="flex items-start justify-between gap-3 border-b border-outline-gray-2 p-4">
+              <div class="min-w-0">
+                <div class="truncate text-base font-semibold text-ink-gray-9">{{ openPanel.data.number }}</div>
+                <div class="text-sm text-ink-gray-5">{{ openPanel.data.period }} · Issued {{ openPanel.data.issued }}</div>
               </div>
-              <div v-for="(it, i) in openInvoice.items" :key="i" class="flex items-center justify-between gap-3 border-b border-outline-gray-1 px-3 py-2.5 text-sm last:border-b-0">
-                <span class="min-w-0 truncate text-ink-gray-7">{{ it.label }}</span>
-                <span class="shrink-0 tabular-nums text-ink-gray-8">{{ inr(it.amount) }}</span>
-              </div>
+              <button class="grid size-7 shrink-0 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" aria-label="Close" @click="openPanel = null">
+                <span class="lucide-x size-4" />
+              </button>
             </div>
 
-            <dl class="space-y-1.5 text-sm">
-              <div class="flex justify-between"><dt class="text-ink-gray-5">Subtotal</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(subtotal(openInvoice)) }}</dd></div>
-              <div class="flex justify-between"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openInvoice)) }}</dd></div>
-              <div class="flex justify-between border-t border-outline-gray-1 pt-1.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openInvoice)) }}</dd></div>
-            </dl>
-          </div>
+            <div class="flex-1 space-y-4 overflow-y-auto p-4">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-ink-gray-5">Status</span>
+                <Badge theme="green" variant="subtle" :label="openPanel.data.status" />
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-ink-gray-5">Billed to</span>
+                <span class="text-ink-gray-8">{{ store.billingProfile.billingEmail || store.user.email }}</span>
+              </div>
 
-          <div class="flex gap-2 border-t border-outline-gray-2 p-4">
-            <Button variant="subtle" class="flex-1" label="Email invoice" icon-left="lucide-mail" @click="emailInvoice" />
-            <Button variant="solid" class="flex-1" label="Download PDF" icon-left="lucide-download" @click="download" />
-          </div>
+              <div class="overflow-hidden rounded-lg border border-outline-gray-2">
+                <div class="flex items-center justify-between gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
+                  <span>Item</span><span>Amount</span>
+                </div>
+                <div v-for="(it, i) in openPanel.data.items" :key="i" class="flex items-center justify-between gap-3 border-b border-outline-gray-1 px-3 py-2.5 text-sm last:border-b-0">
+                  <div class="min-w-0">
+                    <div class="truncate text-ink-gray-7">{{ it.label }}</div>
+                    <div class="text-p-sm text-ink-gray-5">{{ it.plan }} · {{ it.days }} × {{ inr(it.perDay) }}/day</div>
+                  </div>
+                  <span class="shrink-0 tabular-nums text-ink-gray-8">{{ inr(it.amount) }}</span>
+                </div>
+              </div>
+
+              <dl class="space-y-1.5 text-sm">
+                <div class="flex justify-between"><dt class="text-ink-gray-5">Subtotal</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(subtotal(openPanel.data)) }}</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openPanel.data)) }}</dd></div>
+                <div v-if="openPanel.data.credits" class="flex justify-between"><dt class="text-ink-green-3">Credits applied</dt><dd class="tabular-nums text-ink-green-3">−{{ inr(openPanel.data.credits) }}</dd></div>
+                <div class="flex justify-between border-t border-outline-gray-1 pt-1.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data)) }}</dd></div>
+              </dl>
+            </div>
+
+            <div class="flex gap-2 border-t border-outline-gray-2 p-4">
+              <Button variant="subtle" class="flex-1" label="Email invoice" icon-left="lucide-mail" @click="emailInvoice" />
+              <Button variant="solid" class="flex-1" label="Download PDF" icon-left="lucide-download" @click="download" />
+            </div>
+          </template>
+
+          <!-- Wallet history -->
+          <template v-else>
+            <div class="flex items-start justify-between gap-3 border-b border-outline-gray-2 p-4">
+              <div class="min-w-0">
+                <div class="text-base font-semibold text-ink-gray-9">Wallet history</div>
+                <div class="text-sm text-ink-gray-5">Balance {{ inr(store.walletBalance) }}</div>
+              </div>
+              <button class="grid size-7 shrink-0 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" aria-label="Close" @click="openPanel = null">
+                <span class="lucide-x size-4" />
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4">
+              <div v-if="store.walletHistory.length" class="divide-y divide-outline-gray-1">
+                <div v-for="tx in store.walletHistory" :key="tx.id" class="flex items-center justify-between gap-3 py-2.5">
+                  <div class="flex min-w-0 items-center gap-2.5">
+                    <span class="grid size-7 shrink-0 place-items-center rounded-full" :class="tx.amount >= 0 ? 'bg-surface-green-2 text-ink-green-3' : 'bg-surface-gray-2 text-ink-gray-6'">
+                      <span class="size-3.5" :class="tx.amount >= 0 ? 'lucide-arrow-down-left' : 'lucide-arrow-up-right'" />
+                    </span>
+                    <div class="min-w-0">
+                      <div class="truncate text-sm text-ink-gray-8">{{ tx.label }}</div>
+                      <div class="text-p-sm text-ink-gray-5">{{ tx.date }}</div>
+                    </div>
+                  </div>
+                  <span class="shrink-0 text-sm font-medium tabular-nums" :class="tx.amount >= 0 ? 'text-ink-green-3' : 'text-ink-gray-8'">
+                    {{ tx.amount >= 0 ? '+' : '−' }}{{ inr(Math.abs(tx.amount)) }}
+                  </span>
+                </div>
+              </div>
+              <p v-else class="text-sm text-ink-gray-5">No wallet activity yet.</p>
+            </div>
+
+            <div class="space-y-3 border-t border-outline-gray-2 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="text-sm font-medium text-ink-gray-8">Auto-recharge</div>
+                  <div class="text-xs text-ink-gray-5">Top up from your primary method when low.</div>
+                </div>
+                <Switch :modelValue="store.autoRecharge" @update:modelValue="store.setAutoRecharge" />
+              </div>
+              <Button variant="solid" class="w-full" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
+            </div>
+          </template>
         </aside>
       </Transition>
     </div>
@@ -193,26 +289,57 @@
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Add credit</span></template>
       <div class="space-y-3">
         <div class="flex gap-2">
-          <Button v-for="amt in [25, 50, 100]" :key="amt" :variant="creditAmount === String(amt) ? 'solid' : 'subtle'" :label="`$${amt}`" @click="creditAmount = String(amt)" />
+          <Button v-for="amt in [2000, 5000, 10000]" :key="amt" :variant="creditAmount === String(amt) ? 'solid' : 'subtle'" :label="inr(amt)" @click="creditAmount = String(amt)" />
         </div>
-        <FormControl v-model="creditAmount" type="number" label="Amount (USD)" placeholder="50" />
+        <FormControl v-model="creditAmount" type="number" label="Amount (₹)" placeholder="5000" />
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="creditOpen = false" />
-          <Button variant="solid" label="Add credit" :disabled="!(Number(creditAmount) > 0)" @click="addCredit" />
+          <Button variant="solid" label="Add to wallet" :disabled="!(Number(creditAmount) > 0)" @click="addCredit" />
         </div>
       </template>
     </Dialog>
 
-    <!-- Billing details -->
-    <Dialog v-model:open="detailsOpen" size="md">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Billing details</span></template>
+    <!-- Add payment method -->
+    <Dialog v-model:open="pmOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add payment method</span></template>
       <div class="space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <FormControl v-model="details.taxId" type="text" label="Tax ID" placeholder="AABCU9603R" />
-          <FormControl v-model="details.gstin" type="text" label="GSTIN" placeholder="29ABCDE1234F1Z5" />
+        <FormControl v-model="pmForm.kind" type="select" label="Type" :options="[{ label: 'Card', value: 'card' }, { label: 'UPI', value: 'upi' }]" />
+        <FormControl
+          v-model="pmForm.value"
+          type="text"
+          :label="pmForm.kind === 'upi' ? 'UPI ID' : 'Card number'"
+          :placeholder="pmForm.kind === 'upi' ? 'you@okbank' : '4242 4242 4242 4242'"
+        />
+      </div>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="pmOpen = false" />
+          <Button variant="solid" label="Add method" :disabled="!pmForm.value.trim()" @click="addPm" />
         </div>
+      </template>
+    </Dialog>
+
+    <!-- Tax & compliance -->
+    <Dialog v-model:open="taxOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Tax &amp; compliance</span></template>
+      <div class="space-y-3">
+        <FormControl v-model="taxForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
+        <FormControl v-model="taxForm.taxValue" type="text" :label="taxFormRegion.idLabel" :placeholder="taxFormRegion.placeholder" />
+      </div>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="taxOpen = false" />
+          <Button variant="solid" label="Save" @click="saveTax" />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Contact & address -->
+    <Dialog v-model:open="detailsOpen" size="md">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Contact &amp; address</span></template>
+      <div class="space-y-3">
         <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
         <FormControl v-model="details.invoiceRecipient" type="text" label="Invoice email recipient" placeholder="accounts@company.com" />
         <FormControl v-model="details.invoiceLanguage" type="select" label="Invoice language" :options="LANGUAGES" />
@@ -226,13 +353,25 @@
       </template>
     </Dialog>
 
+    <!-- Budget alert -->
+    <Dialog v-model:open="budgetOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Set a budget alert</span></template>
+      <FormControl v-model="budget" type="number" label="Alert me when the cycle estimate exceeds (₹)" placeholder="20000" />
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="budgetOpen = false" />
+          <Button variant="solid" label="Set alert" :disabled="!(Number(budget) > 0)" @click="setBudget" />
+        </div>
+      </template>
+    </Dialog>
+
     <ConfirmDialog
-      v-model:open="stopOpen"
+      v-model:open="stopAllOpen"
       theme="red"
-      :title="`Stop billing for ${stopServer?.name}?`"
-      :message="`${stopServer?.name} is suspended and its sites go offline until you resume. You won't be charged while it's stopped — nothing is deleted.`"
-      confirm-label="Stop billing"
-      @confirm="confirmStop"
+      title="Stop billing on all servers?"
+      message="Every server is suspended and its sites go offline until you resume. You won't be charged while they're stopped — nothing is deleted."
+      confirm-label="Stop all billing"
+      @confirm="confirmStopAll"
     />
 
     <AddCardDialog v-model:open="addCardOpen" />
@@ -241,11 +380,12 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { Alert, Badge, Button, Dialog, FormControl, Progress, Switch, toast } from 'frappe-ui'
+import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
-import { LOW_CREDIT_THRESHOLD, useCloudStore } from '../../stores/cloud'
+import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
+import { CYCLE_DAYS, useCloudStore } from '../../stores/cloud'
 import { inr, usd } from '../../utils/format'
 
 const store = useCloudStore()
@@ -260,43 +400,20 @@ function langLabel(v) {
   return LANGUAGES.find((l) => l.value === v)?.label || 'English'
 }
 
-const creditPct = computed(() =>
-  store.accountCreditTotal ? Math.round((store.accountCredit / store.accountCreditTotal) * 100) : 0,
-)
-const lowBalance = computed(() => store.accountCredit <= LOW_CREDIT_THRESHOLD)
-// Suspended servers don't bill, so they drop out of the running total.
-const totalMonthly = computed(() =>
-  store.allServers.reduce((sum, srv) => (srv.status === 'suspended' ? sum : sum + store.monthlyPriceOf(srv)), 0),
-)
+// — The one docked panel: either an invoice or the wallet history.
+const openPanel = ref(null)
 
-// — Invoices (with line items so the detail panel has something to show)
+// — Cycle figures (monthly billing; per-day is an informational breakdown)
+const cycleDays = CYCLE_DAYS
+const daysElapsed = Math.min(new Date().getDate(), CYCLE_DAYS)
+const billingDueDate = computed(() => {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+})
+const deltaUp = computed(() => store.estimateDeltaPct > 0)
+
+// — Invoice maths
 const GST_RATE = 0.18
-const invoices = [
-  {
-    number: 'INV-2026-0005',
-    period: 'May 2026',
-    issued: '1 Jun 2026',
-    status: 'Paid',
-    items: [
-      { label: 'atlas-web-01 · Business', amount: 4100 },
-      { label: 'atlas-eu-01 · Standard', amount: 1650 },
-    ],
-  },
-  {
-    number: 'INV-2026-0004',
-    period: 'April 2026',
-    issued: '1 May 2026',
-    status: 'Paid',
-    items: [{ label: 'atlas-web-01 · Business', amount: 4100 }],
-  },
-  {
-    number: 'INV-2026-0003',
-    period: 'March 2026',
-    issued: '1 Apr 2026',
-    status: 'Paid',
-    items: [{ label: 'atlas-web-01 · Standard', amount: 2050 }],
-  },
-]
 function subtotal(inv) {
   return inv.items.reduce((s, i) => s + i.amount, 0)
 }
@@ -304,45 +421,85 @@ function tax(inv) {
   return Math.round(subtotal(inv) * GST_RATE)
 }
 function total(inv) {
-  return subtotal(inv) + tax(inv)
-}
-const openInvoice = ref(null)
-
-const addCardOpen = ref(false)
-
-// — Stop / resume billing for a server (suspends it)
-const stopOpen = ref(false)
-const stopServer = ref(null)
-function askStop(srv) {
-  stopServer.value = srv
-  stopOpen.value = true
-}
-function confirmStop() {
-  store.setServerSuspended(stopServer.value.id, true)
-  toast.success(`Billing stopped for ${stopServer.value.name}`)
-}
-function resume(srv) {
-  store.setServerSuspended(srv.id, false)
-  toast.success(`Billing resumed for ${srv.name}`)
+  return subtotal(inv) + tax(inv) - (inv.credits || 0)
 }
 
-function setUpi(on) {
-  store.setUpiAutopay(on)
-  toast.success(on ? 'UPI autopay is on' : 'UPI autopay turned off')
+// — Subscriptions
+const hasActive = computed(() => store.allServers.some((s) => s.status !== 'suspended'))
+
+// — Stop / resume all
+const stopAllOpen = ref(false)
+function confirmStopAll() {
+  store.allServers.forEach((s) => store.setServerSuspended(s.id, true))
+  toast.success('Billing stopped on all servers')
+}
+function resumeAll() {
+  store.allServers.forEach((s) => store.setServerSuspended(s.id, false))
+  toast.success('Billing resumed')
 }
 
+// — Payment methods
+const pmOpen = ref(false)
+const pmForm = reactive({ kind: 'card', value: '' })
+function openPm() {
+  pmForm.kind = 'card'
+  pmForm.value = ''
+  pmOpen.value = true
+}
+function addPm() {
+  const v = pmForm.value.trim()
+  if (!v) return
+  if (pmForm.kind === 'upi') store.addPaymentMethod({ kind: 'upi', label: 'UPI', detail: v })
+  else store.addPaymentMethod({ kind: 'card', label: 'Card', detail: '•••• ' + v.replace(/\s/g, '').slice(-4) })
+  toast.success('Payment method added')
+  pmOpen.value = false
+}
+function pmMenu(pm) {
+  const opts = []
+  if (!pm.primary) opts.push({ label: 'Make primary', icon: 'lucide-star', onClick: () => store.setPrimaryMethod(pm.id) })
+  opts.push({ label: 'Remove', icon: 'lucide-trash-2', onClick: () => store.removePaymentMethod(pm.id) })
+  return opts
+}
+
+// — Wallet
 const creditOpen = ref(false)
-const creditAmount = ref('50')
+const creditAmount = ref('5000')
 function addCredit() {
-  store.addCredit(creditAmount.value)
-  toast.success(`Added $${Number(creditAmount.value)} credit`)
+  store.addToWallet(creditAmount.value)
+  toast.success(`Added ${inr(Number(creditAmount.value))} to your wallet`)
   creditOpen.value = false
 }
 
+// — Marketplace payouts
+function requestPayout() {
+  store.requestPayout()
+  toast.success('Payout requested')
+}
+
+// — Tax & compliance
+const taxRegion = computed(() => taxRegionByCode(store.billingProfile.taxRegion))
+const taxOpen = ref(false)
+const taxForm = reactive({ taxRegion: 'IN', taxValue: '' })
+const taxFormRegion = computed(() => taxRegionByCode(taxForm.taxRegion))
+function openTax() {
+  taxForm.taxRegion = store.billingProfile.taxRegion || 'IN'
+  taxForm.taxValue = store.billingProfile.taxValue || ''
+  taxOpen.value = true
+}
+function saveTax() {
+  store.setBillingProfile({ taxRegion: taxForm.taxRegion, taxValue: taxForm.taxValue })
+  toast.success('Tax details saved')
+  taxOpen.value = false
+}
+
+// — Contact & address
 const detailsOpen = ref(false)
-const details = reactive({ taxId: '', gstin: '', address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en' })
+const details = reactive({ address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en' })
 function openDetails() {
-  Object.assign(details, store.billingProfile)
+  details.address = store.billingProfile.address
+  details.billingEmail = store.billingProfile.billingEmail
+  details.invoiceRecipient = store.billingProfile.invoiceRecipient
+  details.invoiceLanguage = store.billingProfile.invoiceLanguage
   detailsOpen.value = true
 }
 function saveDetails() {
@@ -350,6 +507,17 @@ function saveDetails() {
   toast.success('Billing details saved')
   detailsOpen.value = false
 }
+
+// — Budget alert
+const budgetOpen = ref(false)
+const budget = ref('20000')
+function setBudget() {
+  toast.success(`Budget alert set at ₹${Number(budget.value).toLocaleString('en-IN')}/cycle`)
+  budgetOpen.value = false
+}
+
+// — Trial credit alert path
+const addCardOpen = ref(false)
 
 function download() {
   toast('In the real thing, this downloads the invoice PDF')

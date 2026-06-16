@@ -17,7 +17,7 @@
         <button
           v-for="item in items"
           :key="item.label"
-          class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+          class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
           :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
           :title="collapsed ? item.label : undefined"
           @click="router.push(item.to)"
@@ -108,7 +108,7 @@ onMounted(() => {
 
 const items = computed(() => [
   { label: 'Servers', icon: 'lucide-server', to: '/servers', active: route.path === '/servers' || route.path.startsWith('/servers/') },
-  { label: 'Billings', icon: 'lucide-wallet', to: '/billing', active: route.path === '/billing' },
+  { label: 'Billing', icon: 'lucide-wallet', to: '/billing', active: route.path === '/billing' },
   { label: 'Settings', icon: 'lucide-settings', to: '/settings', active: route.path.startsWith('/settings') },
 ])
 

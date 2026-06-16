@@ -19,6 +19,9 @@ function defaultPermissions() {
 // Average daily credit burn in $ — used for the "covers about X days" hint.
 export const DAILY_BURN = 1.75
 export const LOW_CREDIT_THRESHOLD = 5
+// Billing runs on a monthly cycle; per-day figures are an informational
+// breakdown of the monthly price (price ÷ 30), not a daily deduction.
+export const CYCLE_DAYS = 30
 
 const HOUR = 3600 * 1000
 const DAY = 24 * HOUR
@@ -73,6 +76,8 @@ function makeServer(opts = {}) {
       { id: uid('fw'), name: 'SSH', port: 22, action: 'Allow', enabled: true },
     ],
     sshKeys: [{ id: uid('key'), name: 'work-laptop', fingerprint: 'SHA256:aX9k…Q2x' }],
+    // Plan up/downgrades over time — shown on the server's Settings page.
+    planHistory: [],
     ...opts,
   }
 }
@@ -109,9 +114,18 @@ function baseState() {
     cardOnFile: false,
     autoRecharge: false,
     upiAutopay: false,
+    // Prepaid Wallet (₹) — the monthly invoice draws from this first.
+    walletBalance: 0,
+    walletHistory: [], // { id, date, type: 'topup'|'charge'|'bonus', label, amount } — amount signed
+    // Prioritized payment methods — primary is charged first, the rest are
+    // automatic fallbacks. No user-facing gateway choice (auto by currency).
+    paymentMethods: [],
+    invoices: [], // { number, period, issued, status, items:[{label,plan,days,perDay,amount}] }
+    payoutBalance: 0, // marketplace earnings available to withdraw (USD)
+    lastCycleTotal: 0, // previous cycle's charge, for the "vs last month" stat
     billingProfile: {
-      gstin: '',
-      taxId: '',
+      taxRegion: 'IN',
+      taxValue: '',
       address: '',
       billingEmail: '',
       invoiceRecipient: '',
@@ -149,7 +163,15 @@ function grownState() {
   const shop = makeSite('My Shop', ['erpnext', 'crm'])
   shop.backups = [makeBackup(10 * HOUR, '96 MB')]
 
-  const server = makeServer({ name: 'atlas-web-01', creditBalance: 18, sites: [company, shop] })
+  const server = makeServer({
+    name: 'atlas-web-01',
+    creditBalance: 18,
+    sites: [company, shop],
+    planHistory: [
+      { id: uid('ph'), date: '10 Jun 2026', from: 'Starter', to: 'Business', direction: 'upgrade' },
+      { id: uid('ph'), date: '2 Mar 2026', from: 'Standard', to: 'Starter', direction: 'downgrade' },
+    ],
+  })
   const euServer = makeServer({
     name: 'atlas-eu-01',
     regionId: 'hetzner-nuremberg',
@@ -174,6 +196,9 @@ function grownState() {
     creditTotal: 50,
     sites: [makeSite('US Marketing', ['erpnext'])],
     health: { cpuPct: 18, memUsedGb: 1.1, memTotalGb: 3.0, diskFrac: 0.16 },
+    planHistory: [
+      { id: uid('ph'), date: '28 Apr 2026', from: 'Business', to: 'Growth', direction: 'upgrade' },
+    ],
   })
   // A server that's fallen over — shows the red map pin + "Broken" state.
   const brokenServer = makeServer({
@@ -189,8 +214,8 @@ function grownState() {
   s.servers = [server, euServer, sgServer, usServer, brokenServer]
   s.cardOnFile = true // a paid user — no trial credit badge
   s.billingProfile = {
-    gstin: '29ABCDE1234F1Z5',
-    taxId: 'AABCU9603R',
+    taxRegion: 'IN',
+    taxValue: '29ABCDE1234F1Z5',
     address: '4th Floor, Prestige Tech Park, Bengaluru, KA 560103',
     billingEmail: 'billing@mycompany.in',
     invoiceRecipient: 'accounts@mycompany.in',
@@ -198,6 +223,40 @@ function grownState() {
   }
   s.team = { name: "Rahul's team", avatar: null }
   s.roles.push({ id: 'role-support', name: 'Support', desc: 'View-only access plus can create sites', permissions: { ...defaultPermissions(), createSites: true } })
+  // Wallet — prepaid balance the monthly invoice draws from.
+  s.walletBalance = 8400
+  s.walletHistory = [
+    { id: uid('wtx'), date: '1 Jun 2026', type: 'charge', label: 'May 2026 invoice', amount: -6798 },
+    { id: uid('wtx'), date: '20 May 2026', type: 'topup', label: 'Added credit', amount: 10000 },
+    { id: uid('wtx'), date: '1 May 2026', type: 'charge', label: 'April 2026 invoice', amount: -4850 },
+    { id: uid('wtx'), date: '12 Apr 2026', type: 'bonus', label: 'Referral bonus', amount: 500 },
+    { id: uid('wtx'), date: '1 Apr 2026', type: 'charge', label: 'March 2026 invoice', amount: -2410 },
+  ]
+  // Prioritized payment methods — Visa primary, UPI as automatic fallback.
+  s.paymentMethods = [
+    { id: uid('pm'), kind: 'card', label: 'Visa', detail: '•••• 4242', primary: true },
+    { id: uid('pm'), kind: 'upi', label: 'UPI', detail: 'rahul@okhdfc', primary: false },
+  ]
+  // Past invoices with per-day line items (30-day cycle).
+  s.invoices = [
+    {
+      number: 'INV-2026-0005', period: 'May 2026', issued: '1 Jun 2026', status: 'Paid', credits: 1000,
+      items: [
+        { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
+        { label: 'atlas-eu-01', plan: 'Standard', days: 30, perDay: 55, amount: 1650 },
+      ],
+    },
+    {
+      number: 'INV-2026-0004', period: 'April 2026', issued: '1 May 2026', status: 'Paid', credits: 500,
+      items: [{ label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 }],
+    },
+    {
+      number: 'INV-2026-0003', period: 'March 2026', issued: '1 Apr 2026', status: 'Paid', credits: 0,
+      items: [{ label: 'atlas-web-01', plan: 'Standard', days: 30, perDay: 68, amount: 2040 }],
+    },
+  ]
+  s.payoutBalance = 0
+  s.lastCycleTotal = 14100 // makes this cycle's estimate read ~+15%
   s.members = [
     { id: uid('mem'), name: 'Rahul Mehta',  email: 'rahul@mycompany.in', roles: [{ roleId: 'role-owner', resourceId: null }] },
     { id: uid('mem'), name: 'Sara Khan',    email: 'sara@mycompany.in',  roles: [{ roleId: 'role-admin', resourceId: null }] },
@@ -283,6 +342,25 @@ export const useCloudStore = defineStore('cloud', {
     monthlyPriceOf: () => (server) => {
       const base = planById(server.planId).priceMonthly
       return Math.round((base * regionById(server.regionId).priceFactor) / 50) * 50
+    },
+
+    // Informational per-day rate (monthly ÷ 30) — not a daily charge.
+    perDayOf() {
+      return (server) => Math.round(this.monthlyPriceOf(server) / CYCLE_DAYS)
+    },
+
+    // This cycle's estimated charge — every active (non-suspended) server.
+    estimatedThisCycle() {
+      return this.servers.reduce(
+        (sum, srv) => (srv.status === 'suspended' ? sum : sum + this.monthlyPriceOf(srv)),
+        0,
+      )
+    },
+
+    // How this cycle's estimate compares to last cycle, as a signed %.
+    estimateDeltaPct() {
+      if (!this.lastCycleTotal) return 0
+      return Math.round(((this.estimatedThisCycle - this.lastCycleTotal) / this.lastCycleTotal) * 100)
     },
 
     recommendedPlanId: (s) => TEAM_SIZE_TO_PLAN[s.onboarding.teamSize] || 'business',
@@ -633,10 +711,19 @@ export const useCloudStore = defineStore('cloud', {
     resizeServer(serverId, planId) {
       const srv = this.findServer(serverId)
       if (!srv || srv.planId === planId) return
-      const from = planById(srv.planId).name
+      const fromPlan = planById(srv.planId)
+      const toPlan = planById(planId)
+      const direction = toPlan.priceMonthly >= fromPlan.priceMonthly ? 'upgrade' : 'downgrade'
       return this._work(() => {
         srv.planId = planId
-        this.logActivity(`Resized ${srv.name} from ${from} to ${planById(planId).name}`, { tag: 'server' })
+        srv.planHistory.unshift({
+          id: uid('ph'),
+          date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          from: fromPlan.name,
+          to: toPlan.name,
+          direction,
+        })
+        this.logActivity(`Resized ${srv.name} from ${fromPlan.name} to ${toPlan.name}`, { tag: 'server' })
       }, 1400)
     },
 
@@ -771,7 +858,47 @@ export const useCloudStore = defineStore('cloud', {
       this.logActivity('Updated billing details', { tag: 'billing' })
     },
     requestPayout() {
+      const amt = this.payoutBalance
+      this.payoutBalance = 0
       this.logActivity('Requested a marketplace payout', { tag: 'billing' })
+      return amt
+    },
+
+    // — Wallet (₹ prepaid balance the monthly invoice draws from)
+    addToWallet(amount) {
+      const amt = Number(amount) || 0
+      if (amt <= 0) return
+      this.walletBalance += amt
+      this.walletHistory.unshift({
+        id: uid('wtx'),
+        date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        type: 'topup',
+        label: 'Added credit',
+        amount: amt,
+      })
+      this.logActivity(`Added ₹${amt.toLocaleString('en-IN')} to your wallet`, { tag: 'billing' })
+    },
+
+    // — Payment methods (prioritized; primary charged first)
+    addPaymentMethod(pm) {
+      const first = this.paymentMethods.length === 0
+      this.paymentMethods.push({ id: uid('pm'), primary: first, ...pm })
+      this.logActivity(`Added a payment method (${pm.label || pm.kind})`, { tag: 'billing' })
+    },
+    removePaymentMethod(id) {
+      const i = this.paymentMethods.findIndex((p) => p.id === id)
+      if (i === -1) return
+      const [removed] = this.paymentMethods.splice(i, 1)
+      // If we removed the primary, promote the next one in line.
+      if (removed.primary && this.paymentMethods.length) this.paymentMethods[0].primary = true
+    },
+    setPrimaryMethod(id) {
+      const target = this.paymentMethods.find((p) => p.id === id)
+      if (!target) return
+      this.paymentMethods.forEach((p) => (p.primary = p.id === id))
+      // Move the primary to the front so order reflects priority.
+      this.paymentMethods.sort((a, b) => (b.primary === true) - (a.primary === true))
+      this.logActivity(`Made ${target.label} ${target.detail} the primary payment method`, { tag: 'billing' })
     },
 
     // — Analytics

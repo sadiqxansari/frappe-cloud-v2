@@ -27,6 +27,31 @@
         </div>
         <Button variant="subtle" size="sm" label="Restart" icon-left="lucide-rotate-cw" @click="restart" />
       </div>
+
+      <!-- Plan history -->
+      <div class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-medium text-ink-gray-9">Plan history</div>
+          <span class="text-xs text-ink-gray-5">Currently {{ plan.name }} · {{ inr(monthlyPrice) }}/mo</span>
+        </div>
+        <div v-if="server.planHistory.length" class="mt-3 space-y-3">
+          <div v-for="h in server.planHistory" :key="h.id" class="flex items-center gap-3 text-sm">
+            <span
+              class="grid size-6 shrink-0 place-items-center rounded-full"
+              :class="h.direction === 'upgrade' ? 'bg-surface-green-2 text-ink-green-3' : 'bg-surface-amber-2 text-ink-amber-3'"
+            >
+              <span class="size-3.5" :class="h.direction === 'upgrade' ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <span class="text-ink-gray-8">{{ h.from }} → {{ h.to }}</span>
+              <span class="capitalize text-ink-gray-5"> · {{ h.direction }}</span>
+            </div>
+            <span class="shrink-0 tabular-nums text-ink-gray-5">{{ h.date }}</span>
+          </div>
+        </div>
+        <p v-else class="mt-2 text-sm text-ink-gray-5">No plan changes yet.</p>
+      </div>
+
       <p class="text-sm text-ink-gray-5">
         SSH keys and API access are account-wide — manage them in
         <RouterLink to="/settings" class="text-ink-gray-7 underline-offset-2 hover:underline">Settings → Developer</RouterLink>.
@@ -94,6 +119,7 @@ import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import { versionById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
+import { inr } from '../../utils/format'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -123,6 +149,8 @@ function addRule() {
 }
 
 const versionLabel = computed(() => versionById(server.value.version).label)
+const plan = computed(() => store.planOf(server.value))
+const monthlyPrice = computed(() => store.monthlyPriceOf(server.value))
 const versionOpen = ref(false)
 
 const renameOpen = ref(false)
