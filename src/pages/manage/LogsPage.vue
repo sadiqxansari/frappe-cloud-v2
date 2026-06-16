@@ -36,13 +36,14 @@
           </button>
         </div>
 
-        <pre class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-white">{{ shownLines.join('\n') || 'Nothing matches.' }}</pre>
+        <pre v-if="placeholder" class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-gray-5">{{ placeholder }}</pre>
+        <pre v-else class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-white">{{ shownLines.join('\n') }}</pre>
 
         <div class="flex items-center gap-2 border-t border-outline-gray-1 px-3 py-1.5 text-xs text-ink-gray-5">
           <span v-if="tailing" class="flex items-center gap-1.5 text-ink-green-3">
             <span class="size-1.5 animate-pulse rounded-full bg-[var(--ink-green-3)]" /> Live
           </span>
-          <span>{{ shownLines.length }} lines</span>
+          <span>{{ shownLines.length }} lines<span v-if="truncated" class="text-ink-gray-4"> · showing the last {{ limit }} of {{ filteredLines.length }}</span></span>
         </div>
       </div>
     </div>
@@ -82,10 +83,21 @@ function selectFile(file) {
   search.value = ''
 }
 
-const shownLines = computed(() => {
-  const lines = logLines(openFile.value)
+const rawLines = computed(() => logLines(openFile.value))
+const filteredLines = computed(() => {
   const q = search.value.trim().toLowerCase()
-  return q ? lines.filter((l) => l.toLowerCase().includes(q)) : lines
+  return q ? rawLines.value.filter((l) => l.toLowerCase().includes(q)) : rawLines.value
+})
+const limit = computed(() => Number(lineCount.value))
+// A big file is tailed: we only render the last N lines.
+const shownLines = computed(() => filteredLines.value.slice(-limit.value))
+const truncated = computed(() => filteredLines.value.length > limit.value)
+
+// Distinguish an empty file from a search that matched nothing.
+const placeholder = computed(() => {
+  if (!rawLines.value.length) return 'This log file is empty — nothing has been written yet.'
+  if (!filteredLines.value.length) return 'No lines match your search.'
+  return ''
 })
 
 function refresh() {

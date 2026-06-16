@@ -40,6 +40,15 @@ const options = computed(() => [
         switchValue: store.creditExpired,
         onClick: (v) => store.setCreditExpired(v),
       },
+      {
+        label: 'Edge mode (errors everywhere)',
+        switch: true,
+        switchValue: store.edgeMode,
+        onClick: (v) => {
+          store.setEdgeMode(v)
+          if (v) router.push('/billing')
+        },
+      },
     ],
   },
 ])

@@ -14,6 +14,29 @@
             <template #footer><Button variant="solid" size="sm" label="Add a card" @click="addCardOpen = true" /></template>
           </Alert>
 
+          <!-- Dunning — an unpaid/overdue invoice is the single most urgent thing here -->
+          <Alert v-if="overdueInvoice" theme="red" class="mt-5" :title="`Invoice ${overdueInvoice.number} is overdue`" :dismissible="false">
+            <template #description>
+              {{ inr(total(overdueInvoice)) }} was due on {{ overdueInvoice.dueDate }}. Pay now to avoid your servers being suspended.
+            </template>
+            <template #footer>
+              <div class="flex gap-2">
+                <Button variant="solid" size="sm" label="Pay now" @click="payInvoice(overdueInvoice)" />
+                <Button variant="outline" size="sm" label="View invoice" @click="openPanel = { type: 'invoice', data: overdueInvoice }" />
+              </div>
+            </template>
+          </Alert>
+
+          <!-- A declined primary method blocks every charge, including auto-recharge.
+               Independent v-if (not else-if) so it isn't hidden by the overdue alert. -->
+          <Alert v-if="declinedMethod" theme="yellow" class="mt-5" title="Your primary payment method was declined" :dismissible="false">
+            <template #description>
+              We couldn't charge {{ declinedMethod.label }} {{ declinedMethod.detail }}.
+              {{ store.autoRecharge ? 'Auto-recharge is paused until it’s fixed.' : 'Update it to keep things running.' }}
+            </template>
+            <template #footer><Button variant="solid" size="sm" label="Update payment method" @click="openPm" /></template>
+          </Alert>
+
           <div class="mt-5 space-y-5">
             <!-- What it'll cost + what funds it -->
             <div class="grid gap-4 sm:grid-cols-2">
@@ -51,6 +74,10 @@
                   <span class="text-xs text-ink-gray-5">Applied to your monthly invoice</span>
                   <Button variant="subtle" size="sm" label="Add" icon-left="lucide-plus" @click.stop="creditOpen = true" />
                 </div>
+                <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3">
+                  <span class="lucide-triangle-alert size-3 shrink-0" />
+                  Won't cover the {{ billingDueDate }} invoice ({{ inr(store.estimatedThisCycle) }}).
+                </p>
               </div>
             </div>
 
@@ -73,7 +100,9 @@
                   </span>
                   <div class="min-w-0 flex-1">
                     <div class="truncate text-sm font-medium text-ink-gray-9">{{ pm.label }}</div>
-                    <div class="text-p-sm text-ink-gray-5">{{ pm.detail }}</div>
+                    <div class="text-p-sm" :class="pm.status === 'declined' ? 'text-ink-red-4' : 'text-ink-gray-5'">
+                      {{ pm.status === 'declined' ? `${pm.detail} · declined` : pm.detail }}
+                    </div>
                   </div>
                   <Badge v-if="pm.primary" theme="green" variant="subtle" label="Primary" />
                   <Badge v-else theme="gray" variant="subtle" label="Backup" />
@@ -128,11 +157,13 @@
                 >
                   <div class="min-w-0">
                     <div class="font-medium text-ink-gray-8">{{ inv.period }}</div>
-                    <div class="truncate text-p-sm text-ink-gray-5">{{ inv.number }} · Issued {{ inv.issued }}</div>
+                    <div class="truncate text-p-sm" :class="inv.overdue ? 'text-ink-red-4' : 'text-ink-gray-5'">
+                      {{ inv.number }} · {{ inv.overdue ? `Due ${inv.dueDate}` : `Issued ${inv.issued}` }}
+                    </div>
                   </div>
                   <div class="flex shrink-0 items-center gap-3">
                     <span class="tabular-nums text-ink-gray-8">{{ inr(total(inv)) }}</span>
-                    <Badge theme="green" variant="subtle" :label="inv.status" />
+                    <Badge :theme="statusTheme(inv.status)" variant="subtle" :label="inv.status" />
                     <span class="lucide-chevron-right size-4 text-ink-gray-4" />
                   </div>
                 </button>
@@ -152,8 +183,13 @@
                   <span class="text-xl font-semibold text-ink-gray-9">{{ usd(store.payoutBalance) }}</span>
                   <span class="text-sm text-ink-gray-5">available to withdraw</span>
                 </div>
-                <Button variant="subtle" size="sm" label="Request payout" :disabled="store.payoutBalance <= 0" @click="requestPayout" />
+                <Button v-if="store.payoutBalance > 0 && !store.payoutAccount" variant="solid" size="sm" label="Add payout account" @click="payoutOpen = true" />
+                <Button v-else variant="subtle" size="sm" label="Request payout" :disabled="store.payoutBalance <= 0 || !store.payoutAccount" @click="requestPayout" />
               </div>
+              <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3">
+                <span class="lucide-triangle-alert size-3 shrink-0" />
+                Add a bank account before you can withdraw your earnings.
+              </p>
             </section>
 
             <!-- Tax & compliance -->
@@ -164,8 +200,12 @@
               </div>
               <dl class="mt-3 space-y-1.5 text-p-sm">
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-ink-gray-8 text-p-sm">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-3' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
               </dl>
+              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3 underline-offset-2 hover:underline" @click="openTax">
+                <span class="lucide-triangle-alert size-3 shrink-0" />
+                Add your {{ taxRegion.idLabel }} so invoices are tax-compliant in {{ taxRegion.country }}.
+              </button>
             </section>
 
             <!-- Contact & address -->
@@ -175,11 +215,15 @@
                 <Button variant="ghost" size="sm" icon="lucide-pencil" aria-label="Edit contact & address" @click="openDetails" />
               </div>
               <dl class="mt-3 space-y-1.5 text-p-sm">
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing email</dt><dd class="text-ink-gray-8 text-p-sm">{{ store.billingProfile.billingEmail || 'Not added' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing email</dt><dd class="text-p-sm" :class="store.billingProfile.emailBounced ? 'text-ink-red-4' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice recipient</dt><dd class="text-ink-gray-8 text-p-sm">{{ store.billingProfile.invoiceRecipient || 'Not added' }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice language</dt><dd class="text-ink-gray-8 text-p-sm">{{ langLabel(store.billingProfile.invoiceLanguage) }}</dd></div>
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8 text-p-sm">{{ store.billingProfile.address || 'Not added' }}</dd></div>
               </dl>
+              <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-4 underline-offset-2 hover:underline" @click="openDetails">
+                <span class="lucide-triangle-alert size-3 shrink-0" />
+                Invoices are bouncing back — update your billing email.
+              </button>
             </section>
           </div>
         </div>
@@ -203,7 +247,11 @@
             <div class="flex-1 space-y-4 overflow-y-auto p-4">
               <div class="flex items-center justify-between text-sm">
                 <span class="text-ink-gray-5">Status</span>
-                <Badge theme="green" variant="subtle" :label="openPanel.data.status" />
+                <Badge :theme="statusTheme(openPanel.data.status)" variant="subtle" :label="openPanel.data.status" />
+              </div>
+              <div v-if="openPanel.data.overdue" class="flex items-center justify-between text-sm">
+                <span class="text-ink-gray-5">Due</span>
+                <span class="text-ink-red-4">{{ openPanel.data.dueDate }} (overdue)</span>
               </div>
               <div class="flex items-center justify-between text-sm">
                 <span class="text-ink-gray-5">Billed to</span>
@@ -231,9 +279,12 @@
               </dl>
             </div>
 
-            <div class="flex gap-2 border-t border-outline-gray-2 p-4">
-              <Button variant="subtle" class="flex-1" label="Email invoice" icon-left="lucide-mail" @click="emailInvoice" />
-              <Button variant="solid" class="flex-1" label="Download PDF" icon-left="lucide-download" @click="download" />
+            <div class="border-t border-outline-gray-2 p-4">
+              <Button v-if="openPanel.data.status === 'Unpaid'" variant="solid" theme="red" class="mb-2 w-full" :label="`Pay ${inr(total(openPanel.data))} now`" icon-left="lucide-credit-card" @click="payInvoice(openPanel.data)" />
+              <div class="flex gap-2">
+                <Button variant="subtle" class="flex-1" label="Email invoice" icon-left="lucide-mail" @click="emailInvoice" />
+                <Button variant="subtle" class="flex-1" label="Download PDF" icon-left="lucide-download" @click="download" />
+              </div>
             </div>
           </template>
 
@@ -301,9 +352,9 @@
       </template>
     </Dialog>
 
-    <!-- Add payment method -->
+    <!-- Add / update payment method -->
     <Dialog v-model:open="pmOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add payment method</span></template>
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">{{ editingPmId ? 'Update payment method' : 'Add payment method' }}</span></template>
       <div class="space-y-3">
         <FormControl v-model="pmForm.kind" type="select" label="Type" :options="[{ label: 'Card', value: 'card' }, { label: 'UPI', value: 'upi' }]" />
         <FormControl
@@ -316,7 +367,7 @@
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="pmOpen = false" />
-          <Button variant="solid" label="Add method" :disabled="!pmForm.value.trim()" @click="addPm" />
+          <Button variant="solid" :label="editingPmId ? 'Save' : 'Add method'" :disabled="!pmForm.value.trim()" @click="addPm" />
         </div>
       </template>
     </Dialog>
@@ -326,12 +377,15 @@
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Tax &amp; compliance</span></template>
       <div class="space-y-3">
         <FormControl v-model="taxForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
-        <FormControl v-model="taxForm.taxValue" type="text" :label="taxFormRegion.idLabel" :placeholder="taxFormRegion.placeholder" />
+        <div>
+          <FormControl v-model="taxForm.taxValue" type="text" :label="taxFormRegion.idLabel" :placeholder="taxFormRegion.placeholder" />
+          <p v-if="taxForm.taxValue && taxFormError" class="mt-1 text-xs text-ink-red-4">{{ taxFormError }}</p>
+        </div>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="taxOpen = false" />
-          <Button variant="solid" label="Save" @click="saveTax" />
+          <Button variant="solid" label="Save" :disabled="!!taxFormError" @click="saveTax" />
         </div>
       </template>
     </Dialog>
@@ -340,15 +394,21 @@
     <Dialog v-model:open="detailsOpen" size="md">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Contact &amp; address</span></template>
       <div class="space-y-3">
-        <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
-        <FormControl v-model="details.invoiceRecipient" type="text" label="Invoice email recipient" placeholder="accounts@company.com" />
+        <div>
+          <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
+          <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-xs text-ink-red-4">{{ billingEmailError }}</p>
+        </div>
+        <div>
+          <FormControl v-model="details.invoiceRecipient" type="text" label="Invoice email recipient" placeholder="accounts@company.com" />
+          <p v-if="details.invoiceRecipient && recipientError" class="mt-1 text-xs text-ink-red-4">{{ recipientError }}</p>
+        </div>
         <FormControl v-model="details.invoiceLanguage" type="select" label="Invoice language" :options="LANGUAGES" />
         <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="detailsOpen = false" />
-          <Button variant="solid" label="Save" @click="saveDetails" />
+          <Button variant="solid" label="Save" :disabled="!detailsValid" @click="saveDetails" />
         </div>
       </template>
     </Dialog>
@@ -361,6 +421,21 @@
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="budgetOpen = false" />
           <Button variant="solid" label="Set alert" :disabled="!(Number(budget) > 0)" @click="setBudget" />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Add payout account -->
+    <Dialog v-model:open="payoutOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add payout account</span></template>
+      <div class="space-y-3">
+        <p class="text-p-sm text-ink-gray-6">Connect a bank account to withdraw your marketplace earnings. Payouts are sent in USD, usually within 5–7 business days.</p>
+        <p class="text-p-sm text-ink-gray-5">You'll be redirected to our payments partner to add the account securely.</p>
+      </div>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="payoutOpen = false" />
+          <Button variant="solid" label="Connect bank account" @click="savePayoutAccount" />
         </div>
       </template>
     </Dialog>
@@ -387,8 +462,27 @@ import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
 import { CYCLE_DAYS, useCloudStore } from '../../stores/cloud'
 import { inr, usd } from '../../utils/format'
+import { validateEmail, validateTaxId } from '../../utils/validate'
 
 const store = useCloudStore()
+
+// — Problem states (mostly surfaced by Edge mode, but real once the API is live)
+const overdueInvoice = computed(() => store.invoices.find((i) => i.overdue || i.status === 'Unpaid') || null)
+const declinedMethod = computed(() => store.paymentMethods.find((p) => p.status === 'declined') || null)
+// The wallet is prepaid and a healthy card covers any shortfall — so it's only
+// "at risk" when the balance is short AND there's no working method behind it.
+const walletAtRisk = computed(
+  () => store.walletBalance < store.estimatedThisCycle && (!!declinedMethod.value || !store.paymentMethods.length),
+)
+// Every curated region except the US legally expects a tax ID on B2B invoices.
+const taxRequired = computed(() => store.billingProfile.taxRegion !== 'US')
+const taxMissing = computed(() => taxRequired.value && !store.billingProfile.taxValue)
+
+function statusTheme(status) {
+  if (['Unpaid', 'Overdue', 'Failed'].includes(status)) return 'red'
+  if (status === 'Paid') return 'green'
+  return 'gray'
+}
 
 const LANGUAGES = [
   { label: 'English', value: 'en' },
@@ -441,21 +535,37 @@ function resumeAll() {
 // — Payment methods
 const pmOpen = ref(false)
 const pmForm = reactive({ kind: 'card', value: '' })
+const editingPmId = ref(null) // null = adding; otherwise updating that method
 function openPm() {
+  editingPmId.value = null
   pmForm.kind = 'card'
+  pmForm.value = ''
+  pmOpen.value = true
+}
+// "Update" on a declined/expired method — re-enter details to fix it.
+function updatePm(pm) {
+  editingPmId.value = pm.id
+  pmForm.kind = pm.kind
   pmForm.value = ''
   pmOpen.value = true
 }
 function addPm() {
   const v = pmForm.value.trim()
   if (!v) return
-  if (pmForm.kind === 'upi') store.addPaymentMethod({ kind: 'upi', label: 'UPI', detail: v })
-  else store.addPaymentMethod({ kind: 'card', label: 'Card', detail: '•••• ' + v.replace(/\s/g, '').slice(-4) })
-  toast.success('Payment method added')
+  const detail = pmForm.kind === 'upi' ? v : '•••• ' + v.replace(/\s/g, '').slice(-4)
+  if (editingPmId.value) {
+    store.updatePaymentMethod(editingPmId.value, { detail, status: null })
+    toast.success('Payment method updated')
+  } else {
+    const label = pmForm.kind === 'upi' ? 'UPI' : 'Card'
+    store.addPaymentMethod({ kind: pmForm.kind, label, detail })
+    toast.success('Payment method added')
+  }
   pmOpen.value = false
 }
 function pmMenu(pm) {
   const opts = []
+  opts.push({ label: 'Update', icon: 'lucide-pencil', onClick: () => updatePm(pm) })
   if (!pm.primary) opts.push({ label: 'Make primary', icon: 'lucide-star', onClick: () => store.setPrimaryMethod(pm.id) })
   opts.push({ label: 'Remove', icon: 'lucide-trash-2', onClick: () => store.removePaymentMethod(pm.id) })
   return opts
@@ -470,7 +580,23 @@ function addCredit() {
   creditOpen.value = false
 }
 
+// — Invoices
+function payInvoice(inv) {
+  openPanel.value = null
+  toast.promise(store.payInvoice(inv.number), {
+    loading: 'Processing payment…',
+    success: `Invoice ${inv.number} paid`,
+    error: 'Payment failed — please try again',
+  })
+}
+
 // — Marketplace payouts
+const payoutOpen = ref(false)
+function savePayoutAccount() {
+  store.setPayoutAccount(true)
+  toast.success('Payout account connected')
+  payoutOpen.value = false
+}
 function requestPayout() {
   store.requestPayout()
   toast.success('Payout requested')
@@ -481,12 +607,14 @@ const taxRegion = computed(() => taxRegionByCode(store.billingProfile.taxRegion)
 const taxOpen = ref(false)
 const taxForm = reactive({ taxRegion: 'IN', taxValue: '' })
 const taxFormRegion = computed(() => taxRegionByCode(taxForm.taxRegion))
+const taxFormError = computed(() => validateTaxId(taxForm.taxRegion, taxForm.taxValue, { required: taxForm.taxRegion !== 'US' }))
 function openTax() {
   taxForm.taxRegion = store.billingProfile.taxRegion || 'IN'
   taxForm.taxValue = store.billingProfile.taxValue || ''
   taxOpen.value = true
 }
 function saveTax() {
+  if (taxFormError.value) return
   store.setBillingProfile({ taxRegion: taxForm.taxRegion, taxValue: taxForm.taxValue })
   toast.success('Tax details saved')
   taxOpen.value = false
@@ -502,8 +630,12 @@ function openDetails() {
   details.invoiceLanguage = store.billingProfile.invoiceLanguage
   detailsOpen.value = true
 }
+const billingEmailError = computed(() => validateEmail(details.billingEmail, { required: true }))
+const recipientError = computed(() => validateEmail(details.invoiceRecipient))
+const detailsValid = computed(() => !billingEmailError.value && !recipientError.value)
 function saveDetails() {
-  store.setBillingProfile({ ...details })
+  if (!detailsValid.value) return
+  store.setBillingProfile({ ...details, emailBounced: false })
   toast.success('Billing details saved')
   detailsOpen.value = false
 }

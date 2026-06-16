@@ -30,15 +30,20 @@ export const LOG_FILES = [
 
 // Deterministic fake log lines, varied per file name.
 export function logLines(file) {
+  // Honor the file's metadata: empty files have no lines; large files are
+  // capped so the viewer's "showing last N of M" truncation note is real.
+  const meta = LOG_FILES.find((f) => f.file === file)
+  if (meta && meta.lines === 0) return []
+  const count = Math.min(meta?.lines || 40, 400)
   const stamp = (i) => {
-    const d = new Date(Date.now() - (40 - i) * 90000)
+    const d = new Date(Date.now() - (count - i) * 90000)
     const hh = String(d.getHours()).padStart(2, '0')
     const mm = String(d.getMinutes()).padStart(2, '0')
     const ss = String(d.getSeconds()).padStart(2, '0')
     return `${hh}:${mm}:${ss}`
   }
   const lines = []
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < count; i++) {
     if (file.includes('error') && i % 9 === 4) {
       lines.push(`${stamp(i)} [ERROR] TimeoutError: response took longer than 30s (job retried)`)
     } else if (file.startsWith('web')) {

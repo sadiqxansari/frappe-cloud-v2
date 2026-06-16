@@ -111,6 +111,7 @@ function baseState() {
     paymentMethods: [],
     invoices: [], // { number, period, issued, status, items:[{label,plan,days,perDay,amount}] }
     payoutBalance: 0, // marketplace earnings available to withdraw (USD)
+    payoutAccount: false, // a bank/recipient must be set up before a payout
     lastCycleTotal: 0, // previous cycle's charge, for the "vs last month" stat
     billingProfile: {
       taxRegion: 'IN',
@@ -125,6 +126,10 @@ function baseState() {
     accountSshKeys: [],
     webhooks: [],
     creditExpired: false,
+    // Edge mode — a single demo toggle that pushes the whole account onto the
+    // unhappy path: every action fails (see `_work`) and the data overlay
+    // (see `setEdgeMode`) seeds worst-case states across surfaces.
+    edgeMode: false,
     structureRevealed: false,
     explainerDismissed: false,
     currentSiteId: null,
@@ -390,15 +395,20 @@ export const useCloudStore = defineStore('cloud', {
     // shows. Returns a promise so callers can `toast.promise(...)` on it.
     _work(fn, ms = 850) {
       this.busy++
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         setTimeout(() => {
-          let result
-          try {
-            result = fn()
-          } finally {
-            this.busy = Math.max(0, this.busy - 1)
+          this.busy = Math.max(0, this.busy - 1)
+          // Edge mode makes every action fail, so callers surface their error
+          // toast + retry affordance. Callers wrap this in `toast.promise`.
+          if (this.edgeMode) {
+            reject(new Error('Something went wrong on our end. Please try again.'))
+            return
           }
-          resolve(result)
+          try {
+            resolve(fn())
+          } catch (e) {
+            reject(e)
+          }
         }, ms)
       })
     },
@@ -618,17 +628,29 @@ export const useCloudStore = defineStore('cloud', {
     restoreBackup(siteId, backupId) {
       const site = this.findSite(siteId)
       const backup = site?.backups.find((b) => b.id === backupId)
-      if (!site || !backup) return
+      if (!site || !backup) return Promise.resolve()
       site.status = 'restoring'
+      const edge = this.edgeMode
       const actId = this.logActivity(`Restoring ${site.name} from the ${fmtDateTime(backup.at)} backup`, {
         tag: 'backup',
         status: 'running',
       })
-      setTimeout(() => {
-        const live = this.findSite(siteId)
-        if (live) live.status = 'live'
-        this.flipActivity(actId, { title: `Restored ${site.name} from the ${fmtDateTime(backup.at)} backup` })
-      }, 3000)
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          const live = this.findSite(siteId)
+          if (live) live.status = 'live' // the live site is always brought back up
+          if (edge) {
+            this.flipActivity(actId, {
+              title: `Restore failed for ${site.name}`, status: 'failed',
+              detail: 'The restore couldn’t complete. Your current data is untouched — try again or pick another backup.',
+            })
+            reject(new Error('Restore failed'))
+          } else {
+            this.flipActivity(actId, { title: `Restored ${site.name} from the ${fmtDateTime(backup.at)} backup` })
+            resolve()
+          }
+        }, 3000)
+      })
     },
 
     setBackupSchedule(siteId, schedule) {
@@ -667,6 +689,31 @@ export const useCloudStore = defineStore('cloud', {
         })
       }, 4000)
       return domain
+    },
+
+    // Re-run DNS verification for a custom domain. In Edge mode it keeps
+    // failing (the records still don't resolve); otherwise it connects.
+    retryDomainVerification(siteId, domainId) {
+      const d = this.findSite(siteId)?.domains.find((x) => x.id === domainId)
+      if (!d) return
+      d.status = 'verifying'
+      const edge = this.edgeMode
+      const actId = this.logActivity(`Re-checking DNS for ${d.name}`, { tag: 'domain', status: 'running' })
+      setTimeout(() => {
+        const live = this.findSite(siteId)?.domains.find((x) => x.id === domainId)
+        if (!live) return
+        if (edge) {
+          live.status = 'failed'
+          this.flipActivity(actId, {
+            title: `DNS check failed for ${live.name}`, status: 'failed',
+            detail: 'The records still don’t resolve. Double-check them with your DNS provider — changes can take up to an hour.',
+          })
+        } else {
+          live.status = 'active'
+          live.ssl = true
+          this.flipActivity(actId, { title: `Connected ${live.name}` })
+        }
+      }, 2500)
     },
 
     restartProcess(serverId, name) {
@@ -840,6 +887,22 @@ export const useCloudStore = defineStore('cloud', {
       this.logActivity('Requested a marketplace payout', { tag: 'billing' })
       return amt
     },
+    setPayoutAccount(on) {
+      this.payoutAccount = on
+      if (on) this.logActivity('Connected a payout bank account', { tag: 'billing' })
+    },
+
+    // Settle an outstanding invoice. Goes through `_work`, so Edge mode makes
+    // it fail and the page surfaces the payment-failed toast.
+    payInvoice(number) {
+      return this._work(() => {
+        const inv = this.invoices.find((i) => i.number === number)
+        if (!inv) return
+        inv.status = 'Paid'
+        inv.overdue = false
+        this.logActivity(`Paid invoice ${number}`, { tag: 'billing' })
+      }, 1200)
+    },
 
     // — Wallet (₹ prepaid balance the monthly invoice draws from)
     addToWallet(amount) {
@@ -861,6 +924,12 @@ export const useCloudStore = defineStore('cloud', {
       const first = this.paymentMethods.length === 0
       this.paymentMethods.push({ id: uid('pm'), primary: first, ...pm })
       this.logActivity(`Added a payment method (${pm.label || pm.kind})`, { tag: 'billing' })
+    },
+    updatePaymentMethod(id, patch) {
+      const pm = this.paymentMethods.find((p) => p.id === id)
+      if (!pm) return
+      Object.assign(pm, patch)
+      this.logActivity(`Updated ${pm.label} ${pm.detail}`, { tag: 'billing' })
     },
     removePaymentMethod(id) {
       const i = this.paymentMethods.findIndex((p) => p.id === id)
@@ -922,6 +991,68 @@ export const useCloudStore = defineStore('cloud', {
       }
     },
 
+    // The single "Edge mode" demo toggle. ON loads the grown baseline, overlays
+    // worst-case problem-data across every surface, then flips `edgeMode` so all
+    // `_work` actions also fail. OFF restores the clean grown baseline.
+    setEdgeMode(on) {
+      this.loadScenario('grown') // clean baseline first (resets edgeMode → false)
+      if (!on) return
+
+      // — Server lifecycle: one suspended for billing, the broken one stays.
+      const sg = this.servers.find((s) => s.name === 'atlas-sg-01')
+      if (sg) {
+        sg.status = 'suspended'
+        sg.sites.forEach((st) => { if (st.status === 'live') st.status = 'suspended' })
+      }
+
+      // — Payment: primary card declined, and auto-recharge is on so the wallet
+      // can't top itself up — the classic dunning loop.
+      const primary = this.paymentMethods.find((p) => p.primary)
+      if (primary) primary.status = 'declined'
+      this.autoRecharge = true
+
+      // — Wallet won't cover the next invoice.
+      this.walletBalance = 1240
+
+      // — An overdue, unpaid invoice at the top of the list.
+      this.invoices.unshift({
+        number: 'INV-2026-0006', period: 'June 2026', issued: '1 Jun 2026',
+        status: 'Unpaid', overdue: true, dueDate: '8 Jun 2026', credits: 0,
+        items: [
+          { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
+          { label: 'atlas-eu-01', plan: 'Standard', days: 30, perDay: 55, amount: 1650 },
+        ],
+      })
+
+      // — Marketplace earnings, but no payout account to send them to.
+      this.payoutBalance = 480
+      this.payoutAccount = false
+
+      // — Tax ID required for the region but missing; invoice email bouncing.
+      this.billingProfile.taxValue = ''
+      this.billingProfile.emailBounced = true
+
+      // — A custom domain whose DNS never verified (show the exact records).
+      const site = this.servers[0]?.sites[0]
+      if (site) {
+        site.domains.push({
+          id: uid('dom'), name: 'shop.mycompany.in', status: 'failed', ssl: false,
+          dnsRecords: [
+            { type: 'A', host: 'shop', value: this.servers[0].inboundIp },
+            { type: 'TXT', host: '_frappe-challenge.shop', value: 'fc-verify=8f2a91c4e7b0' },
+          ],
+        })
+      }
+
+      // — A webhook that keeps failing delivery.
+      this.webhooks.push({
+        id: uid('wh'), url: 'https://hooks.mycompany.in/fc', status: 'failing',
+        lastError: '500 from endpoint · last 6 attempts failed',
+      })
+
+      this.edgeMode = true
+    },
+
     dismissExplainer() {
       this.explainerDismissed = true
     },
@@ -970,6 +1101,17 @@ export const useCloudStore = defineStore('cloud', {
     },
     addWebhook({ url }) {
       this.webhooks.push({ id: uid('wh'), url, status: 'active' })
+    },
+    // Send a test delivery. Goes through `_work`, so Edge mode keeps it failing;
+    // otherwise it recovers the webhook to a healthy state.
+    testWebhook(id) {
+      return this._work(() => {
+        const w = this.webhooks.find((x) => x.id === id)
+        if (!w) return
+        w.status = 'active'
+        delete w.lastError
+        this.logActivity(`Sent a test event to ${w.url}`, { tag: 'config' })
+      }, 1000)
     },
     removeWebhook(id) {
       const i = this.webhooks.findIndex((w) => w.id === id)

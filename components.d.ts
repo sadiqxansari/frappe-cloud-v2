@@ -23,6 +23,8 @@ declare module 'vue' {
     ConsoleLayout: typeof import('./src/components/ConsoleLayout.vue')['default']
     DemoSwitch: typeof import('./src/components/DemoSwitch.vue')['default']
     DropSiteDialog: typeof import('./src/components/DropSiteDialog.vue')['default']
+    EmptyState: typeof import('./src/components/EmptyState.vue')['default']
+    ErrorState: typeof import('./src/components/ErrorState.vue')['default']
     MoveSiteDialog: typeof import('./src/components/MoveSiteDialog.vue')['default']
     NewServerDialog: typeof import('./src/components/NewServerDialog.vue')['default']
     NewSiteDialog: typeof import('./src/components/NewSiteDialog.vue')['default']

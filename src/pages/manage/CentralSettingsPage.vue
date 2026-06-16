@@ -113,7 +113,7 @@
           <h2 class="text-base font-semibold text-ink-gray-8">SSH keys</h2>
           <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
         </div>
-        <div class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
+        <div v-if="store.accountSshKeys.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
           <div v-for="k in store.accountSshKeys" :key="k.id" class="flex items-center gap-3 p-3">
             <span class="lucide-key-round size-4 shrink-0 text-ink-gray-5" />
             <div class="min-w-0 flex-1">
@@ -122,8 +122,10 @@
             </div>
             <Button variant="ghost" size="sm" icon="lucide-trash-2" :aria-label="`Remove ${k.name}`" @click="store.removeAccountSshKey(k.id)" />
           </div>
-          <div v-if="!store.accountSshKeys.length" class="p-4 text-center text-sm text-ink-gray-5">No SSH keys yet.</div>
         </div>
+        <EmptyState v-else class="mt-3" icon="lucide-key-round" title="No SSH keys yet" description="Add a public key to access your servers over SSH.">
+          <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
+        </EmptyState>
       </section>
 
       <!-- Webhooks -->
@@ -132,15 +134,23 @@
           <h2 class="text-base font-semibold text-ink-gray-8">Webhooks</h2>
           <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />
         </div>
-        <div class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
-          <div v-for="w in store.webhooks" :key="w.id" class="flex items-center gap-3 p-3">
-            <span class="lucide-webhook size-4 shrink-0 text-ink-gray-5" />
-            <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ w.url }}</span>
-            <Badge theme="green" variant="subtle" label="Active" />
-            <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="store.removeWebhook(w.id)" />
+        <div v-if="store.webhooks.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
+          <div v-for="w in store.webhooks" :key="w.id" class="p-3">
+            <div class="flex items-center gap-3">
+              <span class="lucide-webhook size-4 shrink-0 text-ink-gray-5" />
+              <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ w.url }}</span>
+              <Badge :theme="w.status === 'failing' ? 'red' : 'green'" variant="subtle" :label="w.status === 'failing' ? 'Failing' : 'Active'" />
+              <Button v-if="w.status === 'failing'" variant="subtle" size="sm" label="Send test" @click="testHook(w)" />
+              <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="store.removeWebhook(w.id)" />
+            </div>
+            <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-xs text-ink-red-4">
+              <span class="lucide-triangle-alert size-3 shrink-0" /> {{ w.lastError }} — check the endpoint, then send a test.
+            </p>
           </div>
-          <div v-if="!store.webhooks.length" class="p-4 text-center text-sm text-ink-gray-5">No webhooks yet.</div>
         </div>
+        <EmptyState v-else class="mt-3" icon="lucide-webhook" title="No webhooks yet" description="Add an endpoint to receive event notifications.">
+          <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />
+        </EmptyState>
       </section>
     </div>
 
@@ -202,10 +212,20 @@
     <Dialog v-model:open="hookOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Add webhook</span></template>
       <FormControl v-model="hookUrl" type="text" label="Endpoint URL" placeholder="https://example.com/hooks/fc" />
+      <p v-if="hookUrl && hookError" class="mt-1 text-xs text-ink-red-4">{{ hookError }}</p>
       <template #actions>
-        <div class="flex justify-end gap-2"><Button label="Cancel" @click="hookOpen = false" /><Button variant="solid" label="Add webhook" :disabled="!hookUrl.trim()" @click="addHook" /></div>
+        <div class="flex justify-end gap-2"><Button label="Cancel" @click="hookOpen = false" /><Button variant="solid" label="Add webhook" :disabled="!!hookError" @click="addHook" /></div>
       </template>
     </Dialog>
+
+    <ConfirmDialog
+      v-model:open="regenOpen"
+      theme="red"
+      title="Regenerate the API secret?"
+      message="The current secret stops working immediately. Any script or integration using it will start failing until you update it with the new key."
+      confirm-label="Regenerate"
+      @confirm="confirmRegenerate"
+    />
   </CentralShell>
 </template>
 
@@ -213,7 +233,10 @@
 import { computed, reactive, ref } from 'vue'
 import { Avatar, Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import { useCloudStore } from '../../stores/cloud'
+import { validateUrl } from '../../utils/validate'
 
 const store = useCloudStore()
 const tabs = [
@@ -288,9 +311,21 @@ function createRole() {
 }
 
 // — Developer
+// Regenerating the key breaks every integration using the old one, so confirm.
+const regenOpen = ref(false)
 function regenerate() {
+  regenOpen.value = true
+}
+function confirmRegenerate() {
   store.regenerateApiKey()
   toast.success('API secret regenerated')
+}
+function testHook(w) {
+  toast.promise(store.testWebhook(w.id), {
+    loading: 'Sending test event…',
+    success: 'Test delivered — webhook is healthy again',
+    error: 'Test failed — the endpoint still isn’t responding',
+  })
 }
 function copy(text) {
   navigator.clipboard?.writeText(text)
@@ -306,7 +341,9 @@ function addKey() {
 }
 const hookOpen = ref(false)
 const hookUrl = ref('')
+const hookError = computed(() => validateUrl(hookUrl.value, { required: true }))
 function addHook() {
+  if (hookError.value) return
   store.addWebhook({ url: hookUrl.value.trim() })
   toast.success('Webhook added')
   hookOpen.value = false

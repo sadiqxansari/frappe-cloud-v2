@@ -37,14 +37,14 @@
             <span class="lucide-download size-3.5" />
             {{ app.installs }}
           </span>
-          <Button v-if="!isCompatible(app)" variant="outline" size="sm" :label="`Needs ${neededLabel(app)}`" disabled />
+          <Tooltip v-if="!isCompatible(app)" :text="`This app needs ${neededLabel(app)}. ${server.name} runs ${versionLabel} — change the server's version to install it.`">
+            <Button variant="outline" size="sm" :label="`Needs ${neededLabel(app)}`" disabled class="pointer-events-none" />
+          </Tooltip>
           <Button v-else variant="subtle" size="sm" label="Install" @click="pick(app)" />
         </div>
       </div>
     </div>
-    <p v-if="!filteredApps.length" class="py-6 text-sm text-ink-gray-5">
-      Nothing matches — try a different word.
-    </p>
+    <EmptyState v-if="!filteredApps.length" class="mt-4" icon="lucide-search" title="No apps match" description="Try a different word, or install from a GitHub repo below." />
 
     <div class="mt-4 border-t border-outline-gray-1 pt-4">
       <button
@@ -143,8 +143,9 @@
 <script setup>
 import { computed, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, Dialog, FormControl, toast } from 'frappe-ui'
+import { Button, Dialog, FormControl, Tooltip, toast } from 'frappe-ui'
 import AppIcon from '../../components/AppIcon.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import { APP_CATALOG, versionById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'

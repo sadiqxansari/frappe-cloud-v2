@@ -35,6 +35,16 @@
         <h1 class="text-xl font-semibold text-ink-gray-9">Add a new server</h1>
         <p class="mt-1 text-sm text-ink-gray-5">Pick where it lives and how big it is. You can resize anytime.</p>
 
+        <Alert v-if="deployError" theme="red" class="mt-4" :title="`Couldn't deploy in ${regionName}`" :dismissible="false">
+          <template #description>{{ deployError }}</template>
+          <template #footer>
+            <div class="flex gap-2">
+              <Button variant="solid" size="sm" label="Try again" :loading="deploying" @click="deploy" />
+              <Button variant="outline" size="sm" label="Pick another region" @click="deployError = ''" />
+            </div>
+          </template>
+        </Alert>
+
         <!-- Stepped form -->
         <div class="mt-6">
           <!-- Step: provider -->
@@ -145,7 +155,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, FormControl, toast } from 'frappe-ui'
+import { Alert, Badge, Button, FormControl, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import { PLANS, PROVIDERS, VERSIONS, priceFor, regionById, regionsOf } from '../../data/catalog'
@@ -191,7 +201,20 @@ function selectRegion(id) {
   regionId.value = id
 }
 
+const deploying = ref(false)
+const deployError = ref('')
 function deploy() {
+  // In Edge mode the provider rejects the request, so the wizard surfaces a
+  // retryable error rather than silently creating a server.
+  if (store.edgeMode) {
+    deploying.value = true
+    deployError.value = ''
+    setTimeout(() => {
+      deploying.value = false
+      deployError.value = `${regionName.value} is at capacity right now. Try again in a few minutes, or pick another region.`
+    }, 1200)
+    return
+  }
   const srv = store.addServer({ planId: planId.value, regionId: regionId.value, version: version.value })
   toast.success(`${srv.name} is being set up in ${regionName.value}`)
   router.push(`/manage/${srv.id}`)

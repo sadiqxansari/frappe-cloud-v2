@@ -25,7 +25,7 @@
 
     <!-- Impact preview -->
     <div v-if="willChange" class="mt-4 space-y-3">
-      <Alert v-if="incompatible.length" theme="orange" :dismissible="false" title="Some apps may not be ready">
+      <Alert v-if="incompatible.length" theme="yellow" :dismissible="false" title="Some apps may not be ready">
         <template #description>
           {{ incompatibleNames }} {{ incompatible.length === 1 ? "doesn't list" : "don't list" }}
           {{ selected.label }} as supported yet. You can still continue — just test before relying on it.

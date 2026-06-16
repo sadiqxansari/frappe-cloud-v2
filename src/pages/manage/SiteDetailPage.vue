@@ -82,9 +82,9 @@
           <Button variant="ghost" size="sm" label="Restore" @click="askRestore(b)" />
         </div>
       </div>
-      <div v-else class="rounded-xl border border-dashed border-outline-gray-3 bg-surface-white p-6 text-center">
-        <p class="text-sm text-ink-gray-6">No backups yet — the first automatic one runs tonight at 2 AM.</p>
-      </div>
+      <EmptyState v-else icon="lucide-archive" title="No backups yet" description="The first automatic backup runs tonight at 2 AM. You can also back up now.">
+        <Button variant="subtle" size="sm" label="Back up now" icon-left="lucide-archive" @click="backupNow" />
+      </EmptyState>
     </section>
 
     <!-- Config — the raw site_config.json, as an editable key/value table. -->
@@ -159,15 +159,30 @@
               <div class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-3"><span class="lucide-lock size-3" /> SSL active</div>
             </div>
           </div>
-          <div v-for="d in site.domains" :key="d.id" class="flex items-center gap-3 p-4">
-            <span class="lucide-link size-4 shrink-0 text-ink-gray-5" />
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-medium text-ink-gray-9">{{ d.name }}</span>
-                <Badge v-if="d.status === 'verifying'" theme="orange" variant="subtle" label="Checking DNS…" />
+          <div v-for="d in site.domains" :key="d.id" class="p-4">
+            <div class="flex items-center gap-3">
+              <span class="lucide-link size-4 shrink-0 text-ink-gray-5" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-sm font-medium text-ink-gray-9">{{ d.name }}</span>
+                  <Badge v-if="d.status === 'verifying'" theme="orange" variant="subtle" label="Checking DNS…" />
+                  <Badge v-else-if="d.status === 'failed'" theme="red" variant="subtle" label="Verification failed" />
+                </div>
+                <div v-if="d.ssl" class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-3"><span class="lucide-lock size-3" /> SSL active</div>
+                <div v-else-if="d.status === 'failed'" class="mt-0.5 text-sm text-ink-red-4">We couldn't find the records below at your DNS provider.</div>
+                <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
               </div>
-              <div v-if="d.ssl" class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-3"><span class="lucide-lock size-3" /> SSL active</div>
-              <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
+              <Button v-if="d.status === 'failed'" variant="subtle" size="sm" label="Retry" icon-left="lucide-refresh-cw" @click="retryDomain(d)" />
+            </div>
+
+            <!-- Failed verification: show the exact records to add -->
+            <div v-if="d.status === 'failed' && d.dnsRecords?.length" class="mt-3 overflow-hidden rounded-lg border border-outline-gray-2">
+              <div class="grid grid-cols-[5rem_1fr_1fr] gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
+                <span>Type</span><span>Host</span><span>Value</span>
+              </div>
+              <div v-for="(rec, i) in d.dnsRecords" :key="i" class="grid grid-cols-[5rem_1fr_1fr] gap-3 border-b border-outline-gray-1 px-3 py-2 font-mono text-xs text-ink-gray-7 last:border-b-0">
+                <span>{{ rec.type }}</span><span class="truncate">{{ rec.host }}</span><span class="truncate">{{ rec.value }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -286,6 +301,7 @@ import { Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast
 import AddDomainDialog from '../../components/AddDomainDialog.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
@@ -322,6 +338,10 @@ const tabs = [
 ]
 
 const addDomainOpen = ref(false)
+function retryDomain(d) {
+  store.retryDomainVerification(site.value.id, d.id)
+  toast('Re-checking DNS…')
+}
 const dropOpen = ref(false)
 const deactivateOpen = ref(false)
 const resetOpen = ref(false)
@@ -361,7 +381,7 @@ function updateApp(app) {
 }
 function updateAll() {
   const apps = updatableApps.value.slice()
-  apps.forEach((a) => store.updateApp(site.value.id, a.key))
+  apps.forEach((a) => store.updateApp(site.value.id, a.key).catch(() => {}))
   toast.success(`Updating ${apps.length} app${apps.length > 1 ? 's' : ''}…`)
   updatesOpen.value = false
 }
@@ -405,8 +425,11 @@ function askRestore(b) {
   restoreOpen.value = true
 }
 function restore() {
-  store.restoreBackup(site.value.id, pendingBackup.value.id)
-  toast.success('Restoring — back in a minute')
+  toast.promise(store.restoreBackup(site.value.id, pendingBackup.value.id), {
+    loading: 'Restoring — back in a minute…',
+    success: 'Restored successfully',
+    error: 'Restore failed — your current data is untouched',
+  })
 }
 
 // — Settings: friendly toggles
@@ -454,10 +477,11 @@ const siteActions = computed(() => [
 ])
 
 // — Danger
-function dropSite() {
+function dropSite({ backup } = {}) {
   const sid = server.value.id
+  if (backup) store.backupNow(site.value.id).catch(() => {})
   store.dropSite(sid, site.value.id)
-  toast.success('Site deleted')
+  toast.success(backup ? 'Final backup taken — site deleted' : 'Site deleted')
   router.replace(`/manage/${sid}`)
 }
 function deactivate() {

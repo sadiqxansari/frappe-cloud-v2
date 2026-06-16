@@ -71,8 +71,8 @@
             <span class="text-ink-gray-5"> · port {{ r.port }}</span>
           </div>
           <Badge :theme="r.action === 'Allow' ? 'green' : 'red'" variant="subtle" :label="r.action" />
-          <Switch :modelValue="r.enabled" @update:modelValue="store.toggleFirewallRule(server.id, r.id)" />
-          <Button variant="ghost" size="sm" icon="lucide-trash-2" label="Delete" @click="store.removeFirewallRule(server.id, r.id)" />
+          <Switch :modelValue="r.enabled" @update:modelValue="(v) => onToggleRule(r, v)" />
+          <Button variant="ghost" size="sm" icon="lucide-trash-2" label="Delete" @click="askRemoveRule(r)" />
         </div>
         <div v-if="!server.firewallRules.length" class="p-3 text-ink-gray-5">No rules — all inbound traffic is blocked.</div>
       </div>
@@ -84,14 +84,17 @@
       <div class="space-y-3">
         <FormControl v-model="rule.name" type="text" label="Name" placeholder="e.g. Custom port" />
         <div class="grid grid-cols-2 gap-3">
-          <FormControl v-model="rule.port" type="text" label="Port" placeholder="8080" />
+          <div>
+            <FormControl v-model="rule.port" type="text" label="Port" placeholder="8080" />
+            <p v-if="rule.port && portError" class="mt-1 text-xs text-ink-red-4">{{ portError }}</p>
+          </div>
           <FormControl v-model="rule.action" type="select" label="Action" :options="['Allow', 'Deny']" />
         </div>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="ruleOpen = false" />
-          <Button variant="solid" label="Add rule" :disabled="!rule.name.trim() || !rule.port" @click="addRule" />
+          <Button variant="solid" label="Add rule" :disabled="!rule.name.trim() || !!portError" @click="addRule" />
         </div>
       </template>
     </Dialog>
@@ -107,6 +110,15 @@
       </template>
     </Dialog>
 
+    <ConfirmDialog
+      v-model:open="lockoutOpen"
+      theme="red"
+      title="This can lock you out"
+      message="Port 22 is how you reach this server over SSH. Removing or disabling this rule may cut off your access until you re-add it from another machine."
+      confirm-label="I understand, continue"
+      @confirm="confirmLockout"
+    />
+
     <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
   </ServerShell>
 </template>
@@ -116,10 +128,12 @@ import { computed, reactive, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, Dialog, FormControl, Switch, TabButtons, toast } from 'frappe-ui'
 import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import { versionById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 import { inr } from '../../utils/format'
+import { validatePort } from '../../utils/validate'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -139,13 +153,37 @@ const tab = ref('general')
 
 const ruleOpen = ref(false)
 const rule = reactive({ name: '', port: '', action: 'Allow' })
+const portError = computed(() => validatePort(rule.port))
 function addRule() {
+  if (portError.value) return
   store.addFirewallRule(server.value.id, { ...rule })
   toast.success('Firewall rule added')
   ruleOpen.value = false
   rule.name = ''
   rule.port = ''
   rule.action = 'Allow'
+}
+
+// Removing or disabling the SSH (port 22) rule can lock the user out, so we
+// confirm first. Other rules apply immediately.
+const lockoutOpen = ref(false)
+const pendingRule = ref(null)
+const pendingAction = ref('remove')
+const isSsh = (r) => Number(r.port) === 22 && r.action === 'Allow'
+function askRemoveRule(r) {
+  if (isSsh(r) && r.enabled) { pendingRule.value = r; pendingAction.value = 'remove'; lockoutOpen.value = true }
+  else store.removeFirewallRule(server.value.id, r.id)
+}
+function onToggleRule(r, val) {
+  if (isSsh(r) && !val) { pendingRule.value = r; pendingAction.value = 'disable'; lockoutOpen.value = true }
+  else store.toggleFirewallRule(server.value.id, r.id)
+}
+function confirmLockout() {
+  const r = pendingRule.value
+  if (!r) return
+  if (pendingAction.value === 'remove') store.removeFirewallRule(server.value.id, r.id)
+  else store.toggleFirewallRule(server.value.id, r.id)
+  pendingRule.value = null
 }
 
 const versionLabel = computed(() => versionById(server.value.version).label)

@@ -83,9 +83,15 @@
             <ServerActions :server="srv" />
           </div>
 
-          <div v-if="!filtered.length" class="px-6 py-12 text-center text-sm text-ink-gray-5">
-            No servers match your filters.
-          </div>
+          <EmptyState
+            v-if="!filtered.length"
+            class="m-6"
+            :icon="store.allServers.length ? 'lucide-search' : 'lucide-server'"
+            :title="store.allServers.length ? 'No servers match' : 'No servers yet'"
+            :description="store.allServers.length ? 'Try a different search or clear the filters.' : 'Spin up your first server to host your sites.'"
+          >
+            <Button v-if="!store.allServers.length" variant="solid" size="sm" label="New server" icon-left="lucide-plus" @click="router.push('/servers/new')" />
+          </EmptyState>
         </div>
       </section>
     </div>
@@ -97,6 +103,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Dropdown, FormControl, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import { PROVIDERS, providerById } from '../../data/catalog'

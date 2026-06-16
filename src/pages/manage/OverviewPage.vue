@@ -1,7 +1,7 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs" wide>
     <template #actions>
-      <Button variant="solid" size="sm" label="New site" icon-left="lucide-plus" @click="newSiteOpen = true" />
+      <Button variant="solid" size="sm" label="New site" icon-left="lucide-plus" :disabled="server.status !== 'active'" @click="newSiteOpen = true" />
     </template>
 
     <div class="flex h-full">
@@ -19,6 +19,22 @@
             <template #footer><Button variant="solid" size="sm" label="Add a card" @click="addCardOpen = true" /></template>
           </Alert>
 
+          <!-- Server lifecycle banners. Independent v-if from creditExpired (both can
+               be true); the three statuses are mutually exclusive so they chain. -->
+          <Alert v-if="server.status === 'suspended'" theme="yellow" title="This server is suspended" :dismissible="false" class="mb-5">
+            <template #description>Billing was stopped, so its sites are offline. Resume to bring them back — nothing is deleted.</template>
+            <template #footer><Button variant="solid" size="sm" label="Resume server" @click="resumeServer" /></template>
+          </Alert>
+
+          <Alert v-else-if="server.status === 'broken'" theme="red" title="This server is unreachable" :dismissible="false" class="mb-5">
+            <template #description>We've lost contact with the host and are looking into it. Your data is safe; actions here are paused until it's back.</template>
+            <template #footer><Button variant="subtle" size="sm" label="Contact support" icon-left="lucide-life-buoy" @click="contactSupport" /></template>
+          </Alert>
+
+          <Alert v-else-if="server.status === 'provisioning'" theme="blue" title="Setting up your server" :dismissible="false" class="mb-5">
+            <template #description>This usually takes a couple of minutes. You can add sites as soon as it's ready.</template>
+          </Alert>
+
           <h2 class="text-base font-semibold text-ink-gray-8">
             Your sites <span class="font-normal text-ink-gray-5">({{ server.sites.length }})</span>
           </h2>
@@ -30,7 +46,7 @@
             <Dropdown :options="sortOptions" placement="bottom-end">
               <Button variant="subtle" size="sm" label="Sort" icon-left="lucide-arrow-up-down" />
             </Dropdown>
-            <div class="flex shrink-0 overflow-hidden rounded-lg border border-outline-gray-2">
+            <div class="flex shrink-0 overflow-hidden rounded border border-outline-gray-2">
               <button class="grid size-7 place-items-center" :class="view === 'grid' ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-5 hover:bg-surface-gray-2'" aria-label="Grid view" @click="view = 'grid'">
                 <span class="lucide-layout-grid size-4" />
               </button>
@@ -41,10 +57,15 @@
           </div>
 
           <!-- Empty -->
-          <div v-if="!filteredSites.length" class="mt-4 rounded-xl border border-dashed border-outline-gray-2 p-8 text-center">
-            <p class="text-sm text-ink-gray-5">{{ q || statusFilter ? 'No sites match.' : 'No sites on this server yet.' }}</p>
-            <Button v-if="!q && !statusFilter" variant="subtle" size="sm" label="New site" icon-left="lucide-plus" class="mt-3" @click="newSiteOpen = true" />
-          </div>
+          <EmptyState
+            v-if="!filteredSites.length"
+            class="mt-4"
+            :icon="q || statusFilter ? 'lucide-search' : 'lucide-layout-grid'"
+            :title="q || statusFilter ? 'No sites match' : 'No sites on this server yet'"
+            :description="q || statusFilter ? 'Try a different search or clear the filter.' : 'Create your first site to get started.'"
+          >
+            <Button v-if="!q && !statusFilter && server.status === 'active'" variant="solid" size="sm" label="New site" icon-left="lucide-plus" @click="newSiteOpen = true" />
+          </EmptyState>
 
           <!-- Grid -->
           <div v-else-if="view === 'grid'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -214,6 +235,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Alert, Avatar, Badge, Button, Dropdown, FormControl, Progress, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import NewSiteDialog from '../../components/NewSiteDialog.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import ResizeDialog from '../../components/ResizeDialog.vue'
@@ -311,4 +333,12 @@ const resizeOpen = ref(false)
 const versionOpen = ref(false)
 const addCardOpen = ref(false)
 const newSiteOpen = ref(false)
+
+function resumeServer() {
+  store.setServerSuspended(server.value.id, false)
+  toast.success(`${server.value.name} resumed`)
+}
+function contactSupport() {
+  toast('In the real thing, this opens a support ticket for this server')
+}
 </script>
