@@ -191,12 +191,39 @@
           </dl>
         </div>
 
-        <div class="p-4">
+        <div class="border-b border-outline-gray-2 p-4">
           <div class="flex items-center justify-between">
             <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Tags</div>
             <button class="text-xs text-ink-gray-5 hover:text-ink-gray-7">+ Add</button>
           </div>
           <p class="mt-1.5 text-sm text-ink-gray-4">No tags yet.</p>
+        </div>
+
+        <div class="p-4">
+          <div class="flex items-center justify-between">
+            <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Plan history</div>
+            <span class="text-xs text-ink-gray-5">{{ server.planHistory.length }} {{ server.planHistory.length === 1 ? 'change' : 'changes' }}</span>
+          </div>
+          <div v-if="server.planHistory.length" class="mt-3 space-y-3">
+            <div v-for="h in server.planHistory" :key="h.id" class="flex items-start gap-2.5">
+              <span
+                class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full"
+                :class="h.direction === 'upgrade' ? 'bg-surface-green-2 text-ink-green-3' : 'bg-surface-amber-2 text-ink-amber-3'"
+              >
+                <span class="size-3" :class="h.direction === 'upgrade' ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="min-w-0 truncate text-ink-gray-8 text-p-sm">{{ h.to }} <span class="text-ink-gray-5">· {{ h.cycle }}</span></span>
+                  <span class="shrink-0 text-xs text-ink-gray-5">{{ h.date }}</span>
+                </div>
+                <div class="text-xs text-ink-gray-5">
+                  From {{ h.from }} · {{ inr(h.price) }}/mo
+                </div>
+              </div>
+            </div>
+          </div>
+          <p v-else class="mt-1.5 text-sm text-ink-gray-4">No plan changes yet.</p>
         </div>
       </aside>
     </div>

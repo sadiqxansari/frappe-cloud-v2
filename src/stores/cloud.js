@@ -157,8 +157,8 @@ function grownState() {
     creditBalance: 18,
     sites: [company, shop],
     planHistory: [
-      { id: uid('ph'), date: '10 Jun 2026', from: 'Starter', to: 'Business', direction: 'upgrade' },
-      { id: uid('ph'), date: '2 Mar 2026', from: 'Standard', to: 'Starter', direction: 'downgrade' },
+      { id: uid('ph'), date: '10 Jun 2026', from: 'Starter', to: 'Business', direction: 'upgrade', cycle: 'Monthly', price: 4100 },
+      { id: uid('ph'), date: '2 Mar 2026', from: 'Standard', to: 'Starter', direction: 'downgrade', cycle: 'Monthly', price: 820 },
     ],
   })
   const euServer = makeServer({
@@ -186,7 +186,7 @@ function grownState() {
     sites: [makeSite('US Marketing', ['erpnext'])],
     health: { cpuPct: 18, memUsedGb: 1.1, memTotalGb: 3.0, diskFrac: 0.16 },
     planHistory: [
-      { id: uid('ph'), date: '28 Apr 2026', from: 'Business', to: 'Growth', direction: 'upgrade' },
+      { id: uid('ph'), date: '28 Apr 2026', from: 'Business', to: 'Growth', direction: 'upgrade', cycle: 'Monthly', price: 6150 },
     ],
   })
   // A server that's fallen over — shows the red map pin + "Broken" state.
