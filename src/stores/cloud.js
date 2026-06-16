@@ -6,6 +6,16 @@ import { fmtDateTime, slugify } from '../utils/format'
 let n = 1000
 const uid = (prefix) => `${prefix}-${n++}`
 
+const BUILT_IN_PERMISSIONS = {
+  'role-owner':   { administrator: true,  createSites: true,  marketplace: true,  webhooks: true,  billing: true },
+  'role-admin':   { administrator: false, createSites: true,  marketplace: true,  webhooks: true,  billing: false },
+  'role-billing': { administrator: false, createSites: false, marketplace: false, webhooks: false, billing: true },
+  'role-member':  { administrator: false, createSites: false, marketplace: false, webhooks: false, billing: false },
+}
+function defaultPermissions() {
+  return { administrator: false, createSites: false, marketplace: false, webhooks: false, billing: false }
+}
+
 // Average daily credit burn in $ — used for the "covers about X days" hint.
 export const DAILY_BURN = 1.75
 export const LOW_CREDIT_THRESHOLD = 5
@@ -88,11 +98,12 @@ function baseState() {
     members: [],
     // Account-wide roles you define, then assign to people on the Team.
     roles: [
-      { id: 'role-owner', name: 'Owner', desc: 'Full access, including billing and team', system: true },
-      { id: 'role-admin', name: 'Admin', desc: 'Create and manage servers, sites and apps' },
-      { id: 'role-billing', name: 'Billing', desc: 'View invoices and manage payment' },
-      { id: 'role-member', name: 'Member', desc: 'View-only access to servers and sites' },
+      { id: 'role-owner',   name: 'Owner',   desc: 'Full access, including billing and team', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-owner'] } },
+      { id: 'role-admin',   name: 'Admin',   desc: 'Create and manage servers, sites and apps', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-admin'] } },
+      { id: 'role-billing', name: 'Billing', desc: 'View invoices and manage payment', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-billing'] } },
+      { id: 'role-member',  name: 'Member',  desc: 'View-only access to servers and sites', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-member'] } },
     ],
+    team: { name: 'My team', avatar: null },
     usage: [],
     activity: [], // newest first — humanized history of everything done here
     cardOnFile: false,
@@ -185,9 +196,15 @@ function grownState() {
     invoiceRecipient: 'accounts@mycompany.in',
     invoiceLanguage: 'en',
   }
+  s.team = { name: "Rahul's team", avatar: null }
+  s.roles.push({ id: 'role-support', name: 'Support', desc: 'View-only access plus can create sites', permissions: { ...defaultPermissions(), createSites: true } })
   s.members = [
-    { id: uid('mem'), name: 'Rahul Mehta', email: 'rahul@mycompany.in', role: 'Owner' },
-    { id: uid('mem'), name: 'Sara Khan', email: 'sara@mycompany.in', role: 'Admin' },
+    { id: uid('mem'), name: 'Rahul Mehta',  email: 'rahul@mycompany.in', roles: [{ roleId: 'role-owner', resourceId: null }] },
+    { id: uid('mem'), name: 'Sara Khan',    email: 'sara@mycompany.in',  roles: [{ roleId: 'role-admin', resourceId: null }] },
+    { id: uid('mem'), name: 'Priya Patel',  email: 'priya@mycompany.in', roles: [{ roleId: 'role-billing', resourceId: null }] },
+    { id: uid('mem'), name: 'Dev Sharma',   email: 'dev@mycompany.in',   roles: [{ roleId: 'role-support', resourceId: null }] },
+    { id: uid('mem'), name: 'Arjun Singh',  email: 'arjun@mycompany.in', roles: [{ roleId: 'role-member', resourceId: null }], invited: true, inviteExpired: false },
+    { id: uid('mem'), name: 'Riya Shah',   email: 'riya@mycompany.in',  roles: [{ roleId: 'role-member', resourceId: null }], invited: true, inviteExpired: true },
   ]
   s.usage = recentUsage()
   s.activity = [
@@ -288,6 +305,10 @@ export const useCloudStore = defineStore('cloud', {
         diskTotal,
         ok: cpuPct < 80 && memPct < 85 && diskPct < 85,
       }
+    },
+
+    membersForRole() {
+      return (roleId) => this.members.filter((m) => m.roles?.some((r) => r.roleId === roleId))
     },
 
     // The calm "update available" affordance — version on the site vs catalog.
@@ -429,8 +450,10 @@ export const useCloudStore = defineStore('cloud', {
       this.currentSiteId = site.id
       this.logActivity(`Created ${site.name}`, { tag: 'site' })
       this.logActivity(`Installed ${site.apps[0].name} on ${site.name}`, { tag: 'app' })
+      const firstName = (this.user.name || '').split(' ')[0] || 'My'
+      this.team.name = `${firstName}'s team`
       this.members = [
-        { id: uid('mem'), name: this.user.name, email: this.user.email, role: 'Owner' },
+        { id: uid('mem'), name: this.user.name, email: this.user.email, roles: [{ roleId: 'role-owner', resourceId: null }] },
       ]
     },
 
@@ -799,13 +822,22 @@ export const useCloudStore = defineStore('cloud', {
       this.explainerDismissed = true
     },
 
-    inviteMember(email, role = 'Member') {
+    inviteMember(email, roleId = 'role-member', resourceId = null) {
       const name = email.split('@')[0].replace(/[._-]/g, ' ')
-      this.members.push({ id: uid('mem'), name, email, role, invited: true })
+      this.members.push({ id: uid('mem'), name, email, roles: [{ roleId, resourceId }], invited: true, inviteExpired: false })
     },
-    assignMemberRole(memberId, role) {
+    setMemberRoles(memberId, roles) {
       const m = this.members.find((x) => x.id === memberId)
-      if (m) m.role = role
+      if (m) m.roles = roles
+    },
+    resendInvite() {},
+    transferOwnership(fromId, toId) {
+      const from = this.members.find((x) => x.id === fromId)
+      const to = this.members.find((x) => x.id === toId)
+      if (!from || !to) return
+      from.roles = from.roles.filter((r) => r.roleId !== 'role-owner')
+      if (!from.roles.length) from.roles.push({ roleId: 'role-admin', resourceId: null })
+      to.roles = [{ roleId: 'role-owner', resourceId: null }, ...to.roles.filter((r) => r.roleId !== 'role-owner')]
     },
     revokeMember(memberId) {
       const i = this.members.findIndex((x) => x.id === memberId)
@@ -813,12 +845,23 @@ export const useCloudStore = defineStore('cloud', {
     },
 
     // — Roles
-    addRole({ name, desc }) {
-      this.roles.push({ id: uid('role'), name, desc: desc || 'Custom role' })
+    addRole({ name, desc, permissions }) {
+      this.roles.push({ id: uid('role'), name, desc: desc || 'Custom role', permissions: permissions ?? defaultPermissions() })
     },
     removeRole(roleId) {
       const i = this.roles.findIndex((r) => r.id === roleId && !r.system)
       if (i !== -1) this.roles.splice(i, 1)
+    },
+
+    setTeamName(name) {
+      if (name.trim()) this.team.name = name.trim()
+    },
+    setTeamAvatar(dataUrl) {
+      this.team.avatar = dataUrl
+    },
+    setRolePermission(roleId, key, value) {
+      const r = this.roles.find((x) => x.id === roleId && !x.system)
+      if (r) r.permissions[key] = value
     },
 
     // — Developer (account-level)
