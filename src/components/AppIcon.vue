@@ -19,7 +19,7 @@ const logos = import.meta.glob('../assets/apps/*.png', { eager: true, import: 'd
 
 const props = defineProps({
   appKey: { type: String, required: true },
-  size: { type: String, default: 'md' }, // sm | md | lg
+  size: { type: String, default: 'md' }, // sm | md | lg | xl
 })
 
 // Unknown keys (e.g. apps installed from GitHub) fall back to a letter tile.
@@ -39,6 +39,7 @@ const imgClasses = computed(
       sm: 'size-5 rounded-md',
       md: 'size-8 rounded-lg',
       lg: 'size-12 rounded-xl',
+      xl: 'size-16 rounded-2xl',
     })[props.size],
 )
 
@@ -48,6 +49,7 @@ const sizeClasses = computed(
       sm: 'size-5 text-xs rounded-md',
       md: 'size-8 text-sm',
       lg: 'size-12 text-lg rounded-xl',
+      xl: 'size-16 text-2xl rounded-2xl',
     })[props.size],
 )
 </script>

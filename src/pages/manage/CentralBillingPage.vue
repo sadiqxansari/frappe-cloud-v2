@@ -48,6 +48,14 @@
             <template #footer><Button variant="solid" size="sm" label="Update payment method" @click="openPm" /></template>
           </Alert>
 
+          <!-- The budget alert has been crossed — surface it, with a fix path. -->
+          <Alert v-if="budgetCrossed" theme="yellow" class="mt-5" :title="`This cycle is over your ${inr(store.budgetAlert)} budget alert`" :dismissible="true">
+            <template #description>
+              This cycle's estimate is {{ inr(store.estimatedThisCycle) }} — {{ inr(budgetOverBy) }} over the alert you set. Pause or resize a server to bring it down, or raise the threshold.
+            </template>
+            <template #footer><div class="col-start-2"><Button variant="outline" size="sm" label="Adjust alert" @click="openBudget" /></div></template>
+          </Alert>
+
           <div class="mt-5 space-y-5">
             <!-- What it'll cost + what funds it -->
             <div class="grid gap-4 sm:grid-cols-2">
@@ -55,7 +63,7 @@
               <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
-                  <Button variant="ghost" size="xs" class="-mr-1 shrink-0" :class="store.budgetAlert ? '!text-ink-amber-3' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
+                  <Button variant="ghost" size="xs" class="-mr-1 shrink-0" :class="budgetCrossed ? '!text-ink-red-3' : store.budgetAlert ? '!text-ink-amber-3' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
                 </div>
                 <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
@@ -106,8 +114,7 @@
                     <span class="lucide-info size-3.5 text-ink-gray-4" />
                   </Tooltip>
                 </div>
-                <!-- Only one primary + one backup: hide "add" once both exist. -->
-                <Button v-if="store.paymentMethods.length < 2" variant="ghost" size="sm" icon="lucide-plus" :aria-label="store.paymentMethods.length ? 'Add backup method' : 'Add payment method'" @click="openPm" />
+                <Button variant="ghost" size="sm" icon="lucide-plus" :aria-label="store.paymentMethods.length ? 'Add backup method' : 'Add payment method'" @click="openPm" />
               </div>
 
               <div v-if="store.paymentMethods.length" class="mt-2 divide-y divide-outline-gray-1">
@@ -540,6 +547,12 @@ const noWorkingMethod = computed(() => store.paymentMethods.length > 0 && !hasWo
 const walletAtRisk = computed(
   () => store.walletBalance < store.estimatedThisCycle && (noWorkingMethod.value || !store.paymentMethods.length),
 )
+// The budget alert has actually been crossed — this cycle's estimate is at or
+// over the threshold the user set.
+const budgetCrossed = computed(
+  () => !!store.budgetAlert && store.estimatedThisCycle >= store.budgetAlert,
+)
+const budgetOverBy = computed(() => Math.max(0, store.estimatedThisCycle - (store.budgetAlert || 0)))
 // Every curated region except the US legally expects a tax ID on B2B invoices.
 const taxRequired = computed(() => store.billingProfile.taxRegion !== 'US')
 const taxMissing = computed(() => taxRequired.value && !store.billingProfile.taxValue)
@@ -618,8 +631,9 @@ const walletApplyPreview = computed(() => {
 })
 
 // — Subscriptions (one per server) — open the server or pause/resume just it.
+// Each server opens in its own tab.
 function goServer(id) {
-  router.push(`/manage/${id}`)
+  window.open(`/manage/${id}`, '_blank', 'noopener')
 }
 function toggleServerBilling(srv, suspend) {
   store.setServerSuspended(srv.id, suspend)

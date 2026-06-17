@@ -198,10 +198,8 @@ const serverMenu = computed(() => [
   {
     label: 'Central',
     slots: { prefix: () => h('img', { src: cloudLogo, alt: '', class: 'size-4 shrink-0 rounded' }) },
-    onClick: () => {
-      store.currentServerId = null
-      router.push('/servers')
-    },
+    // Central is its own workspace — open it in a new tab.
+    onClick: () => window.open('/servers', '_blank', 'noopener'),
   },
 ])
 

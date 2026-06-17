@@ -159,8 +159,9 @@ const mapPins = computed(() =>
   }),
 )
 
+// Each server is its own workspace — open it in a new browser tab.
 function goServer(id) {
-  router.push(`/manage/${id}`)
+  window.open(`/manage/${id}`, '_blank', 'noopener')
 }
 function zoom(delta) {
   scale.value = Math.min(2.4, Math.max(1, Math.round((scale.value + delta) * 10) / 10))

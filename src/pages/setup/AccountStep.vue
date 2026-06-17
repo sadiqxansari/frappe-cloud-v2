@@ -23,9 +23,7 @@
       Continue with Google
     </Button>
 
-    <template #below>
-      <p class="text-sm text-ink-gray-5">No password needed — this is a prototype.</p>
-    </template>
+  
   </OnboardingShell>
 </template>
 

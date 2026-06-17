@@ -1118,11 +1118,9 @@ export const useCloudStore = defineStore('cloud', {
       this.logActivity(`Added ₹${amt.toLocaleString('en-IN')} to your wallet`, { tag: 'billing' })
     },
 
-    // — Payment methods. Exactly one primary + one backup is allowed: the
-    // primary is used first, the backup only if it fails. (The UI hides "add"
-    // once two exist; this guard keeps the invariant if called directly.)
+    // — Payment methods. One is primary (used first); the rest are automatic
+    // fallbacks, tried in order. You can add as many as you like.
     addPaymentMethod(pm) {
-      if (this.paymentMethods.length >= 2) return
       const first = this.paymentMethods.length === 0
       this.paymentMethods.push({ id: uid('pm'), primary: first, ...pm })
       this.logActivity(`Added a payment method (${pm.label || pm.kind})`, { tag: 'billing' })

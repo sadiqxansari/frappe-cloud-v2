@@ -412,8 +412,9 @@
             </div>
             <p v-else class="py-6 text-center text-sm text-ink-gray-4">No one has this role yet.</p>
 
-            <!-- Add an existing team member directly — no invite (issue #7) -->
-            <div v-if="isAdminOrOwner" class="mt-3 border-t border-outline-gray-1 pt-3">
+            <!-- Add an existing team member directly — no invite (issue #7).
+                 Assigning the Owner role transfers ownership, so it's owner-only. -->
+            <div v-if="isAdminOrOwner && (roleDialogRole.id !== 'role-owner' || loggedInIsOwner)" class="mt-3 border-t border-outline-gray-1 pt-3">
               <FormControl
                 v-if="addableMemberOptions(roleDialogRole.id).length"
                 type="select"
@@ -730,13 +731,25 @@ const isAdminOrOwner = computed(() => {
   if (!m) return true
   return m.roles?.some((r) => r.roleId === 'role-owner' || r.roleId === 'role-admin')
 })
+// Only the Owner can touch the Owner — assign it (transfer) or change who holds
+// it. An Admin who used to be Owner must not be able to manage the new Owner.
+const loggedInIsOwner = computed(() => {
+  const m = loggedInMember.value
+  if (!m) return true
+  return memberIsOwner(m)
+})
 const teamInitial = computed(() => (store.team?.name || 'T')[0].toUpperCase())
 
+// Only the Owner can hand out the Owner role (a transfer); everyone else sees
+// every role except Owner.
+const assignableRoles = computed(() =>
+  store.roles.filter((r) => r.id !== 'role-owner' || loggedInIsOwner.value)
+)
 const roleSelectOptions = computed(() =>
-  store.roles.map((r) => ({ label: r.name, value: r.id, description: r.desc }))
+  assignableRoles.value.map((r) => ({ label: r.name, value: r.id, description: r.desc }))
 )
 const roleInviteOptions = computed(() =>
-  store.roles.map((r) => ({ label: r.name, value: r.id, description: r.desc }))
+  assignableRoles.value.map((r) => ({ label: r.name, value: r.id, description: r.desc }))
 )
 const serverSelectOptions = computed(() => [
   { label: 'All servers', value: '' },
@@ -865,7 +878,8 @@ function memberMenuOptions(m) {
     opts.push({ label: 'Leave team', icon: 'lucide-log-out', onClick: openLeaveTeam })
     return opts
   }
-  if (isAdminOrOwner.value) {
+  // The Owner's roles aren't editable here — ownership changes via transfer/leave.
+  if (isAdminOrOwner.value && !memberIsOwner(m)) {
     opts.push({ label: 'Manage roles', icon: 'lucide-shield', onClick: () => openManageRoles(m) })
   }
   if (m.inviteExpired) {

@@ -1,12 +1,12 @@
 <template>
   <div class="flex min-h-screen flex-col bg-surface-white">
-    <header class="flex items-center justify-center gap-2 pb-4 pt-10">
+    <header class="flex items-center justify-center gap-2 pb-2 pt-10">
       <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 rounded-md" />
-      <span class="text-base font-medium text-ink-gray-8">Frappe Cloud</span>
+      <span class="text-lg font-semibold text-ink-gray-8">Frappe Cloud</span>
     </header>
 
-    <main class="flex flex-1 items-start justify-center px-4 pb-20 pt-8">
-      <div class="w-full max-w-md">
+    <main class="flex flex-1 items-start justify-center px-4 pb-20 pt-6">
+      <div class="w-full max-w-sm">
         <button
           v-if="back"
           class="mb-4 inline-flex items-center gap-1 text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-8"
