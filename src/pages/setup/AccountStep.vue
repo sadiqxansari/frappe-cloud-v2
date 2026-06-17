@@ -1,12 +1,11 @@
 <template>
   <OnboardingShell :step="1">
     <h1 class="text-xl font-semibold text-ink-gray-9">Create your account</h1>
-    <p class="mt-1.5 text-base text-ink-gray-6">
-      You're a couple of minutes away from a running ERPNext.
+    <p class="mt-1.5 text-p-base text-ink-gray-6">
+      You're a couple of minutes away from running ERPNext.
     </p>
 
     <div class="mt-6 space-y-4">
-      <FormControl v-model="name" type="text" label="Name" placeholder="Rahul Mehta" />
       <FormControl v-model="email" type="email" label="Email" placeholder="rahul@mycompany.in" />
       <Button variant="solid" size="md" label="Continue" class="w-full" @click="go" />
     </div>
@@ -40,11 +39,15 @@ import { useCloudStore } from '../../stores/cloud'
 const store = useCloudStore()
 const router = useRouter()
 
-const name = ref('')
 const email = ref('')
 
+// No name field on the first screen — derive a friendly name from the email
+// (the team name / avatar use it; it's editable later in Settings).
 function go() {
-  store.signUp(name.value.trim() || 'Rahul Mehta', email.value.trim() || 'rahul@mycompany.in')
+  const mail = email.value.trim() || 'rahul@mycompany.in'
+  const local = mail.split('@')[0]
+  const name = local.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || 'Rahul Mehta'
+  store.signUp(name, mail)
   router.push('/setup/app')
 }
 </script>

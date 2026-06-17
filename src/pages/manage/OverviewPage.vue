@@ -134,7 +134,7 @@
       </div>
 
       <!-- Server specs rail — pinned right, full-width sections -->
-      <aside class="hidden w-80 shrink-0 overflow-y-auto border-l border-outline-gray-2 xl:block">
+      <aside class="hidden w-80 shrink-0 overflow-y-auto border-l border-outline-gray-2 lg:block">
         <div class="border-b border-outline-gray-2 p-4">
           <div class="h-32 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-gray-1">
             <WorldMap :pins="locatorPins" :focus="server.regionId" :pin-scale="3" class="h-full w-full" />
@@ -222,7 +222,7 @@
       </aside>
     </div>
 
-    <ResizeDialog v-model:open="resizeOpen" :server="server" />
+    <ChangePlanDialog v-model:open="resizeOpen" :server="server" />
     <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
     <AddCardDialog v-model:open="addCardOpen" />
     <NewSiteDialog v-model:open="newSiteOpen" :server="server" />
@@ -238,7 +238,7 @@ import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NewSiteDialog from '../../components/NewSiteDialog.vue'
 import WorldMap from '../../components/WorldMap.vue'
-import ResizeDialog from '../../components/ResizeDialog.vue'
+import ChangePlanDialog from '../../components/ChangePlanDialog.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import { providerById, versionById } from '../../data/catalog'

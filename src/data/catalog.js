@@ -10,11 +10,11 @@ export const PLANS = [
     id: 'hobby',
     name: 'Hobby',
     priceMonthly: 410,
-    blurb: 'A tiny server for testing things out.',
-    features: ['Fine for one small test site', 'Daily backups', 'Community support'],
+    blurb: 'The smallest, cheapest way to get started. Resize the moment you need more.',
+    features: ['Great for a first site or a side project', 'Daily backups', 'Community support'],
     specs: { compute: '30 min/day', database: '250 MB', disk: '2 GB' },
-    featured: false,
-    recommended: false,
+    featured: true,
+    recommended: true,
   },
   {
     id: 'starter',
@@ -44,7 +44,7 @@ export const PLANS = [
     features: ['Good for teams of 2–25 people', 'Daily backups and monitoring', 'Room for a few apps'],
     specs: { compute: '4 hours/day', database: '2 GB', disk: '50 GB' },
     featured: true,
-    recommended: true,
+    recommended: false,
   },
   {
     id: 'growth',
@@ -63,7 +63,7 @@ export const PLANS = [
     blurb: 'For bigger teams and heavier day-to-day use.',
     features: ['Good for teams of 25 and up', 'Daily backups and monitoring', 'Plenty of headroom to grow'],
     specs: { compute: '8 hours/day', database: '4 GB', disk: '100 GB' },
-    featured: true,
+    featured: false,
     recommended: false,
   },
   {

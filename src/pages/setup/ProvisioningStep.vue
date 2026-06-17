@@ -5,7 +5,7 @@
         <span class="lucide-server size-7 text-ink-gray-7" />
       </div>
       <h1 class="mt-5 text-xl font-semibold text-ink-gray-9">Setting up your server</h1>
-      <p class="mt-1.5 text-base text-ink-gray-6">This usually takes about 2 minutes.</p>
+      <p class="mt-1.5 text-p-base text-ink-gray-6">This usually takes about 2 minutes.</p>
 
       <Progress :value="progress" size="md" class="mt-6 w-full" />
 

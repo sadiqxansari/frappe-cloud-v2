@@ -7,11 +7,26 @@
       <!-- Brand — Frappe Cloud (Central) -->
       <RouterLink
         to="/servers"
-        class="mb-3 flex h-10 shrink-0 items-center gap-2 rounded-lg px-1.5 hover:bg-surface-gray-2"
+        class="mb-2 flex h-10 shrink-0 items-center gap-2 rounded-lg px-1.5 hover:bg-surface-gray-2"
       >
         <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0 rounded-md" />
         <span v-if="!collapsed" class="truncate text-base font-semibold text-ink-gray-9">Frappe Cloud</span>
       </RouterLink>
+
+      <!-- Team switcher (issue #7) -->
+      <Dropdown :options="teamOptions" placement="bottom-start">
+        <button
+          class="mb-3 flex w-full shrink-0 items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-surface-gray-2"
+          :title="collapsed ? store.team.name : undefined"
+        >
+          <img v-if="store.team.avatar" :src="store.team.avatar" class="size-6 shrink-0 rounded-md object-cover" />
+          <span v-else class="grid size-6 shrink-0 place-items-center rounded-md bg-surface-gray-3 text-xs font-semibold text-ink-gray-7">{{ teamInitial }}</span>
+          <template v-if="!collapsed">
+            <span class="min-w-0 flex-1 truncate text-left text-sm font-medium text-ink-gray-8">{{ store.team.name }}</span>
+            <span class="lucide-chevrons-up-down size-3.5 shrink-0 text-ink-gray-5" />
+          </template>
+        </button>
+      </Dropdown>
 
       <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
         <button
@@ -26,6 +41,17 @@
           <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
         </button>
       </nav>
+
+      <!-- Explicit, remembered collapse toggle (issue #3) -->
+      <button
+        class="mb-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-6 transition-colors hover:bg-surface-gray-2"
+        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        @click="collapsed = !collapsed"
+      >
+        <span class="size-4 shrink-0" :class="collapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'" />
+        <span v-if="!collapsed" class="truncate">Collapse</span>
+      </button>
 
       <Dropdown :options="userOptions" placement="top-start">
         <button class="flex w-full shrink-0 items-center gap-2 rounded-lg p-1.5 hover:bg-surface-gray-2">
@@ -75,13 +101,26 @@
         </div>
       </main>
     </div>
+
+    <!-- Create team -->
+    <Dialog v-model:open="createTeamOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Create a team</span></template>
+      <FormControl v-model="newTeamName" type="text" label="Team name" placeholder="e.g. Acme Innovations" />
+      <p class="mt-2 text-sm text-ink-gray-5">You'll switch to the new team right away. Add servers and members from there.</p>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="createTeamOpen = false" />
+          <Button variant="solid" label="Create team" :disabled="!newTeamName.trim()" @click="doCreateTeam" />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Breadcrumbs, Dropdown } from 'frappe-ui'
+import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, toast } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
@@ -95,8 +134,12 @@ defineProps({
 const store = useCloudStore()
 const route = useRoute()
 const router = useRouter()
-// The server-list page leads with the map, so the rail starts collapsed there.
-const collapsed = ref(route.path.startsWith('/servers') || (typeof window !== 'undefined' && window.innerWidth < 640))
+// One remembered preference, not a per-page default (issue #3): the rail keeps
+// whatever the user last set, across page switches and reloads.
+const collapsed = computed({
+  get: () => store.sidebarCollapsed,
+  set: (v) => store.setSidebarCollapsed(v),
+})
 
 // The credit badge is only for trial users (or anyone whose credit ran out).
 const showCredit = computed(() => store.isTrial || store.creditExpired)
@@ -122,6 +165,31 @@ const userOptions = computed(() => [
     },
   },
 ])
+
+// — Team switcher
+const teamInitial = computed(() => (store.team?.name || 'T')[0].toUpperCase())
+const teamOptions = computed(() => [
+  ...store.teams.map((t) => ({
+    label: t.name,
+    icon: t.id === store.currentTeamId ? 'lucide-check' : 'lucide-users',
+    onClick: () => {
+      if (t.id === store.currentTeamId) return
+      store.switchTeam(t.id)
+      toast.success(`Switched to ${t.name}`)
+      router.push('/servers')
+    },
+  })),
+  { label: 'Create team', icon: 'lucide-plus', onClick: () => { newTeamName.value = ''; createTeamOpen.value = true } },
+])
+
+const createTeamOpen = ref(false)
+const newTeamName = ref('')
+function doCreateTeam() {
+  const t = store.createTeam(newTeamName.value)
+  createTeamOpen.value = false
+  toast.success(`Created ${t.name}`)
+  router.push('/servers')
+}
 </script>
 
 <style scoped>

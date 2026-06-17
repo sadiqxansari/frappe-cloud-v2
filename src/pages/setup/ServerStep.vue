@@ -1,8 +1,9 @@
 <template>
-  <OnboardingShell :step="3">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Your server</h1>
-    <p class="mt-1.5 text-base text-ink-gray-6">
-      ERPNext runs on a server that's yours. We've picked a size that fits.
+  <OnboardingShell :step="3" back="/setup/app">
+    <h1 class="text-xl font-semibold text-ink-gray-9">Host {{ appName }} on a server</h1>
+    <p class="mt-1.5 text-p-base text-ink-gray-6">
+      {{ appName }} runs on a server that's yours — your data, full control, and room to grow.
+      We've started you on the smallest plan; resize anytime as you grow.
     </p>
 
     <div class="mt-6 rounded-xl border border-outline-gray-2 p-5">
@@ -10,7 +11,7 @@
         <div class="text-lg font-semibold text-ink-gray-9">{{ plan.name }}</div>
         <Badge v-if="plan.id === store.recommendedPlanId" theme="blue" variant="subtle" label="Recommended" />
       </div>
-      <p class="mt-1 text-sm leading-5 text-ink-gray-6">{{ plan.blurb }}</p>
+      <p class="mt-1 text-p-sm text-ink-gray-6">{{ plan.blurb }}</p>
 
       <div class="mt-4 flex items-baseline gap-2">
         <span class="text-2xl font-semibold text-ink-gray-9">{{ inr(price) }}</span>
@@ -21,13 +22,10 @@
         Free on your $25 credit
       </div>
 
-      <!-- Where it runs — shown as text; change it inside the plans modal -->
+      <!-- Where it runs — info only; plan and region both change in the one modal -->
       <div class="mt-3 flex items-center gap-1.5 text-sm text-ink-gray-5">
         <span class="lucide-map-pin size-3.5" />
         Runs in {{ region.name }} ({{ region.provider }})
-        <button class="text-ink-gray-6 underline-offset-2 hover:underline" @click="compareOpen = true">
-          Change
-        </button>
       </div>
 
       <ul class="mt-4 space-y-2">
@@ -60,9 +58,7 @@
     <Button variant="solid" size="lg" label="Set up my server" class="mt-5 w-full" @click="confirm" />
 
     <template #below>
-      <button class="text-sm text-ink-gray-6 underline-offset-2 hover:underline" @click="compareOpen = true">
-        Compare all plans
-      </button>
+      <Button variant="ghost" size="sm" label="Compare plans & regions" icon-left="lucide-sliders-horizontal" @click="compareOpen = true" />
     </template>
   </OnboardingShell>
 
@@ -93,7 +89,7 @@
           <span class="text-xs text-ink-gray-5">/month</span>
         </div>
         <div class="text-xs text-ink-gray-5">≈{{ inr(Math.round(priceFor(p.id, regionId) / 30)) }}/day</div>
-        <p class="mt-2 text-sm leading-5 text-ink-gray-6">{{ p.blurb }}</p>
+        <p class="mt-2 text-p-sm text-ink-gray-6">{{ p.blurb }}</p>
         <ul class="mt-3 flex-1 space-y-1.5">
           <li v-for="f in p.features" :key="f" class="flex items-start gap-1.5 text-sm text-ink-gray-7">
             <span class="lucide-check mt-0.5 size-3.5 shrink-0 text-ink-green-3" />
@@ -129,12 +125,14 @@ import { useRouter } from 'vue-router'
 import { Badge, Button, Dialog, Switch } from 'frappe-ui'
 import OnboardingShell from '../../components/OnboardingShell.vue'
 import ProviderRegionPicker from '../../components/ProviderRegionPicker.vue'
-import { FEATURED_PLANS, PLANS, planById, priceFor, regionById } from '../../data/catalog'
+import { FEATURED_PLANS, PLANS, appByKey, planById, priceFor, regionById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 import { inr } from '../../utils/format'
 
 const store = useCloudStore()
 const router = useRouter()
+
+const appName = computed(() => appByKey(store.onboarding.appKey)?.name || 'your app')
 
 const showSpecs = ref(false)
 const compareOpen = ref(false)

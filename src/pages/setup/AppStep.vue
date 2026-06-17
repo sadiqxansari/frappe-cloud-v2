@@ -1,51 +1,42 @@
 <template>
-  <OnboardingShell :step="2">
+  <OnboardingShell :step="2" back="/setup/account">
     <h1 class="text-xl font-semibold text-ink-gray-9">What are you setting up?</h1>
-    <p class="mt-1.5 text-base text-ink-gray-6">
+    <p class="mt-1.5 text-p-base text-ink-gray-6">
       You followed an ERPNext link, so we've picked it for you.
     </p>
 
-    <div class="mt-6 flex items-center gap-3 rounded-xl border border-outline-gray-2 bg-surface-gray-1 p-4">
-      <AppIcon app-key="erpnext" size="lg" />
+    <div class="mt-6 flex items-center gap-3 rounded-xl border border-outline-gray-2 bg-surface-gray-1 p-3">
+      <AppIcon app-key="erpnext" size="md" />
       <div class="min-w-0 flex-1">
-        <div class="font-semibold text-ink-gray-9">ERPNext</div>
-        <div class="text-sm text-ink-gray-6">Accounting, inventory and orders for your business</div>
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-ink-gray-9">ERPNext</span>
+          <Badge theme="green" variant="subtle" size="sm" label="Ready to set up" />
+        </div>
+        <p class="text-p-sm text-ink-gray-6">Accounting, inventory and orders for your business</p>
       </div>
-      <Badge theme="green" variant="subtle" size="md" label="Ready to set up" />
     </div>
 
-    <div class="mt-6">
-      <FormControl v-model="subdomainInput" type="text" label="Choose your site address" placeholder="yourcompany" />
-      <p class="mt-2 text-sm text-ink-gray-5">
-        Your site will live at
-        <span class="font-medium text-ink-gray-7">{{ subdomain }}</span>
-      </p>
-    </div>
-
-    <div class="mt-6">
-      <label class="text-sm font-medium text-ink-gray-7">Roughly how big is your team?</label>
-      <TabButtons
-        v-model="teamSize"
-        class="mt-2"
-        :buttons="[
-          { label: 'Just me', value: 'solo' },
-          { label: '2–25 people', value: 'small' },
-          { label: 'More than 25', value: 'large' },
-        ]"
-      />
-      <p class="mt-2 text-sm text-ink-gray-5">
-        We'll use this to suggest a server size. You can change it anytime.
-      </p>
-    </div>
+    <FormControl
+      v-model="subdomainInput"
+      type="text"
+      size="md"
+      label="Choose your site address"
+      placeholder="yourcompany"
+      class="site-address mt-6"
+    >
+      <template #suffix>
+        <span class="text-base text-ink-gray-4">.frappe.cloud</span>
+      </template>
+    </FormControl>
 
     <Button variant="solid" size="md" label="Continue" class="mt-6 w-full" @click="go" />
   </OnboardingShell>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, FormControl, TabButtons } from 'frappe-ui'
+import { Badge, Button, FormControl } from 'frappe-ui'
 import AppIcon from '../../components/AppIcon.vue'
 import OnboardingShell from '../../components/OnboardingShell.vue'
 import { useCloudStore } from '../../stores/cloud'
@@ -54,16 +45,18 @@ import { slugify } from '../../utils/format'
 const store = useCloudStore()
 const router = useRouter()
 
-const teamSize = ref(store.onboarding.teamSize)
 const subdomainInput = ref(store.onboarding.subdomain)
 
-const subdomain = computed(
-  () => `${subdomainInput.value.trim() ? slugify(subdomainInput.value) : 'yourcompany'}.frappe.cloud`,
-)
-
 function go() {
-  store.setTeamSize(teamSize.value)
   store.onboarding.subdomain = slugify(subdomainInput.value) || 'mysite'
   router.push('/setup/server')
 }
 </script>
+
+<style scoped>
+/* The frappe-ui suffix slot is sized for an icon; widen the input's right
+   padding so ".frappe.cloud" never overlaps what the user types. */
+.site-address :deep(input) {
+  padding-inline-end: 6.75rem;
+}
+</style>

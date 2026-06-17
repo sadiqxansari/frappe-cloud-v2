@@ -1,10 +1,20 @@
 import { defineStore } from 'pinia'
-import { APP_CATALOG, TEAM_SIZE_TO_PLAN, appByKey, planById, regionById, versionById } from '../data/catalog'
+import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, planById, regionById, versionById } from '../data/catalog'
+
+// Onboarding leads with the cheapest plan (lowest monthly price).
+const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
 import { makeProcesses } from '../data/system'
 import { fmtDateTime, slugify } from '../utils/format'
 
 let n = 1000
 const uid = (prefix) => `${prefix}-${n++}`
+
+// Sidebar collapse is one account-wide preference, remembered across pages and
+// reloads (issue #3) — never derived per-page. Defaults to expanded when unset.
+function sidebarPref() {
+  if (typeof localStorage === 'undefined') return false
+  return localStorage.getItem('fc.sidebarCollapsed') === 'true'
+}
 
 const BUILT_IN_PERMISSIONS = {
   'role-owner':   { administrator: true,  createSites: true,  marketplace: true,  webhooks: true,  billing: true },
@@ -108,7 +118,12 @@ function baseState() {
       { id: 'role-billing', name: 'Billing', desc: 'View invoices and manage payment', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-billing'] } },
       { id: 'role-member',  name: 'Member',  desc: 'View-only access to servers and sites', system: true, permissions: { ...BUILT_IN_PERMISSIONS['role-member'] } },
     ],
-    team: { name: 'My team', avatar: null },
+    // Account-wide preference — see sidebarPref().
+    sidebarCollapsed: sidebarPref(),
+    // Teams the signed-in user belongs to; the switcher (issue #7) flips
+    // `currentTeamId`. `team` (getter) resolves to the active one.
+    teams: [{ id: 'team-1', name: 'My team', avatar: null }],
+    currentTeamId: 'team-1',
     usage: [],
     activity: [], // newest first — humanized history of everything done here
     cardOnFile: false,
@@ -155,7 +170,7 @@ function baseState() {
     currentSiteId: null,
     currentServerId: null, // last server entered — keeps sidebar context
     busy: 0, // in-flight work; drives the top progress bar
-    onboarding: { appKey: 'erpnext', teamSize: 'small', planId: 'business', subdomain: '', regionId: 'aws-mumbai' },
+    onboarding: { appKey: 'erpnext', teamSize: 'small', planId: CHEAPEST_PLAN_ID, subdomain: '', regionId: 'aws-mumbai' },
   }
 }
 
@@ -235,8 +250,14 @@ function grownState() {
     invoiceRecipient: 'accounts@mycompany.in',
     invoiceLanguage: 'en',
   }
-  s.team = { name: "Rahul's team", avatar: null }
-  s.roles.push({ id: 'role-support', name: 'Support', desc: 'View-only access plus can create sites', permissions: { ...defaultPermissions(), createSites: true } })
+  s.teams = [
+    { id: 'team-1', name: "Rahul's team", avatar: null },
+    { id: 'team-2', name: 'Acme Innovations', avatar: null },
+    { id: 'team-3', name: 'Side Projects', avatar: null },
+  ]
+  s.currentTeamId = 'team-1'
+  // Create-sites is reserved for Admin roles (issue #7), so Support is view-only.
+  s.roles.push({ id: 'role-support', name: 'Support', desc: 'View-only access to servers and sites', permissions: { ...defaultPermissions() } })
   // Wallet — prepaid balance the monthly invoice draws from.
   s.walletBalance = 8400
   s.walletHistory = [
@@ -317,6 +338,9 @@ export const useCloudStore = defineStore('cloud', {
   state: freshState,
 
   getters: {
+    // The active team — every team-scoped surface reads identity from here.
+    team: (s) => s.teams.find((t) => t.id === s.currentTeamId) || s.teams[0],
+
     // The individual's (only) server.
     server: (s) => s.servers[0] || null,
 
@@ -391,7 +415,8 @@ export const useCloudStore = defineStore('cloud', {
       return Math.round(((this.estimatedThisCycle - this.lastCycleTotal) / this.lastCycleTotal) * 100)
     },
 
-    recommendedPlanId: (s) => TEAM_SIZE_TO_PLAN[s.onboarding.teamSize] || 'business',
+    // Always the cheapest plan — onboarding recommends starting small.
+    recommendedPlanId: () => CHEAPEST_PLAN_ID,
 
     // One legible resource picture per server; disk scales with the plan.
     healthOf: () => (server) => {
@@ -433,6 +458,28 @@ export const useCloudStore = defineStore('cloud', {
         grown: grownState,
       }
       this.$state = (states[name] || freshState)()
+    },
+
+    // One account-wide sidebar preference, persisted so it survives page
+    // switches and reloads (issue #3).
+    setSidebarCollapsed(on) {
+      this.sidebarCollapsed = on
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('fc.sidebarCollapsed', on ? 'true' : 'false')
+      }
+    },
+
+    // — Teams. The switcher (issue #7) just flips the active team; in this
+    // prototype the team is an identity, so switching is instant.
+    switchTeam(id) {
+      if (!this.teams.some((t) => t.id === id)) return
+      this.currentTeamId = id
+    },
+    createTeam(name) {
+      const t = { id: uid('team'), name: (name || '').trim() || 'New team', avatar: null }
+      this.teams.push(t)
+      this.currentTeamId = t.id
+      return t
     },
 
     // Runs `fn` after a short, realistic delay while the top progress bar
@@ -795,6 +842,51 @@ export const useCloudStore = defineStore('cloud', {
         })
         this.logActivity(`Resized ${srv.name} from ${fromPlan.name} to ${toPlan.name}`, { tag: 'server' })
       }, 1400)
+    },
+
+    // Changing region (or provider) can't be done in place — a server lives in
+    // one cluster. So we migrate: stand up a matching server in the new region,
+    // move every site across (addresses unchanged), and retire the old one.
+    // Same provider or different, it's the same primitive. Returns the new
+    // server so the caller can navigate to it.
+    migrateServer(serverId, { planId, regionId }) {
+      const srv = this.findServer(serverId)
+      if (!srv) return null
+      const fromRegion = regionById(srv.regionId)
+      const toRegion = regionById(regionId)
+      const target = makeServer({
+        name: srv.name,
+        planId: planId || srv.planId,
+        regionId,
+        version: srv.version,
+        status: 'provisioning',
+        // Carry the sites over as "moving" — same transient as a site move.
+        sites: srv.sites.map((s) => ({ ...s, status: 'moving' })),
+        planHistory: [...srv.planHistory],
+      })
+      // The old server hands its sites over and is removed once the new one is up.
+      srv.sites = []
+      this.servers.push(target)
+      if (this.currentServerId === serverId) this.currentServerId = target.id
+      const actId = this.logActivity(
+        `Migrating ${target.name} from ${fromRegion.name} to ${toRegion.name}`,
+        { tag: 'server', status: 'running' },
+      )
+      setTimeout(() => {
+        const live = this.findServer(target.id)
+        if (live) {
+          live.status = 'active'
+          live.sites.forEach((s) => { if (s.status === 'moving') s.status = 'live' })
+        }
+        // Retire the emptied original.
+        const i = this.servers.findIndex((s) => s.id === serverId)
+        if (i !== -1) this.servers.splice(i, 1)
+        this.flipActivity(actId, {
+          title: `Migrated ${target.name} to ${toRegion.name}`,
+          detail: `Now running in ${toRegion.name} (${toRegion.provider}). Site addresses didn't change — visitors never noticed.`,
+        })
+      }, 5000)
+      return target
     },
 
     renameServer(serverId, name) {
@@ -1175,7 +1267,34 @@ export const useCloudStore = defineStore('cloud', {
     },
     setMemberRoles(memberId, roles) {
       const m = this.members.find((x) => x.id === memberId)
-      if (m) m.roles = roles
+      if (!m) return
+      m.roles = roles
+      // Owner is exclusive across the team — only one at a time (issue #7).
+      if (roles.some((r) => r.roleId === 'role-owner')) this._demoteOtherOwners(memberId)
+    },
+    // Assign an existing team member to a role directly — no invite (issue #7).
+    // Owner replaces all other roles and demotes the previous owner.
+    addMemberToRole(roleId, memberId) {
+      const m = this.members.find((x) => x.id === memberId)
+      if (!m) return
+      if (m.roles?.some((r) => r.roleId === roleId && !r.resourceId)) return
+      if (roleId === 'role-owner') {
+        m.roles = [{ roleId: 'role-owner', resourceId: null }]
+        this._demoteOtherOwners(memberId)
+      } else {
+        m.roles = [...(m.roles || []), { roleId, resourceId: null }]
+      }
+    },
+    // Strip Owner from everyone but `keepId`, leaving them Admin so they keep
+    // useful access. Keeps the "one owner" invariant whenever owner is granted.
+    _demoteOtherOwners(keepId) {
+      for (const m of this.members) {
+        if (m.id === keepId) continue
+        if (m.roles?.some((r) => r.roleId === 'role-owner')) {
+          m.roles = m.roles.filter((r) => r.roleId !== 'role-owner')
+          if (!m.roles.length) m.roles.push({ roleId: 'role-admin', resourceId: null })
+        }
+      }
     },
     resendInvite() {},
     transferOwnership(fromId, toId) {

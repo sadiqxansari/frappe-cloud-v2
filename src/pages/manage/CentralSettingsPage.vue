@@ -323,9 +323,13 @@
           <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">General</div>
           <div class="divide-y divide-outline-gray-1 overflow-hidden rounded-lg border border-outline-gray-2">
             <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
-              <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
+              <div>
+                <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
+                <p v-if="permLocked(perm, newRole.permissions)" class="text-xs text-ink-gray-4">Available to Admin roles only</p>
+              </div>
               <Switch
                 :modelValue="newRole.permissions[perm.key]"
+                :disabled="permLocked(perm, newRole.permissions)"
                 @update:modelValue="(v) => setPermission(newRole.permissions, perm.key, v)"
               />
             </div>
@@ -377,9 +381,16 @@
               <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">General</div>
               <div class="divide-y divide-outline-gray-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white">
                 <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
-                  <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
+                  <div>
+                    <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
+                    <p v-if="!roleDialogRole.system && permLocked(perm, roleDialogPerms)" class="text-xs text-ink-gray-4">Available to Admin roles only</p>
+                  </div>
                   <div :class="roleDialogRole.system ? 'pointer-events-none opacity-40' : ''">
-                    <Switch :modelValue="roleDialogPerms[perm.key]" @update:modelValue="(v) => handleRoleDialogPermChange(perm.key, v)" />
+                    <Switch
+                      :modelValue="roleDialogPerms[perm.key]"
+                      :disabled="permLocked(perm, roleDialogPerms)"
+                      @update:modelValue="(v) => handleRoleDialogPermChange(perm.key, v)"
+                    />
                   </div>
                 </div>
               </div>
@@ -400,6 +411,22 @@
               </div>
             </div>
             <p v-else class="py-6 text-center text-sm text-ink-gray-4">No one has this role yet.</p>
+
+            <!-- Add an existing team member directly — no invite (issue #7) -->
+            <div v-if="isAdminOrOwner" class="mt-3 border-t border-outline-gray-1 pt-3">
+              <FormControl
+                v-if="addableMemberOptions(roleDialogRole.id).length"
+                type="select"
+                placeholder="Add a team member…"
+                :modelValue="''"
+                :options="addableMemberOptions(roleDialogRole.id)"
+                @update:modelValue="onAddMemberToRole"
+              />
+              <p v-else class="text-center text-xs text-ink-gray-4">Everyone on the team already has this role.</p>
+              <p v-if="roleDialogRole.id === 'role-owner'" class="mt-1.5 text-xs text-ink-gray-4">
+                There's only one Owner — adding someone transfers ownership to them.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -613,11 +640,23 @@ function makeDefaultPermissions() {
 
 // ── Permission cascade helper ────────────────────────────────
 
+// Create-sites is reserved for Admin roles (issue #7): it can't be granted on
+// its own, and turning Administrator off withdraws it.
 function setPermission(permissions, key, value) {
+  if (key === 'createSites' && value && !permissions.administrator) return
   permissions[key] = value
-  if (key === 'administrator' && value) {
-    Object.keys(permissions).forEach((k) => { permissions[k] = true })
+  if (key === 'administrator') {
+    if (value) {
+      Object.keys(permissions).forEach((k) => { permissions[k] = true })
+    } else {
+      permissions.createSites = false
+    }
   }
+}
+
+// The Create-sites toggle is locked unless this role is an Administrator.
+function permLocked(perm, permissions) {
+  return perm.key === 'createSites' && !permissions.administrator
 }
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -929,6 +968,19 @@ watch(roleDialogOpen, (open) => {
 function openRoleDialog(r) {
   roleDialogRole.value = r
   roleDialogOpen.value = true
+}
+
+// Members already on the team who don't yet hold this role (issue #7 — no invite).
+function addableMemberOptions(roleId) {
+  return store.members
+    .filter((m) => !m.roles?.some((r) => r.roleId === roleId))
+    .map((m) => ({ label: m.name, value: m.id, description: m.email }))
+}
+function onAddMemberToRole(memberId) {
+  if (!memberId || !roleDialogRole.value) return
+  store.addMemberToRole(roleDialogRole.value.id, memberId)
+  const m = store.members.find((x) => x.id === memberId)
+  toast.success(`Added ${m?.name || 'member'} to ${roleDialogRole.value.name}`)
 }
 
 function handleRoleDialogPermChange(key, value) {

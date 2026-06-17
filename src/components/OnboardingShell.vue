@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-surface-gray-1">
+  <div class="flex min-h-screen flex-col bg-surface-white">
     <header class="flex items-center justify-center gap-2 pb-4 pt-10">
       <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 rounded-md" />
       <span class="text-base font-medium text-ink-gray-8">Frappe Cloud</span>
@@ -7,6 +7,15 @@
 
     <main class="flex flex-1 items-start justify-center px-4 pb-20 pt-8">
       <div class="w-full max-w-md">
+        <button
+          v-if="back"
+          class="mb-4 inline-flex items-center gap-1 text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-8"
+          @click="$router.push(back)"
+        >
+          <span class="lucide-arrow-left size-4" />
+          Back
+        </button>
+
         <div class="mb-5 flex gap-1.5">
           <div
             v-for="i in steps"
@@ -16,7 +25,7 @@
           />
         </div>
 
-        <div class="rounded-xl border border-outline-gray-1 bg-surface-white p-8 shadow-sm">
+        <div class="py-2">
           <slot />
         </div>
 
@@ -34,5 +43,7 @@ import cloudLogo from '../assets/apps/cloud.png'
 defineProps({
   step: { type: Number, required: true },
   steps: { type: Number, default: 4 },
+  // Route to return to — renders a Back link (issue #5). Omit on the first step.
+  back: { type: String, default: null },
 })
 </script>

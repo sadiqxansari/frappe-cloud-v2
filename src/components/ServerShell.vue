@@ -68,6 +68,17 @@
         </button>
       </nav>
 
+      <!-- Explicit, remembered collapse toggle (issue #3) -->
+      <button
+        class="mb-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-6 transition-colors hover:bg-surface-gray-2"
+        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        @click="collapsed = !collapsed"
+      >
+        <span class="size-4 shrink-0" :class="collapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'" />
+        <span v-if="!collapsed" class="truncate">Collapse</span>
+      </button>
+
       <Dropdown :options="userOptions" placement="top-start">
         <button class="flex w-full shrink-0 items-center gap-2 rounded-[8px] p-1.5 hover:bg-surface-gray-2">
           <Avatar :label="store.user.name || 'You'" size="sm" />
@@ -105,7 +116,6 @@
             <span class="font-medium" :class="store.creditExpired ? 'text-ink-red-3' : 'text-ink-gray-8'">{{ usd(store.accountCredit) }}</span>
             <span :class="store.creditExpired ? 'text-ink-red-3' : 'text-ink-gray-5'">credit</span>
           </button>
-          <Button v-if="liveSite" variant="subtle" label="Open site" icon-right="lucide-arrow-up-right" @click="openLiveSite" />
           <!-- Primary action sits right-most. -->
           <slot name="actions" />
         </div>
@@ -139,7 +149,11 @@ const props = defineProps({
 const store = useCloudStore()
 const route = useRoute()
 const router = useRouter()
-const collapsed = ref(typeof window !== 'undefined' && window.innerWidth < 640)
+// Shares the one remembered sidebar preference with Central (issue #3).
+const collapsed = computed({
+  get: () => store.sidebarCollapsed,
+  set: (v) => store.setSidebarCollapsed(v),
+})
 
 const server = computed(
   () => props.server || store.findServer(route.params.serverId) || store.currentServer,
@@ -177,13 +191,6 @@ const devOpen = ref(devActive.value)
 watch(devActive, (on) => {
   if (on) devOpen.value = true
 })
-
-const liveSite = computed(() => server.value?.sites.find((s) => s.status === 'live') || null)
-function openLiveSite() {
-  if (!liveSite.value) return
-  store.openSite(liveSite.value.id)
-  router.push('/app')
-}
 
 // Brand dropdown — a single way out, back to the Central account view.
 // (No server-switcher list: accounts can have many servers; switch via Central.)
