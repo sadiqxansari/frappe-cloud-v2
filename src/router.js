@@ -13,6 +13,7 @@ const routes = [
   { path: '/servers', name: 'servers', component: () => import('./pages/manage/ServersPage.vue') },
   { path: '/servers/new', name: 'new-server', component: () => import('./pages/manage/NewServerPage.vue') },
   { path: '/billing', name: 'billing', component: () => import('./pages/manage/CentralBillingPage.vue') },
+  { path: '/billing/invoices', name: 'billing-invoices', component: () => import('./pages/manage/CentralBillingPage.vue') },
   { path: '/settings', name: 'central-settings', component: () => import('./pages/manage/CentralSettingsPage.vue') },
   { path: '/users', redirect: '/settings' },
   // Server (operational) level. Marketplace lives here, scoped to the server.
@@ -45,8 +46,8 @@ router.beforeEach((to) => {
   }
 
   // Screens that need at least one server to exist.
-  const central = ['/servers', '/billing', '/settings', '/users', '/account']
-  const needsServer = to.path === '/app' || to.path.startsWith('/manage') || central.includes(to.path)
+  const central = ['/servers', '/settings', '/users', '/account']
+  const needsServer = to.path === '/app' || to.path.startsWith('/manage') || to.path.startsWith('/billing') || central.includes(to.path)
   if (needsServer && !store.allServers.length) return '/'
 })
 

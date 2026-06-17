@@ -95,6 +95,8 @@
         :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         @click="collapsed = !collapsed"
       />
+
+      <ProfileDialog v-model:open="profileOpen" />
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col">
@@ -135,6 +137,7 @@ import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dropdown } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
+import ProfileDialog from './ProfileDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -203,7 +206,13 @@ const serverMenu = computed(() => [
   },
 ])
 
+const profileOpen = ref(false)
 const userOptions = computed(() => [
+  {
+    label: 'Profile',
+    icon: 'lucide-circle-user',
+    onClick: () => { profileOpen.value = true },
+  },
   {
     label: 'Sign out',
     icon: 'lucide-log-out',

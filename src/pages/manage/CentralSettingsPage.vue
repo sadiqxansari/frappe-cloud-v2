@@ -1,39 +1,11 @@
 <template>
-  <CentralShell :crumbs="[{ label: 'Settings', route: '/settings' }]">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Settings</h1>
+  <CentralShell :crumbs="[{ label: 'Team & Permissions', route: '/settings' }]">
+    <h1 class="text-xl font-semibold text-ink-gray-9">Team &amp; Permissions</h1>
 
     <TabButtons v-model="tab" :buttons="tabs" class="mt-4" />
 
-    <!-- Profile -->
-    <div v-if="tab === 'profile'" class="mt-5">
-      <div class="divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-white">
-        <div class="flex items-center gap-3 p-4">
-          <Avatar :label="store.user.name || 'You'" size="lg" />
-          <div class="min-w-0 flex-1">
-            <div class="truncate font-medium text-ink-gray-9">{{ store.user.name || 'You' }}</div>
-            <div class="truncate text-sm text-ink-gray-5">{{ store.user.email || '—' }}</div>
-          </div>
-          <Button variant="subtle" size="sm" label="Edit" icon-left="lucide-pencil" @click="openEdit" />
-        </div>
-        <div class="flex items-center justify-between gap-3 p-4">
-          <div>
-            <div class="text-sm font-medium text-ink-gray-9">Notifications</div>
-            <div class="text-sm text-ink-gray-5">Choose what we email you about.</div>
-          </div>
-          <Button variant="subtle" size="sm" label="Manage" @click="notifyOpen = true" />
-        </div>
-        <div class="flex items-center justify-between gap-3 p-4">
-          <div>
-            <div class="text-sm font-medium text-ink-gray-9">Two-factor authentication</div>
-            <div class="text-sm text-ink-gray-5">Add a second step when signing in.</div>
-          </div>
-          <Button variant="subtle" size="sm" label="Enable" @click="toast.success('Two-factor setup started')" />
-        </div>
-      </div>
-    </div>
-
     <!-- ── Team ──────────────────────────────────────────────── -->
-    <div v-else-if="tab === 'team'" class="mt-5">
+    <div v-if="tab === 'team'" class="mt-5">
       <!-- Team identity card -->
       <div class="flex items-center gap-4 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
         <div class="relative shrink-0" :class="isAdminOrOwner ? 'cursor-pointer' : ''" @click="isAdminOrOwner && avatarInput && avatarInput.click()">
@@ -141,6 +113,29 @@
           <div v-else class="size-7 shrink-0" />
         </div>
       </div>
+
+      <!-- Frappe Partner -->
+      <div class="mt-4 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-ink-gray-8">Frappe Partner</h2>
+            <p class="mt-0.5 text-sm text-ink-gray-5">Manage partner access to your account</p>
+          </div>
+          <Button
+            variant="subtle"
+            size="sm"
+            :icon-left="store.partnerCode ? 'lucide-pencil' : 'lucide-square-pen'"
+            :label="store.partnerCode ? 'Change Partner Code' : 'Add Partner Code'"
+            @click="openPartner"
+          />
+        </div>
+        <p v-if="store.partnerCode" class="mt-3 text-sm text-ink-gray-6">
+          Linked to Partner code <span class="font-mono font-medium text-ink-gray-8">{{ store.partnerCode }}</span>.
+        </p>
+        <p v-else class="mt-3 text-sm text-ink-gray-6">
+          Have a Frappe Partner Referral Code? Click on <span class="font-medium text-ink-gray-8">Add Partner Code</span> to link with your Partner team.
+        </p>
+      </div>
     </div>
 
     <!-- ── Roles ──────────────────────────────────────────────── -->
@@ -203,87 +198,14 @@
       </div>
     </div>
 
-    <!-- Developer -->
-    <div v-else class="mt-5 space-y-5">
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-base font-semibold text-ink-gray-8">API access</h2>
-          <Button variant="subtle" size="sm" label="Regenerate" icon-left="lucide-refresh-cw" @click="regenerate" />
-        </div>
-        <div class="mt-3 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-2 px-3 py-2">
-          <code class="min-w-0 flex-1 truncate font-mono text-sm text-ink-gray-8">{{ store.apiKey }}</code>
-          <button class="text-ink-gray-5 hover:text-ink-gray-7" aria-label="Copy" @click="copy(store.apiKey)"><span class="lucide-copy size-4" /></button>
-        </div>
-      </section>
-
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-base font-semibold text-ink-gray-8">SSH keys</h2>
-          <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
-        </div>
-        <div v-if="store.accountSshKeys.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
-          <div v-for="k in store.accountSshKeys" :key="k.id" class="flex items-center gap-3 p-3">
-            <span class="lucide-key-round size-4 shrink-0 text-ink-gray-5" />
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-medium text-ink-gray-9">{{ k.name }}</div>
-              <div class="truncate font-mono text-xs text-ink-gray-5">{{ k.fingerprint }}</div>
-            </div>
-            <Button variant="ghost" size="sm" icon="lucide-trash-2" :aria-label="`Remove ${k.name}`" @click="store.removeAccountSshKey(k.id)" />
-          </div>
-        </div>
-        <EmptyState v-else class="mt-3" icon="lucide-key-round" title="No SSH keys yet" description="Add a public key to access your servers over SSH.">
-          <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
-        </EmptyState>
-      </section>
-
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-base font-semibold text-ink-gray-8">Webhooks</h2>
-          <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />
-        </div>
-        <div v-if="store.webhooks.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
-          <div v-for="w in store.webhooks" :key="w.id" class="p-3">
-            <div class="flex items-center gap-3">
-              <span class="lucide-webhook size-4 shrink-0 text-ink-gray-5" />
-              <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ w.url }}</span>
-              <Badge :theme="w.status === 'failing' ? 'red' : 'green'" variant="subtle" :label="w.status === 'failing' ? 'Failing' : 'Active'" />
-              <Button v-if="w.status === 'failing'" variant="subtle" size="sm" label="Send test" @click="testHook(w)" />
-              <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="store.removeWebhook(w.id)" />
-            </div>
-            <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-xs text-ink-red-4">
-              <span class="lucide-triangle-alert size-3 shrink-0" /> {{ w.lastError }} — check the endpoint, then send a test.
-            </p>
-          </div>
-        </div>
-        <EmptyState v-else class="mt-3" icon="lucide-webhook" title="No webhooks yet" description="Add an endpoint to receive event notifications.">
-          <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />
-        </EmptyState>
-      </section>
-    </div>
-
     <!-- ── Dialogs ─────────────────────────────────────────── -->
 
-    <Dialog v-model:open="editOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Edit profile</span></template>
-      <div class="space-y-3">
-        <FormControl v-model="form.name" type="text" label="Name" />
-        <FormControl v-model="form.email" type="email" label="Email" />
-      </div>
+    <Dialog v-model:open="partnerOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add Partner Code</span></template>
+      <FormControl v-model="partnerDraft" type="text" label="Partner Referral Code" placeholder="e.g. ABC123" />
+      <p class="mt-2 text-sm text-ink-gray-5">Link your account with a Frappe Partner team using their referral code.</p>
       <template #actions>
-        <div class="flex justify-end gap-2"><Button label="Cancel" @click="editOpen = false" /><Button variant="solid" label="Save" @click="saveProfile" /></div>
-      </template>
-    </Dialog>
-
-    <Dialog v-model:open="notifyOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Notifications</span></template>
-      <div class="space-y-3">
-        <div v-for="n in notifyRows" :key="n.key" class="flex items-center justify-between gap-3">
-          <span class="text-sm text-ink-gray-7">{{ n.label }}</span>
-          <Switch v-model="notify[n.key]" />
-        </div>
-      </div>
-      <template #actions>
-        <div class="flex justify-end gap-2"><Button label="Cancel" @click="notifyOpen = false" /><Button variant="solid" label="Save" @click="saveNotify" /></div>
+        <div class="flex justify-end gap-2"><Button label="Cancel" @click="partnerOpen = false" /><Button variant="solid" label="Link" :disabled="!partnerDraft.trim()" @click="savePartner" /></div>
       </template>
     </Dialog>
 
@@ -522,31 +444,6 @@
       </template>
     </Dialog>
 
-    <Dialog v-model:open="keyOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add SSH key</span></template>
-      <FormControl v-model="keyName" type="text" label="Key name" placeholder="e.g. work-laptop" />
-      <template #actions>
-        <div class="flex justify-end gap-2"><Button label="Cancel" @click="keyOpen = false" /><Button variant="solid" label="Add key" :disabled="!keyName.trim()" @click="addKey" /></div>
-      </template>
-    </Dialog>
-
-    <Dialog v-model:open="hookOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add webhook</span></template>
-      <FormControl v-model="hookUrl" type="text" label="Endpoint URL" placeholder="https://example.com/hooks/fc" />
-      <p v-if="hookUrl && hookError" class="mt-1 text-xs text-ink-red-4">{{ hookError }}</p>
-      <template #actions>
-        <div class="flex justify-end gap-2"><Button label="Cancel" @click="hookOpen = false" /><Button variant="solid" label="Add webhook" :disabled="!!hookError" @click="addHook" /></div>
-      </template>
-    </Dialog>
-
-    <ConfirmDialog
-      v-model:open="regenOpen"
-      theme="red"
-      title="Regenerate the API secret?"
-      message="The current secret stops working immediately. Any script or integration using it will start failing until you update it with the new key."
-      confirm-label="Regenerate"
-      @confirm="confirmRegenerate"
-    />
     <!-- Leave team -->
     <Dialog v-model:open="leaveOpen" size="sm">
       <template #title>
@@ -612,21 +509,16 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { Alert, Avatar, Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast, Tooltip } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
-import ConfirmDialog from '../../components/ConfirmDialog.vue'
-import EmptyState from '../../components/EmptyState.vue'
 import { useCloudStore } from '../../stores/cloud'
-import { validateUrl } from '../../utils/validate'
 import { providerById, regionById } from '../../data/catalog'
 
 const store = useCloudStore()
 
 const tabs = [
-  { label: 'Profile', value: 'profile' },
   { label: 'Team', value: 'team' },
   { label: 'Roles', value: 'roles' },
-  { label: 'Developer', value: 'developer' },
 ]
-const tab = ref('profile')
+const tab = ref('team')
 
 const GENERAL_PERMISSIONS = [
   { key: 'createSites', label: 'Create Sites', short: 'Sites' },
@@ -769,32 +661,19 @@ const nonOwnerMemberOptions = computed(() =>
     .map((m) => ({ label: m.name, value: m.id }))
 )
 
-// ── Profile ──────────────────────────────────────────────────
+// ── Frappe Partner ────────────────────────────────────────────
 
-const editOpen = ref(false)
-const form = reactive({ name: '', email: '' })
-function openEdit() {
-  form.name = store.user.name
-  form.email = store.user.email
-  editOpen.value = true
+const partnerOpen = ref(false)
+const partnerDraft = ref('')
+function openPartner() {
+  partnerDraft.value = store.partnerCode
+  partnerOpen.value = true
 }
-function saveProfile() {
-  store.user.name = form.name.trim() || store.user.name
-  store.user.email = form.email.trim() || store.user.email
-  toast.success('Profile updated')
-  editOpen.value = false
-}
-
-const notifyOpen = ref(false)
-const notifyRows = [
-  { key: 'product', label: 'Product updates' },
-  { key: 'billing', label: 'Billing and invoices' },
-  { key: 'security', label: 'Security alerts' },
-]
-const notify = reactive({ product: true, billing: true, security: true })
-function saveNotify() {
-  toast.success('Notification preferences saved')
-  notifyOpen.value = false
+function savePartner() {
+  if (!partnerDraft.value.trim()) return
+  store.setPartnerCode(partnerDraft.value)
+  toast.success('Linked to Partner team')
+  partnerOpen.value = false
 }
 
 // ── Team identity ─────────────────────────────────────────────
@@ -1079,44 +958,4 @@ function createRole() {
   roleOpen.value = false
 }
 
-// ── Developer ─────────────────────────────────────────────────
-// Regenerating the key breaks every integration using the old one, so confirm.
-const regenOpen = ref(false)
-
-function regenerate() {
-  regenOpen.value = true
-}
-function confirmRegenerate() {
-  store.regenerateApiKey()
-  toast.success('API secret regenerated')
-}
-function testHook(w) {
-  toast.promise(store.testWebhook(w.id), {
-    loading: 'Sending test event…',
-    success: 'Test delivered — webhook is healthy again',
-    error: 'Test failed — the endpoint still isn’t responding',
-  })
-}
-function copy(text) {
-  navigator.clipboard?.writeText(text)
-  toast.success('Copied')
-}
-const keyOpen = ref(false)
-const keyName = ref('')
-function addKey() {
-  store.addAccountSshKey({ name: keyName.value.trim() })
-  toast.success('SSH key added')
-  keyOpen.value = false
-  keyName.value = ''
-}
-const hookOpen = ref(false)
-const hookUrl = ref('')
-const hookError = computed(() => validateUrl(hookUrl.value, { required: true }))
-function addHook() {
-  if (hookError.value) return
-  store.addWebhook({ url: hookUrl.value.trim() })
-  toast.success('Webhook added')
-  hookOpen.value = false
-  hookUrl.value = ''
-}
 </script>

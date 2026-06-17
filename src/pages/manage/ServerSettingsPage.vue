@@ -52,14 +52,10 @@
         <p v-else class="mt-2 text-sm text-ink-gray-5">No plan changes yet.</p>
       </div>
 
-      <p class="text-sm text-ink-gray-5">
-        SSH keys and API access are account-wide — manage them in
-        <RouterLink to="/settings" class="text-ink-gray-7 underline-offset-2 hover:underline">Settings → Developer</RouterLink>.
-      </p>
     </div>
 
     <!-- Firewall -->
-    <div v-else class="mt-5">
+    <div v-else-if="tab === 'firewall'" class="mt-5">
       <div class="flex items-center justify-between">
         <h2 class="text-base font-semibold text-ink-gray-8">Firewall</h2>
         <Button variant="subtle" size="sm" label="Add rule" icon-left="lucide-plus" @click="ruleOpen = true" />
@@ -76,6 +72,64 @@
         </div>
         <div v-if="!server.firewallRules.length" class="p-3 text-ink-gray-5">No rules — all inbound traffic is blocked.</div>
       </div>
+    </div>
+
+    <!-- Developer — API access, SSH keys & webhooks (account-wide) -->
+    <div v-else class="mt-5 space-y-5">
+      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-ink-gray-8">API access</h2>
+          <Button variant="subtle" size="sm" label="Regenerate" icon-left="lucide-refresh-cw" @click="regenerate" />
+        </div>
+        <div class="mt-3 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-2 px-3 py-2">
+          <code class="min-w-0 flex-1 truncate font-mono text-sm text-ink-gray-8">{{ store.apiKey }}</code>
+          <button class="text-ink-gray-5 hover:text-ink-gray-7" aria-label="Copy" @click="copy(store.apiKey)"><span class="lucide-copy size-4" /></button>
+        </div>
+      </section>
+
+      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-ink-gray-8">SSH keys</h2>
+          <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
+        </div>
+        <div v-if="store.accountSshKeys.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
+          <div v-for="k in store.accountSshKeys" :key="k.id" class="flex items-center gap-3 p-3">
+            <span class="lucide-key-round size-4 shrink-0 text-ink-gray-5" />
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-medium text-ink-gray-9">{{ k.name }}</div>
+              <div class="truncate font-mono text-xs text-ink-gray-5">{{ k.fingerprint }}</div>
+            </div>
+            <Button variant="ghost" size="sm" icon="lucide-trash-2" :aria-label="`Remove ${k.name}`" @click="store.removeAccountSshKey(k.id)" />
+          </div>
+        </div>
+        <EmptyState v-else class="mt-3" icon="lucide-key-round" title="No SSH keys yet" description="Add a public key to access your servers over SSH.">
+          <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
+        </EmptyState>
+      </section>
+
+      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-semibold text-ink-gray-8">Webhooks</h2>
+          <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />
+        </div>
+        <div v-if="store.webhooks.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
+          <div v-for="w in store.webhooks" :key="w.id" class="p-3">
+            <div class="flex items-center gap-3">
+              <span class="lucide-webhook size-4 shrink-0 text-ink-gray-5" />
+              <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ w.url }}</span>
+              <Badge :theme="w.status === 'failing' ? 'red' : 'green'" variant="subtle" :label="w.status === 'failing' ? 'Failing' : 'Active'" />
+              <Button v-if="w.status === 'failing'" variant="subtle" size="sm" label="Send test" @click="testHook(w)" />
+              <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="store.removeWebhook(w.id)" />
+            </div>
+            <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-xs text-ink-red-4">
+              <span class="lucide-triangle-alert size-3 shrink-0" /> {{ w.lastError }} — check the endpoint, then send a test.
+            </p>
+          </div>
+        </div>
+        <EmptyState v-else class="mt-3" icon="lucide-webhook" title="No webhooks yet" description="Add an endpoint to receive event notifications.">
+          <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />
+        </EmptyState>
+      </section>
     </div>
 
     <!-- Dialogs -->
@@ -120,6 +174,32 @@
     />
 
     <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
+
+    <Dialog v-model:open="keyOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add SSH key</span></template>
+      <FormControl v-model="keyName" type="text" label="Key name" placeholder="e.g. work-laptop" />
+      <template #actions>
+        <div class="flex justify-end gap-2"><Button label="Cancel" @click="keyOpen = false" /><Button variant="solid" label="Add key" :disabled="!keyName.trim()" @click="addKey" /></div>
+      </template>
+    </Dialog>
+
+    <Dialog v-model:open="hookOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add webhook</span></template>
+      <FormControl v-model="hookUrl" type="text" label="Endpoint URL" placeholder="https://example.com/hooks/fc" />
+      <p v-if="hookUrl && hookError" class="mt-1 text-xs text-ink-red-4">{{ hookError }}</p>
+      <template #actions>
+        <div class="flex justify-end gap-2"><Button label="Cancel" @click="hookOpen = false" /><Button variant="solid" label="Add webhook" :disabled="!!hookError" @click="addHook" /></div>
+      </template>
+    </Dialog>
+
+    <ConfirmDialog
+      v-model:open="regenOpen"
+      theme="red"
+      title="Regenerate the API secret?"
+      message="The current secret stops working immediately. Any script or integration using it will start failing until you update it with the new key."
+      confirm-label="Regenerate"
+      @confirm="confirmRegenerate"
+    />
   </ServerShell>
 </template>
 
@@ -129,11 +209,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, Dialog, FormControl, Switch, TabButtons, toast } from 'frappe-ui'
 import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import { versionById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 import { inr } from '../../utils/format'
-import { validatePort } from '../../utils/validate'
+import { validatePort, validateUrl } from '../../utils/validate'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -148,6 +229,7 @@ const crumbs = computed(() => [{ label: 'Settings' }])
 const tabs = [
   { label: 'General', value: 'general' },
   { label: 'Firewall', value: 'firewall' },
+  { label: 'Developer', value: 'developer' },
 ]
 const tab = ref('general')
 
@@ -208,5 +290,45 @@ function restart() {
     success: 'Server restarted',
     error: 'Restart failed',
   })
+}
+
+// ── Developer ─────────────────────────────────────────────────
+// Regenerating the key breaks every integration using the old one, so confirm.
+const regenOpen = ref(false)
+function regenerate() {
+  regenOpen.value = true
+}
+function confirmRegenerate() {
+  store.regenerateApiKey()
+  toast.success('API secret regenerated')
+}
+function testHook(w) {
+  toast.promise(store.testWebhook(w.id), {
+    loading: 'Sending test event…',
+    success: 'Test delivered — webhook is healthy again',
+    error: 'Test failed — the endpoint still isn’t responding',
+  })
+}
+function copy(text) {
+  navigator.clipboard?.writeText(text)
+  toast.success('Copied')
+}
+const keyOpen = ref(false)
+const keyName = ref('')
+function addKey() {
+  store.addAccountSshKey({ name: keyName.value.trim() })
+  toast.success('SSH key added')
+  keyOpen.value = false
+  keyName.value = ''
+}
+const hookOpen = ref(false)
+const hookUrl = ref('')
+const hookError = computed(() => validateUrl(hookUrl.value, { required: true }))
+function addHook() {
+  if (hookError.value) return
+  store.addWebhook({ url: hookUrl.value.trim() })
+  toast.success('Webhook added')
+  hookOpen.value = false
+  hookUrl.value = ''
 }
 </script>

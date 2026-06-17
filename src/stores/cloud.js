@@ -156,10 +156,14 @@ function baseState() {
       invoiceRecipient: '',
       invoiceLanguage: 'en',
     },
-    // Account-level developer credentials (Central → Settings → Developer).
+    // Account-level developer credentials (Server → Settings → Developer).
     apiKey: 'fc_live_8f2a91c4e7b0d35a',
     accountSshKeys: [],
     webhooks: [],
+    // Your unique referral code (Refer & Earn, in the profile modal).
+    referralCode: '917eaaa5',
+    // Linked Frappe Partner referral code, or '' when none.
+    partnerCode: '',
     creditExpired: false,
     // Edge mode — a single demo toggle that pushes the whole account onto the
     // unhappy path: every action fails (see `_work`) and the data overlay
@@ -522,6 +526,10 @@ export const useCloudStore = defineStore('cloud', {
     signUp(name, email) {
       this.user.name = name
       this.user.email = email
+    },
+
+    setPartnerCode(code) {
+      this.partnerCode = (code || '').trim()
     },
 
     setTeamSize(size) {

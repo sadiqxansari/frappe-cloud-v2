@@ -1,9 +1,10 @@
 <template>
-  <CentralShell :crumbs="[{ label: 'Billing', route: '/billing' }]" wide>
+  <CentralShell :crumbs="crumbs" wide>
     <div class="flex h-full overflow-hidden">
       <!-- Billing content — centered in whatever space the panel leaves it -->
       <div class="min-w-0 flex-1 overflow-y-auto">
         <div class="mx-auto max-w-3xl px-6 py-8">
+        <template v-if="view === 'overview'">
           <div>
             <h1 class="text-xl font-semibold text-ink-gray-9">Billing</h1>
             <p class="mt-1 text-base leading-6 text-ink-gray-5">One account funds every server.</p>
@@ -163,40 +164,6 @@
               </div>
             </section>
 
-            <!-- Invoices -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
-              <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-ink-gray-8">Invoices</h2>
-                <span class="text-xs text-ink-gray-5">Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }}</span>
-              </div>
-              <div v-if="store.invoices.length" class="mt-2 divide-y divide-outline-gray-1">
-                <button
-                  v-for="inv in visibleInvoices"
-                  :key="inv.number"
-                  class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
-                  :class="openPanel?.type === 'invoice' && openPanel.data.number === inv.number ? 'bg-surface-gray-2' : 'hover:bg-surface-gray-1'"
-                  @click="openPanel = { type: 'invoice', data: inv }"
-                >
-                  <div class="min-w-0">
-                    <div class="font-medium text-ink-gray-8">{{ inv.period }}</div>
-                    <div class="truncate text-p-sm" :class="inv.overdue ? 'text-ink-red-4' : 'text-ink-gray-5'">
-                      {{ inv.number }} · {{ inv.overdue ? `Due ${inv.dueDate}` : `Issued ${inv.issued}` }}
-                    </div>
-                  </div>
-                  <div class="flex shrink-0 items-center gap-3">
-                    <span class="tabular-nums text-ink-gray-8">{{ inr(total(inv)) }}</span>
-                    <Badge :theme="statusTheme(inv.status)" variant="subtle" :label="inv.status" />
-                    <span class="lucide-chevron-right size-4 text-ink-gray-4" />
-                  </div>
-                </button>
-                <!-- Only appears past the first 5 invoices. -->
-                <button v-if="store.invoices.length > 5" class="w-full rounded-lg py-2 text-center text-sm text-ink-gray-6 transition-colors hover:bg-surface-gray-1" @click="showAllInvoices = !showAllInvoices">
-                  {{ showAllInvoices ? 'Show less' : `Load ${store.invoices.length - 5} more` }}
-                </button>
-              </div>
-              <p v-else class="mt-2 text-sm text-ink-gray-5">No invoices yet.</p>
-            </section>
-
             <!-- Marketplace payouts — only relevant to app publishers, so it's
                  hidden unless there are earnings or a payout account set up. -->
             <section v-if="store.payoutBalance > 0 || store.payoutAccount" class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
@@ -218,22 +185,6 @@
               </p>
             </section>
 
-            <!-- Tax & compliance -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
-              <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-ink-gray-8">Tax &amp; compliance</h2>
-                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit tax & compliance" @click="openTax"><span class="lucide-pencil size-3.5" /></button>
-              </div>
-              <dl class="mt-3 space-y-1.5 text-p-sm">
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-3' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
-              </dl>
-              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3 transition-colors hover:text-ink-amber-4" @click="openTax">
-                <span class="lucide-triangle-alert size-3 shrink-0" />
-                Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
-              </button>
-            </section>
-
             <!-- Contact & address -->
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
               <div class="flex items-center justify-between">
@@ -249,6 +200,22 @@
               <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-3 transition-colors hover:text-ink-red-4" @click="openDetails">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
                 Invoices are bouncing back — update your billing email.
+              </button>
+            </section>
+
+            <!-- Tax & compliance -->
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-base font-semibold text-ink-gray-8">Tax &amp; compliance</h2>
+                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit tax & compliance" @click="openTax"><span class="lucide-pencil size-3.5" /></button>
+              </div>
+              <dl class="mt-3 space-y-1.5 text-p-sm">
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-3' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
+              </dl>
+              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3 transition-colors hover:text-ink-amber-4" @click="openTax">
+                <span class="lucide-triangle-alert size-3 shrink-0" />
+                Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
               </button>
             </section>
 
@@ -272,6 +239,38 @@
               </div>
             </section>
           </div>
+        </template>
+
+        <!-- ── Invoices ─────────────────────────────────────────── -->
+        <template v-else>
+          <div>
+            <h1 class="text-xl font-semibold text-ink-gray-9">Invoices</h1>
+            <p class="mt-1 text-base leading-6 text-ink-gray-5">Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }}</p>
+          </div>
+
+          <div v-if="store.invoices.length" class="mt-5 divide-y divide-outline-gray-1">
+            <button
+              v-for="inv in store.invoices"
+              :key="inv.number"
+              class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
+              :class="openPanel?.type === 'invoice' && openPanel.data.number === inv.number ? 'bg-surface-gray-2' : 'hover:bg-surface-gray-1'"
+              @click="openPanel = { type: 'invoice', data: inv }"
+            >
+              <div class="min-w-0">
+                <div class="font-medium text-ink-gray-8">{{ inv.period }}</div>
+                <div class="truncate text-p-sm" :class="inv.overdue ? 'text-ink-red-4' : 'text-ink-gray-5'">
+                  {{ inv.number }} · {{ inv.overdue ? `Due ${inv.dueDate}` : `Issued ${inv.issued}` }}
+                </div>
+              </div>
+              <div class="flex shrink-0 items-center gap-3">
+                <span class="tabular-nums text-ink-gray-8">{{ inr(total(inv)) }}</span>
+                <Badge :theme="statusTheme(inv.status)" variant="subtle" :label="inv.status" />
+                <span class="lucide-chevron-right size-4 text-ink-gray-4" />
+              </div>
+            </button>
+          </div>
+          <p v-else class="mt-5 text-sm text-ink-gray-5">No invoices yet.</p>
+        </template>
         </div>
       </div>
 
@@ -520,7 +519,7 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
@@ -531,7 +530,16 @@ import { inr, usd } from '../../utils/format'
 import { validateEmail, validateTaxId } from '../../utils/validate'
 
 const store = useCloudStore()
+const route = useRoute()
 const router = useRouter()
+
+// One component serves both billing routes; the path picks the view.
+const view = computed(() => (route.path === '/billing/invoices' ? 'invoices' : 'overview'))
+const crumbs = computed(() =>
+  view.value === 'invoices'
+    ? [{ label: 'Billing', route: '/billing' }, { label: 'Invoices' }]
+    : [{ label: 'Billing', route: '/billing' }],
+)
 
 // — Problem states (mostly surfaced by Edge mode, but real once the API is live)
 const overdueInvoice = computed(() => store.invoices.find((i) => i.overdue || i.status === 'Unpaid') || null)
@@ -607,10 +615,6 @@ const billingDueDate = computed(() => {
   return new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 })
 const deltaUp = computed(() => store.estimateDeltaPct > 0)
-
-// — Invoices: show the 5 most recent; "Load more" reveals the rest.
-const showAllInvoices = ref(false)
-const visibleInvoices = computed(() => (showAllInvoices.value ? store.invoices : store.invoices.slice(0, 5)))
 
 // — Invoice maths
 const GST_RATE = 0.18

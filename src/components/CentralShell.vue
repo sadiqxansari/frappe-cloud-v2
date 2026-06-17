@@ -4,42 +4,93 @@
       class="relative flex shrink-0 flex-col border-r border-outline-gray-1 bg-surface-menu-bar p-2 transition-all duration-300 ease-in-out"
       :class="collapsed ? 'w-14' : 'w-60'"
     >
-      <!-- Brand — Frappe Cloud (Central) -->
-      <RouterLink
-        to="/servers"
-        class="mb-2 flex h-10 shrink-0 items-center gap-2 rounded-lg px-1.5 hover:bg-surface-gray-2"
-      >
-        <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0 rounded-md" />
-        <span v-if="!collapsed" class="truncate text-base font-semibold text-ink-gray-9">Frappe Cloud</span>
-      </RouterLink>
-
-      <!-- Team switcher (issue #7) -->
-      <Dropdown :options="teamOptions" placement="bottom-start">
+      <!-- Brand — Frappe Cloud, with the current team as subtext. The dropdown
+           holds account-level switches (change team, theme). -->
+      <Dropdown :options="brandOptions" placement="bottom-start">
         <button
-          class="mb-3 flex w-full shrink-0 items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-surface-gray-2"
-          :title="collapsed ? store.team.name : undefined"
+          class="mb-3 flex h-12 w-full shrink-0 items-center gap-2 rounded-lg px-1.5 hover:bg-surface-gray-2"
+          :title="collapsed ? `Frappe Cloud · ${store.team.name}` : undefined"
         >
-          <img v-if="store.team.avatar" :src="store.team.avatar" class="size-6 shrink-0 rounded-md object-cover" />
-          <span v-else class="grid size-6 shrink-0 place-items-center rounded-md bg-surface-gray-3 text-xs font-semibold text-ink-gray-7">{{ teamInitial }}</span>
+          <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0 rounded-md" />
           <template v-if="!collapsed">
-            <span class="min-w-0 flex-1 truncate text-left text-sm font-medium text-ink-gray-8">{{ store.team.name }}</span>
+            <span class="min-w-0 flex-1 text-left">
+              <span class="block truncate text-sm font-semibold leading-tight text-ink-gray-9">Frappe Cloud</span>
+              <span class="block truncate text-xs leading-tight text-ink-gray-5">{{ store.team.name }}</span>
+            </span>
             <span class="lucide-chevrons-up-down size-3.5 shrink-0 text-ink-gray-5" />
           </template>
         </button>
       </Dropdown>
 
-      <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
-        <button
-          v-for="item in items"
-          :key="item.label"
-          class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
-          :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-          :title="collapsed ? item.label : undefined"
-          @click="router.push(item.to)"
-        >
-          <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
-          <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
-        </button>
+      <nav class="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        <!-- Search + notifications sit together as a tight utility group.
+             Placeholders for now — not wired up yet. -->
+        <div class="flex flex-col gap-0.5">
+          <button
+            v-for="u in utilityItems"
+            :key="u.label"
+            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
+            :title="collapsed ? u.label : undefined"
+          >
+            <span class="size-4 shrink-0 text-ink-gray-6" :class="u.icon" />
+            <span v-if="!collapsed" class="truncate">{{ u.label }}</span>
+          </button>
+        </div>
+
+        <!-- Gap, then the primary navigation -->
+        <div class="my-2 h-px shrink-0 bg-outline-gray-1" />
+
+        <div class="flex flex-col gap-0.5">
+          <template v-for="item in items" :key="item.label">
+            <!-- Simple nav item -->
+            <button
+              v-if="!item.children"
+              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+              :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+              :title="collapsed ? item.label : undefined"
+              @click="router.push(item.to)"
+            >
+              <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
+              <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
+            </button>
+
+            <!-- Collapsible group (e.g. Billing) -->
+            <template v-else-if="!collapsed">
+              <button
+                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+                :class="item.active ? 'text-ink-gray-9' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+                @click="toggleGroup(item.label)"
+              >
+                <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
+                <span class="flex-1 truncate">{{ item.label }}</span>
+                <span class="lucide-chevron-down size-3.5 shrink-0 text-ink-gray-5 transition-transform" :class="isGroupOpen(item) && 'rotate-180'" />
+              </button>
+              <div v-if="isGroupOpen(item)" class="ml-3 flex flex-col gap-0.5 border-l border-outline-gray-2 pl-2">
+                <button
+                  v-for="c in item.children"
+                  :key="c.label"
+                  class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+                  :class="c.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+                  @click="router.push(c.to)"
+                >
+                  <span class="size-4 shrink-0 text-ink-gray-6" :class="c.icon" />
+                  <span class="truncate">{{ c.label }}</span>
+                </button>
+              </div>
+            </template>
+
+            <!-- Collapsed rail: jump to the group's first child -->
+            <button
+              v-else
+              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
+              :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+              :title="item.label"
+              @click="router.push(item.children[0].to)"
+            >
+              <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
+            </button>
+          </template>
+        </div>
       </nav>
 
       <!-- Explicit, remembered collapse toggle (issue #3) -->
@@ -102,6 +153,29 @@
       </main>
     </div>
 
+    <ProfileDialog v-model:open="profileOpen" />
+
+    <!-- Switch team -->
+    <Dialog v-model:open="switchTeamOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Switch team</span></template>
+      <div class="space-y-1">
+        <button
+          v-for="t in store.teams"
+          :key="t.id"
+          class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-surface-gray-2"
+          @click="chooseTeam(t)"
+        >
+          <img v-if="t.avatar" :src="t.avatar" class="size-7 shrink-0 rounded-md object-cover" />
+          <span v-else class="grid size-7 shrink-0 place-items-center rounded-md bg-surface-gray-3 text-xs font-semibold text-ink-gray-7">{{ t.name[0].toUpperCase() }}</span>
+          <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink-gray-8">{{ t.name }}</span>
+          <span v-if="t.id === store.currentTeamId" class="lucide-check size-4 shrink-0 text-ink-gray-6" />
+        </button>
+      </div>
+      <template #actions>
+        <Button class="w-full" variant="subtle" label="Create team" icon-left="lucide-plus" @click="openCreateTeam" />
+      </template>
+    </Dialog>
+
     <!-- Create team -->
     <Dialog v-model:open="createTeamOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Create a team</span></template>
@@ -122,6 +196,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, toast } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
+import ProfileDialog from './ProfileDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -149,13 +224,51 @@ onMounted(() => {
   store.currentServerId = null
 })
 
+// Search + notifications — placeholders, not functional yet.
+const utilityItems = [
+  { label: 'Search', icon: 'lucide-search' },
+  { label: 'Notifications', icon: 'lucide-bell' },
+]
+
+const billingActive = computed(() => route.path.startsWith('/billing'))
 const items = computed(() => [
   { label: 'Servers', icon: 'lucide-server', to: '/servers', active: route.path === '/servers' || route.path.startsWith('/servers/') },
-  { label: 'Billing', icon: 'lucide-wallet', to: '/billing', active: route.path === '/billing' },
-  { label: 'Settings', icon: 'lucide-settings', to: '/settings', active: route.path.startsWith('/settings') },
+  {
+    label: 'Billing',
+    icon: 'lucide-wallet',
+    active: billingActive.value,
+    children: [
+      { label: 'Overview', icon: 'lucide-layout-dashboard', to: '/billing', active: route.path === '/billing' },
+      { label: 'Invoices', icon: 'lucide-receipt', to: '/billing/invoices', active: route.path === '/billing/invoices' },
+    ],
+  },
+  { label: 'Team & Permissions', icon: 'lucide-users', to: '/settings', active: route.path.startsWith('/settings') },
 ])
 
+// A collapsible group auto-opens when you're on one of its routes; `openGroups`
+// remembers explicit toggles and overrides that default.
+const openGroups = ref({})
+function isGroupOpen(item) {
+  return openGroups.value[item.label] ?? item.active
+}
+function toggleGroup(label) {
+  const item = items.value.find((i) => i.label === label)
+  openGroups.value[label] = !isGroupOpen(item)
+}
+
+// Brand dropdown — account-level switches that used to be a standalone team selector.
+const brandOptions = computed(() => [
+  { label: 'Change team', icon: 'lucide-arrow-left-right', onClick: () => { switchTeamOpen.value = true } },
+  { label: 'Toggle dark mode', icon: 'lucide-moon', onClick: () => toast('Dark mode is coming soon') },
+])
+
+const profileOpen = ref(false)
 const userOptions = computed(() => [
+  {
+    label: 'Profile',
+    icon: 'lucide-circle-user',
+    onClick: () => { profileOpen.value = true },
+  },
   {
     label: 'Sign out',
     icon: 'lucide-log-out',
@@ -167,23 +280,22 @@ const userOptions = computed(() => [
 ])
 
 // — Team switcher
-const teamInitial = computed(() => (store.team?.name || 'T')[0].toUpperCase())
-const teamOptions = computed(() => [
-  ...store.teams.map((t) => ({
-    label: t.name,
-    icon: t.id === store.currentTeamId ? 'lucide-check' : 'lucide-users',
-    onClick: () => {
-      if (t.id === store.currentTeamId) return
-      store.switchTeam(t.id)
-      toast.success(`Switched to ${t.name}`)
-      router.push('/servers')
-    },
-  })),
-  { label: 'Create team', icon: 'lucide-plus', onClick: () => { newTeamName.value = ''; createTeamOpen.value = true } },
-])
+const switchTeamOpen = ref(false)
+function chooseTeam(t) {
+  switchTeamOpen.value = false
+  if (t.id === store.currentTeamId) return
+  store.switchTeam(t.id)
+  toast.success(`Switched to ${t.name}`)
+  router.push('/servers')
+}
 
 const createTeamOpen = ref(false)
 const newTeamName = ref('')
+function openCreateTeam() {
+  switchTeamOpen.value = false
+  newTeamName.value = ''
+  createTeamOpen.value = true
+}
 function doCreateTeam() {
   const t = store.createTeam(newTeamName.value)
   createTeamOpen.value = false
