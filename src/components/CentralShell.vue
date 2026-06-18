@@ -26,15 +26,14 @@
         <!-- Search + notifications sit together as a tight utility group.
              Placeholders for now — not wired up yet. -->
         <div class="flex flex-col gap-0.5">
-          <button
-            v-for="u in utilityItems"
-            :key="u.label"
-            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
-            :title="collapsed ? u.label : undefined"
-          >
-            <span class="size-4 shrink-0 text-ink-gray-6" :class="u.icon" />
-            <span v-if="!collapsed" class="truncate">{{ u.label }}</span>
-          </button>
+          <Tooltip v-for="u in utilityItems" :key="u.label" :text="collapsed ? u.label : ''" placement="right" :hover-delay="0">
+            <button
+              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
+            >
+              <span class="size-4 shrink-0 text-ink-gray-6" :class="u.icon" />
+              <span v-if="!collapsed" class="truncate">{{ u.label }}</span>
+            </button>
+          </Tooltip>
         </div>
 
         <!-- Gap, then the primary navigation -->
@@ -43,16 +42,16 @@
         <div class="flex flex-col gap-0.5">
           <template v-for="item in items" :key="item.label">
             <!-- Simple nav item -->
-            <button
-              v-if="!item.children"
-              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
-              :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-              :title="collapsed ? item.label : undefined"
-              @click="router.push(item.to)"
-            >
-              <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
-              <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
-            </button>
+            <Tooltip v-if="!item.children" :text="collapsed ? item.label : ''" placement="right" :hover-delay="0">
+              <button
+                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+                :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+                @click="router.push(item.to)"
+              >
+                <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
+                <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
+              </button>
+            </Tooltip>
 
             <!-- Collapsible group (e.g. Billing) -->
             <template v-else-if="!collapsed">
@@ -79,16 +78,23 @@
               </div>
             </template>
 
-            <!-- Collapsed rail: jump to the group's first child -->
-            <button
+            <!-- Collapsed rail: one icon per child (issue #21) -->
+            <Tooltip
               v-else
-              class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
-              :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-              :title="item.label"
-              @click="router.push(item.children[0].to)"
+              v-for="c in item.children"
+              :key="c.label"
+              :text="c.label"
+              placement="right"
+              :hover-delay="0"
             >
-              <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
-            </button>
+              <button
+                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
+                :class="c.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+                @click="router.push(c.to)"
+              >
+                <span class="size-4 shrink-0 text-ink-gray-6" :class="c.icon" />
+              </button>
+            </Tooltip>
           </template>
         </div>
       </nav>
@@ -194,7 +200,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, toast } from 'frappe-ui'
+import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
 import ProfileDialog from './ProfileDialog.vue'
 import { useCloudStore } from '../stores/cloud'

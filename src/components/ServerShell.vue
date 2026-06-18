@@ -21,17 +21,16 @@
       </Dropdown>
 
       <nav class="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
-        <button
-          v-for="item in items"
-          :key="item.label"
-          class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
-          :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-          :title="collapsed ? item.label : undefined"
-          @click="router.push(item.to)"
-        >
-          <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
-          <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
-        </button>
+        <Tooltip v-for="item in items" :key="item.label" :text="collapsed ? item.label : ''" placement="right" :hover-delay="0">
+          <button
+            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+            :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+            @click="router.push(item.to)"
+          >
+            <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
+            <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
+          </button>
+        </Tooltip>
 
         <!-- Dev tools — a collapsible group, closed by default -->
         <template v-if="!collapsed">
@@ -57,15 +56,23 @@
             </button>
           </div>
         </template>
-        <button
+        <!-- Collapsed rail: one icon per dev item (issue #21) -->
+        <Tooltip
           v-else
-          class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
-          :class="devActive ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-          title="Dev tools"
-          @click="router.push(devItems[0].to)"
+          v-for="d in devItems"
+          :key="d.label"
+          :text="d.label"
+          placement="right"
+          :hover-delay="0"
         >
-          <span class="lucide-terminal size-4 shrink-0 text-ink-gray-6" />
-        </button>
+          <button
+            class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
+            :class="d.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+            @click="router.push(d.to)"
+          >
+            <span class="size-4 shrink-0 text-ink-gray-6" :class="d.icon" />
+          </button>
+        </Tooltip>
       </nav>
 
       <!-- Explicit, remembered collapse toggle (issue #3) -->
@@ -135,7 +142,7 @@
 <script setup>
 import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Breadcrumbs, Button, Dropdown } from 'frappe-ui'
+import { Avatar, Breadcrumbs, Button, Dropdown, Tooltip } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
 import ProfileDialog from './ProfileDialog.vue'
 import { useCloudStore } from '../stores/cloud'
