@@ -246,6 +246,7 @@ const items = computed(() => [
     children: [
       { label: 'Overview', icon: 'lucide-layout-dashboard', to: '/billing', active: route.path === '/billing' },
       { label: 'Invoices', icon: 'lucide-receipt', to: '/billing/invoices', active: route.path === '/billing/invoices' },
+      { label: 'Limit Tiers', icon: 'lucide-layers', to: '/billing/limit-tiers', active: route.path === '/billing/limit-tiers' },
     ],
   },
   { label: 'Team & Permissions', icon: 'lucide-users', to: '/settings', active: route.path.startsWith('/settings') },

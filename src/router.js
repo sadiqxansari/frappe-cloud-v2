@@ -14,6 +14,7 @@ const routes = [
   { path: '/servers/new', name: 'new-server', component: () => import('./pages/manage/NewServerPage.vue') },
   { path: '/billing', name: 'billing', component: () => import('./pages/manage/CentralBillingPage.vue') },
   { path: '/billing/invoices', name: 'billing-invoices', component: () => import('./pages/manage/CentralBillingPage.vue') },
+  { path: '/billing/limit-tiers', name: 'billing-limit-tiers', component: () => import('./pages/manage/LimitTiersPage.vue') },
   { path: '/settings', name: 'central-settings', component: () => import('./pages/manage/CentralSettingsPage.vue') },
   { path: '/users', redirect: '/settings' },
   // Server (operational) level. Marketplace lives here, scoped to the server.
