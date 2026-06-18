@@ -36,12 +36,6 @@
           </div>
         </div>
 
-        <!-- Progress % -->
-        <div class="mt-6">
-          <span class="text-5xl font-bold tabular-nums text-ink-gray-9">{{ progressPct }}%</span>
-          <span class="ml-2 text-sm text-ink-gray-5">complete</span>
-        </div>
-
         <!-- Connected stepper -->
         <ol class="mt-6 space-y-0">
           <li
@@ -58,8 +52,9 @@
               class="relative z-10 grid size-5 shrink-0 place-items-center rounded-full text-xs font-semibold transition-colors duration-300"
               :class="stepCircleClass(i)"
             >
+              <span v-if="completedSteps > i" class="lucide-check size-3" />
               <span
-                v-if="completedSteps === i"
+                v-else-if="completedSteps === i"
                 class="size-2.5 animate-spin rounded-full border-2 border-current border-t-transparent"
               />
               <template v-else>{{ i + 1 }}</template>
@@ -212,6 +207,7 @@ watch(
   () => server.value?.status,
   (status, prev) => {
     if (prev === 'migrating' && status === 'active' && server.value) {
+      toast.success('Server plan changed')
       router.push(`/manage/${server.value.id}`)
     }
   },
