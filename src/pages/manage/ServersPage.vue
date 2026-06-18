@@ -74,14 +74,43 @@
               <span class="truncate text-sm text-ink-gray-8">{{ city(srv) }}</span>
             </button>
 
-            <div>
-              <span class="inline-flex items-center gap-1.5 text-sm text-ink-gray-7">
-                <span class="size-1.5 rounded-full" :class="dotClass(srv)" />{{ statusLabel(srv) }}
-              </span>
+            <div class="flex items-center gap-1.5">
+              <!-- Migrating: clickable badge -->
+              <template v-if="srv.status === 'migrating'">
+                <button type="button" class="cursor-pointer" @click="openMigration(srv)">
+                  <Badge theme="blue" variant="subtle" size="sm">
+                    <template #prefix><Spinner class="size-3 shrink-0" /></template>
+                    Migrating…
+                  </Badge>
+                </button>
+              </template>
+              <!-- Scheduled: active dot + clickable badge -->
+              <template v-else-if="srv.status === 'migration-scheduled'">
+                <span class="inline-flex items-center gap-1.5 text-sm text-ink-gray-7">
+                  <span class="size-1.5 rounded-full bg-[var(--ink-green-3)]" />Active
+                </span>
+                <button type="button" class="cursor-pointer" @click="scheduledServer = srv; scheduledModalOpen = true">
+                  <Badge label="Scheduled" theme="blue" variant="subtle" size="sm" />
+                </button>
+              </template>
+              <!-- Normal statuses -->
+              <template v-else-if="srv.status === 'broken'">
+                <Badge theme="red" variant="subtle" size="sm">
+                  <template #prefix><span class="block size-1.5 rounded-full bg-[var(--ink-red-3)]" /></template>
+                  Broken
+                </Badge>
+              </template>
+              <template v-else>
+                <span class="inline-flex items-center gap-1.5 text-sm text-ink-gray-7">
+                  <span class="size-1.5 rounded-full" :class="dotClass(srv)" />{{ statusLabel(srv) }}
+                </span>
+              </template>
             </div>
 
             <ServerActions :server="srv" />
           </div>
+
+          <MigrationScheduledModal v-model:open="scheduledModalOpen" :server="scheduledServer" />
 
           <EmptyState
             v-if="!filtered.length"
@@ -101,9 +130,10 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Dropdown, FormControl, toast } from 'frappe-ui'
+import { Badge, Button, Dropdown, FormControl, Spinner, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
+import MigrationScheduledModal from '../../components/MigrationScheduledModal.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import { PROVIDERS, providerById } from '../../data/catalog'
@@ -118,6 +148,8 @@ const providerFilter = ref('')
 const statusFilter = ref('')
 const hoverId = ref(null)
 const scale = ref(1)
+const scheduledModalOpen = ref(false)
+const scheduledServer = ref(null)
 
 const providerOptions = [
   { label: 'All providers', value: '' },
@@ -129,6 +161,7 @@ const statusOptions = [
   { label: 'Broken', value: 'broken' },
   { label: 'Suspended', value: 'suspended' },
   { label: 'Setting up', value: 'provisioning' },
+  { label: 'Migrating', value: 'migrating' },
 ]
 const viewOptions = [
   { label: 'Refresh', icon: 'lucide-refresh-cw', onClick: () => toast.success('Refreshed') },
@@ -163,6 +196,10 @@ const mapPins = computed(() =>
 function goServer(id) {
   window.open(`/manage/${id}`, '_blank', 'noopener')
 }
+function openMigration(srv) {
+  const { toRegionId, toPlanId } = srv.migration || {}
+  window.open(`/migration/${srv.id}?to=${toRegionId}&plan=${toPlanId}`, '_blank', 'noopener')
+}
 function zoom(delta) {
   scale.value = Math.min(2.4, Math.max(1, Math.round((scale.value + delta) * 10) / 10))
 }
@@ -173,6 +210,6 @@ function dotClass(srv) {
   return 'bg-[var(--ink-green-3)]'
 }
 function statusLabel(srv) {
-  return { active: 'Active', provisioning: 'Setting up…', suspended: 'Suspended', broken: 'Broken' }[srv.status] || srv.status
+  return { active: 'Active', provisioning: 'Setting up…', suspended: 'Suspended', broken: 'Broken', migrating: 'Migrating…', 'migration-scheduled': 'Active' }[srv.status] || srv.status
 }
 </script>

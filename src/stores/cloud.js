@@ -9,6 +9,13 @@ import { fmtDateTime, slugify } from '../utils/format'
 let n = 1000
 const uid = (prefix) => `${prefix}-${n++}`
 
+// Migration progress is simulated on a wall-clock: each of the 3 steps takes
+// MIGRATION_STEP_MS, and completedSteps is derived from elapsed time rather
+// than a chain of setTimeouts. This survives background-tab throttling and a
+// page refresh (startedAt persists; on reload we recompute and catch up).
+const MIGRATION_STEP_MS = 8000
+const MIGRATION_TOTAL_STEPS = 3
+
 // Sidebar collapse is one account-wide preference, remembered across pages and
 // reloads (issue #3) — never derived per-page. Defaults to expanded when unset.
 function sidebarPref() {
@@ -224,9 +231,9 @@ function grownState() {
   const usServer = makeServer({
     name: 'atlas-us-01',
     regionId: 'do-nyc',
-    planId: 'growth',
-    creditBalance: 38,
-    creditTotal: 50,
+    planId: 'starter',
+    creditBalance: 25,
+    creditTotal: 25,
     sites: [makeSite('US Marketing', ['erpnext'])],
     health: { cpuPct: 18, memUsedGb: 1.1, memTotalGb: 3.0, diskFrac: 0.16 },
     planHistory: [
@@ -852,49 +859,169 @@ export const useCloudStore = defineStore('cloud', {
       }, 1400)
     },
 
-    // Changing region (or provider) can't be done in place — a server lives in
-    // one cluster. So we migrate: stand up a matching server in the new region,
-    // move every site across (addresses unchanged), and retire the old one.
-    // Same provider or different, it's the same primitive. Returns the new
-    // server so the caller can navigate to it.
-    migrateServer(serverId, { planId, regionId }) {
+    // Migration is in-place — the same server entry changes status rather than
+    // spawning a second one. `scheduledAt` (ISO string) defers the actual move.
+    migrateServer(serverId, { planId, regionId, scheduledAt } = {}) {
       const srv = this.findServer(serverId)
-      if (!srv) return null
-      const fromRegion = regionById(srv.regionId)
-      const toRegion = regionById(regionId)
-      const target = makeServer({
-        name: srv.name,
-        planId: planId || srv.planId,
-        regionId,
-        version: srv.version,
-        status: 'provisioning',
-        // Carry the sites over as "moving" — same transient as a site move.
-        sites: srv.sites.map((s) => ({ ...s, status: 'moving' })),
-        planHistory: [...srv.planHistory],
-      })
-      // The old server hands its sites over and is removed once the new one is up.
-      srv.sites = []
-      this.servers.push(target)
-      if (this.currentServerId === serverId) this.currentServerId = target.id
+      if (!srv) return
+      // Clear any live timer before replacing the migration. A _tick/_schedule
+      // restored from localStorage is just a stale number from a previous page
+      // load, so clearing it here is a harmless no-op in this context.
+      this._clearMigrationTimers(srv)
+      srv.migration = {
+        fromRegionId: srv.regionId,
+        fromPlanId: srv.planId,
+        toRegionId: regionId,
+        toPlanId: planId || srv.planId,
+        scheduledAt: scheduledAt || null,
+        completedSteps: 0,
+        paused: false,
+        startedAt: null, // set when the move actually begins (after any schedule)
+        elapsedBeforePause: 0, // banked run time, so pause/resume stays accurate
+        _tick: null, // setInterval id (transient; recreated, never trusted from storage)
+        _schedule: null, // setTimeout id for a deferred (scheduled) start
+        _actId: null,
+      }
+      if (scheduledAt) {
+        srv.status = 'migration-scheduled'
+        // Demo: treat the scheduled time as at most 8 s away so reviewers
+        // can observe the flow without waiting for a real future timestamp.
+        const msUntil = Math.min(Math.max(new Date(scheduledAt) - Date.now(), 1000), 8000)
+        srv.migration._schedule = setTimeout(() => this._runMigration(serverId), msUntil)
+      } else {
+        this._runMigration(serverId)
+      }
+    },
+
+    _runMigration(serverId) {
+      const srv = this.findServer(serverId)
+      if (!srv?.migration) return
+      srv.status = 'migrating'
+      srv.sites.forEach((s) => { s.status = 'moving' })
+      const fromRegion = regionById(srv.migration.fromRegionId)
+      const toRegion = regionById(srv.migration.toRegionId)
       const actId = this.logActivity(
-        `Migrating ${target.name} from ${fromRegion.name} to ${toRegion.name}`,
+        `Migrating ${srv.name} from ${fromRegion.name} to ${toRegion.name}`,
         { tag: 'server', status: 'running' },
       )
-      setTimeout(() => {
-        const live = this.findServer(target.id)
-        if (live) {
-          live.status = 'active'
-          live.sites.forEach((s) => { if (s.status === 'moving') s.status = 'live' })
+      srv.migration._actId = actId
+      srv.migration.startedAt = Date.now()
+      srv.migration.elapsedBeforePause = 0
+      this._startMigrationTick(serverId)
+    },
+
+    _clearMigrationTimers(srv) {
+      const mig = srv?.migration
+      if (!mig) return
+      if (mig._tick) clearInterval(mig._tick)
+      if (mig._schedule) clearTimeout(mig._schedule)
+      mig._tick = null
+      mig._schedule = null
+    },
+
+    // Drive progress from a single 1 s interval that recomputes from the clock.
+    // Resilient to throttling/refresh because the source of truth is elapsed
+    // time, not the number of times a callback happened to fire.
+    _startMigrationTick(serverId) {
+      const srv = this.findServer(serverId)
+      if (!srv?.migration || srv.migration.paused) return
+      this._clearMigrationTimers(srv)
+      this.syncMigration(serverId) // catch up immediately (may finalize)
+      if (!srv.migration) return // syncMigration completed it
+      srv.migration._tick = setInterval(() => this.syncMigration(serverId), 1000)
+    },
+
+    // Recompute completedSteps from wall-clock elapsed time and finalize when
+    // the full duration has passed. Safe to call any time (tick, focus, reload).
+    syncMigration(serverId) {
+      const srv = this.findServer(serverId)
+      const mig = srv?.migration
+      if (!mig || !mig.startedAt) return
+      const elapsed = mig.elapsedBeforePause + (mig.paused ? 0 : Date.now() - mig.startedAt)
+      const steps = Math.max(0, Math.min(MIGRATION_TOTAL_STEPS, Math.floor(elapsed / MIGRATION_STEP_MS)))
+      if (steps !== mig.completedSteps) mig.completedSteps = steps
+      if (steps >= MIGRATION_TOTAL_STEPS) {
+        this._clearMigrationTimers(srv)
+        this._completeMigration(serverId)
+      }
+    },
+
+    // After a refresh the store is restored from localStorage but live timers
+    // are not — re-arm any in-flight or scheduled migration from persisted state.
+    resumeMigrations() {
+      this.allServers.forEach((srv) => {
+        const mig = srv.migration
+        if (!mig) return
+        mig._tick = null
+        mig._schedule = null
+        if (srv.status === 'migrating' && mig.startedAt) {
+          this._startMigrationTick(srv.id)
+        } else if (srv.status === 'migration-scheduled' && mig.scheduledAt) {
+          const msUntil = Math.min(Math.max(new Date(mig.scheduledAt) - Date.now(), 1000), 8000)
+          mig._schedule = setTimeout(() => this._runMigration(srv.id), msUntil)
         }
-        // Retire the emptied original.
-        const i = this.servers.findIndex((s) => s.id === serverId)
-        if (i !== -1) this.servers.splice(i, 1)
-        this.flipActivity(actId, {
-          title: `Migrated ${target.name} to ${toRegion.name}`,
-          detail: `Now running in ${toRegion.name} (${toRegion.provider}). Site addresses didn't change — visitors never noticed.`,
+      })
+    },
+
+    _completeMigration(serverId) {
+      const srv = this.findServer(serverId)
+      if (!srv?.migration) return
+      const toRegion = regionById(srv.migration.toRegionId)
+      const toPlanId = srv.migration.toPlanId
+      const fromPlanId = srv.migration.fromPlanId
+      const actId = srv.migration._actId
+      srv.regionId = srv.migration.toRegionId
+      srv.planId = toPlanId
+      srv.sites.forEach((s) => { if (s.status === 'moving') s.status = 'live' })
+      if (toPlanId !== fromPlanId) {
+        const fromPlan = planById(fromPlanId)
+        const toPlan = planById(toPlanId)
+        const direction = toPlan.priceMonthly >= fromPlan.priceMonthly ? 'upgrade' : 'downgrade'
+        srv.planHistory.unshift({
+          id: uid('ph'),
+          date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          from: fromPlan.name,
+          to: toPlan.name,
+          direction,
         })
-      }, 5000)
-      return target
+      }
+      srv.migration = null
+      srv.status = 'active'
+      if (actId) {
+        this.flipActivity(actId, {
+          title: `Migrated ${srv.name} to ${toRegion.name}`,
+          detail: `Now running in ${toRegion.name} (${toRegion.provider}). Site URLs didn't change — visitors never noticed.`,
+        })
+      }
+    },
+
+    pauseMigration(serverId) {
+      const srv = this.findServer(serverId)
+      const mig = srv?.migration
+      if (!mig || mig.paused) return
+      // Bank the run time accumulated so far, then stop the clock.
+      if (mig.startedAt) mig.elapsedBeforePause += Date.now() - mig.startedAt
+      mig.paused = true
+      this._clearMigrationTimers(srv)
+    },
+
+    resumeMigration(serverId) {
+      const srv = this.findServer(serverId)
+      const mig = srv?.migration
+      if (!mig || !mig.paused) return
+      mig.paused = false
+      mig.startedAt = Date.now() // elapsedBeforePause already holds the banked time
+      this._startMigrationTick(serverId)
+    },
+
+    cancelMigration(serverId) {
+      const srv = this.findServer(serverId)
+      if (!srv) return
+      this._clearMigrationTimers(srv)
+      srv.migration = null
+      srv.status = 'active'
+      srv.sites.forEach((s) => { if (s.status === 'moving') s.status = 'live' })
+      this.logActivity(`Cancelled migration for ${srv.name}`, { tag: 'server' })
     },
 
     renameServer(serverId, name) {

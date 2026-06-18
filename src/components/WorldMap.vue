@@ -4,7 +4,25 @@
       <!-- Dots + pins share one zoomable group so pins always track the dots.
            The dotted asset is embedded as an <image>. -->
       <g :style="zoomStyle">
-        <image :href="dottedMap" x="0" y="0" width="879" height="443" preserveAspectRatio="none" />
+        <image :href="dark ? darkMap : lightMap" x="0" y="0" width="879" height="443" preserveAspectRatio="none" />
+
+        <!-- Connection lines between pins: dotted base + animated progress overlay. -->
+        <g v-for="(c, i) in projectedConnections" :key="i">
+          <line
+            :x1="c.x1" :y1="c.y1" :x2="c.x2" :y2="c.y2"
+            stroke="var(--ink-gray-6)" stroke-width="1.5"
+            stroke-dasharray="6 5" opacity="0.9"
+            vector-effect="non-scaling-stroke"
+          />
+          <line
+            :x1="c.x1" :y1="c.y1" :x2="c.x2" :y2="c.y2"
+            :stroke="c.lineColor"
+            stroke-width="2.5"
+            :stroke-dasharray="`${c.filled} ${c.len}`"
+            vector-effect="non-scaling-stroke"
+            class="wm-progress-line"
+          />
+        </g>
 
         <!-- Each pin counter-scales by 1/s so its on-screen size stays constant
              at any zoom. The counter-scale rides the same 0.55s transition as the
@@ -15,8 +33,8 @@
           class="wm-pin"
           :style="p.posStyle"
           @click="selectable && $emit('select', p.id)"
-          @mouseenter="selectable && $emit('hover', p.id)"
-          @mouseleave="selectable && $emit('hover', null)"
+          @mouseenter="$emit('hover', p.id)"
+          @mouseleave="$emit('hover', null)"
         >
           <g class="wm-hot" :style="{ transform: `scale(${p.hot ? 1.35 : 1})` }">
             <circle
@@ -33,11 +51,30 @@
               cy="0"
               :r="p.r"
               :fill="p.color"
-              stroke="var(--surface-white)"
+              stroke="none"
               stroke-width="1.5"
               vector-effect="non-scaling-stroke"
               class="wm-dot"
             />
+          </g>
+          <!-- Optional label pill rendered in counter-scaled pin space. Sized to
+               sit close to the dot rather than dominate it (see review F6). -->
+          <g v-if="p.label" :transform="`translate(${p.r + 3}, ${-(p.r + 6)})`">
+            <rect
+              x="0" y="-11"
+              :width="p.label.length * 9 + 8"
+              height="14"
+              rx="2"
+              fill="var(--ink-gray-8)"
+              opacity="0.85"
+            />
+            <text
+              x="4.5" y="0"
+              font-size="15"
+              font-weight="600"
+              font-family="sans-serif"
+              fill="white"
+            >{{ p.label }}</text>
           </g>
         </g>
       </g>
@@ -47,11 +84,12 @@
 
 <script setup>
 import { computed } from 'vue'
-import dottedMap from '../assets/dotted-map.svg'
+import lightMap from '../assets/world-map.svg'
+import darkMap from '../assets/world-map-dark.png'
 import { PROVIDERS, REGIONS, regionsOf } from '../data/catalog'
 
 const props = defineProps({
-  // { id, lat, lng, status, selected? }
+  // { id, lat, lng, status, selected?, label? }
   pins: { type: Array, default: () => [] },
   highlight: { type: [String, null], default: null },
   selectable: { type: Boolean, default: false },
@@ -59,15 +97,19 @@ const props = defineProps({
   focus: { type: String, default: 'world' },
   // Frame the map to fit all current pins (overrides focus when pins exist).
   fit: { type: Boolean, default: false },
+  // Padding (in SVG units) used when fit=true. Larger = more zoomed out.
+  fitPadding: { type: Number, default: 80 },
+  // Use the dark PNG instead of the light SVG (migration views).
+  dark: { type: Boolean, default: false },
   // Manual zoom multiplier on top of the focus framing (magnifier buttons).
   scale: { type: Number, default: 1 },
-  // Multiplies the base pin size (e.g. small locator maps want bigger dots).
+  // Multiplies the base pin size.
   pinScale: { type: Number, default: 1 },
+  // { fromId, toId, progress: 0–1, lineColor?: string }
+  connections: { type: Array, default: () => [] },
 })
 defineEmits(['select', 'hover'])
 
-// The asset is a 2:1 equirectangular dotted map (viewBox 879×443), calibrated
-// against its dot bounding box: full longitude, Greenland-to-Patagonia latitude.
 const W = 879
 const H = 443
 const LAT_TOP = 83
@@ -80,7 +122,6 @@ function project(lat, lng) {
   }
 }
 
-// Fit a set of points into an aspect-correct box with padding.
 function frame(points, pad) {
   const xs = points.map((p) => p.x)
   const ys = points.map((p) => p.y)
@@ -102,9 +143,8 @@ function frame(points, pad) {
 }
 
 const baseBox = computed(() => {
-  // Fit-to-pins takes priority: frame every pin currently on the map.
   if (props.fit && props.pins.length) {
-    return frame(props.pins.map((p) => project(p.lat, p.lng)), 80)
+    return frame(props.pins.map((p) => project(p.lat, p.lng)), props.fitPadding)
   }
   const f = props.focus
   if (f && PROVIDERS.some((p) => p.id === f)) {
@@ -116,7 +156,6 @@ const baseBox = computed(() => {
   return { x: 0, y: 0, w: W, h: H }
 })
 
-// Manual zoom shrinks the focus box around its centre.
 const box = computed(() => {
   const b = baseBox.value
   if (props.scale > 1) {
@@ -144,9 +183,24 @@ const zoomStyle = computed(() => {
 })
 
 const BLACK = '#171717'
+const BLACK_ON_DARK = '#171717'
 const RED = 'var(--ink-red-3)'
 const GREEN = 'var(--ink-green-3)'
 const AMBER = 'var(--ink-amber-3)'
+const DEFAULT_LINE_COLOR = 'var(--ink-blue-3)'
+
+const projectedConnections = computed(() => {
+  return props.connections.map((c) => {
+    const fromPin = props.pins.find((p) => p.id === c.fromId)
+    const toPin = props.pins.find((p) => p.id === c.toId)
+    if (!fromPin || !toPin) return null
+    const a = project(fromPin.lat, fromPin.lng)
+    const b = project(toPin.lat, toPin.lng)
+    const len = Math.hypot(b.x - a.x, b.y - a.y)
+    const filled = Math.max(0, Math.min(1, c.progress ?? 0)) * len
+    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, len, filled, lineColor: c.lineColor || DEFAULT_LINE_COLOR }
+  }).filter(Boolean)
+})
 
 const projected = computed(() => {
   const inv = 1 / s.value
@@ -156,15 +210,15 @@ const projected = computed(() => {
     const broken = p.status === 'broken'
     const isHover = p.id === props.highlight
     const hot = isHover || !!p.selected
-    // No status (e.g. the region picker) renders neutral black; servers carry a status.
+    const nullColor = props.dark ? BLACK_ON_DARK : BLACK
     const status = broken
       ? RED
       : p.status === 'provisioning' || p.status === 'suspended'
         ? AMBER
         : p.status
           ? GREEN
-          : BLACK
-    const color = isHover ? BLACK : status
+          : nullColor
+    const color = status
     return {
       id: p.id,
       broken,
@@ -174,6 +228,7 @@ const projected = computed(() => {
       glow: broken || hot,
       r: 5 * ps,
       glowR: 11 * ps,
+      label: p.label || null,
       posStyle: {
         transform: `translate(${x}px, ${y}px) scale(${inv})`,
         transformOrigin: '0 0',
@@ -185,11 +240,9 @@ const projected = computed(() => {
 </script>
 
 <style scoped>
-/* Position + counter-scale animate with the zoom group. */
 .wm-pin {
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* Hover/selected emphasis — its own quick, smooth grow. */
 .wm-hot {
   transform-origin: 0 0;
   transition: transform 0.18s ease-out;
@@ -211,5 +264,8 @@ const projected = computed(() => {
   50% {
     opacity: 0.1;
   }
+}
+.wm-progress-line {
+  transition: stroke-dasharray 0.4s ease;
 }
 </style>

@@ -2,9 +2,12 @@
 // Plan copy leads with plain outcomes; raw specs only ever render
 // behind a "details" toggle (see design principle: legible transparency).
 
-// The full size ladder. `featured` plans are the three we lead with —
-// the rest live behind "More sizes" (progressive disclosure, not a wall
-// of SKUs). `recommended` drives the onboarding suggestion.
+// The full size ladder, in ascending price order. `featured` plans are the
+// three we lead with in onboarding — the rest live behind "More sizes"
+// (progressive disclosure, not a wall of SKUs). `recommended` drives the
+// onboarding suggestion. `enterprise` marks the top tier (Product Warranty
+// included) that the Change-plan dialog reveals behind its "Enterprise plans"
+// toggle; keeping it a separate flag preserves the ascending-price ladder.
 export const PLANS = [
   {
     id: 'hobby',
@@ -55,6 +58,7 @@ export const PLANS = [
     specs: { compute: '6 hours/day', database: '3 GB', disk: '75 GB' },
     featured: false,
     recommended: false,
+    enterprise: true,
   },
   {
     id: 'busy',
@@ -65,6 +69,7 @@ export const PLANS = [
     specs: { compute: '8 hours/day', database: '4 GB', disk: '100 GB' },
     featured: false,
     recommended: false,
+    enterprise: true,
   },
   {
     id: 'heavy',
@@ -75,6 +80,7 @@ export const PLANS = [
     specs: { compute: '12 hours/day', database: '8 GB', disk: '200 GB' },
     featured: false,
     recommended: false,
+    enterprise: true,
   },
 ]
 
@@ -289,6 +295,12 @@ export function versionById(id) {
 }
 
 export const FEATURED_PLANS = PLANS.filter((p) => p.featured)
+
+// Change-plan grouping: standard tier shows by default, enterprise tier
+// (Product Warranty included) reveals behind the toggle. Both keep PLANS'
+// ascending-price order, so the combined list stays a monotonic ladder.
+export const STANDARD_PLANS = PLANS.filter((p) => !p.enterprise)
+export const ENTERPRISE_PLANS = PLANS.filter((p) => p.enterprise)
 
 // Monthly price for a plan in a region, rounded to a tidy number.
 // Pricing follows the provider behind the region.
