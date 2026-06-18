@@ -37,6 +37,15 @@
                 <span class="text-sm font-medium text-ink-gray-9">{{ p.name }}</span>
                 <Badge v-if="isCurrent(p)" theme="gray" variant="outline" label="Current" size="sm" />
                 <Badge v-else-if="p.recommended" theme="green" variant="subtle" label="Recommended" size="sm" />
+                <template v-if="isSelected(p) && !isPlanAffordable(p.id)">
+                  <Tooltip text="This plan exceeds your credit — add billing details first.">
+                    <span class="lucide-alert-circle size-3.5 shrink-0 text-ink-red-3" />
+                  </Tooltip>
+                  <span
+                    class="cursor-pointer text-xs font-medium text-ink-gray-7 underline hover:text-ink-gray-9"
+                    @click.stop="router.push('/billing')"
+                  >Go to Billing</span>
+                </template>
               </span>
             </span>
             <span class="w-24 text-sm text-ink-gray-6">{{ p.specs.database }}</span>
@@ -158,21 +167,35 @@
           />
           <div class="flex gap-2">
             <Button label="Cancel" @click="open = false" />
-            <Button
+            <Tooltip
               v-if="regionChanged"
-              variant="solid"
-              label="Review migration"
-              icon-right="lucide-arrow-right"
-              :disabled="!selected"
-              @click="step = 'review'"
-            />
-            <Button
+              :text="!canAffordPlan ? 'Set up billing first to switch to this plan.' : ''"
+            >
+              <div>
+                <Button
+                  variant="solid"
+                  label="Review migration"
+                  :icon-left="!canAffordPlan ? 'lucide-help-circle' : undefined"
+                  :icon-right="canAffordPlan ? 'lucide-arrow-right' : undefined"
+                  :disabled="!selected || !canAffordPlan"
+                  @click="step = 'review'"
+                />
+              </div>
+            </Tooltip>
+            <Tooltip
               v-else
-              variant="solid"
-              label="Change plan"
-              :disabled="!planChanged"
-              @click="doResize"
-            />
+              :text="!canAffordPlan ? 'Set up billing first to switch to this plan.' : ''"
+            >
+              <div>
+                <Button
+                  variant="solid"
+                  label="Change plan"
+                  :icon-left="!canAffordPlan ? 'lucide-help-circle' : undefined"
+                  :disabled="!planChanged || !canAffordPlan"
+                  @click="doResize"
+                />
+              </div>
+            </Tooltip>
           </div>
         </div>
       </template>
@@ -196,7 +219,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Dialog, FormControl, Switch, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
 import ProviderRegionPicker from './ProviderRegionPicker.vue'
 import WorldMap from './WorldMap.vue'
 import { PLANS, planById, priceFor, providerById, regionById } from '../data/catalog'
@@ -237,6 +260,19 @@ const region = computed(() => regionById(regionId.value))
 const currentRegion = computed(() => regionById(props.server?.regionId))
 const destProvider = computed(() => providerById(region.value.providerId))
 const currentProvider = computed(() => providerById(currentRegion.value.providerId))
+
+const INR_PER_USD = 83
+
+function isPlanAffordable(planId) {
+  if (store.cardOnFile) return true
+  const planMonthlyUSD = priceFor(planId, regionId.value) / INR_PER_USD
+  return planMonthlyUSD <= (props.server?.creditBalance ?? 0)
+}
+
+const canAffordPlan = computed(() => {
+  if (!selected.value) return true
+  return isPlanAffordable(selectedId.value)
+})
 
 const regionChanged = computed(() => regionId.value !== props.server?.regionId)
 const providerChanged = computed(() => region.value.providerId !== currentRegion.value.providerId)

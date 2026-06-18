@@ -231,9 +231,9 @@ function grownState() {
   const usServer = makeServer({
     name: 'atlas-us-01',
     regionId: 'do-nyc',
-    planId: 'growth',
-    creditBalance: 38,
-    creditTotal: 50,
+    planId: 'starter',
+    creditBalance: 25,
+    creditTotal: 25,
     sites: [makeSite('US Marketing', ['erpnext'])],
     health: { cpuPct: 18, memUsedGb: 1.1, memTotalGb: 3.0, diskFrac: 0.16 },
     planHistory: [
