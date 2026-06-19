@@ -24,7 +24,25 @@ pinia.use(({ store }) => {
   }
   store.$subscribe((_mutation, state) => {
     // `busy` is transient (drives the progress bar) — never restore it as in-flight.
-    localStorage.setItem(KEY, JSON.stringify({ ...state, busy: 0 }))
+    const json = JSON.stringify({ ...state, busy: 0 })
+    // Skip when nothing changed. This also breaks the cross-tab loop below: a
+    // storage-driven $patch produces state identical to what's already stored, so
+    // we don't re-write it and re-fire `storage` events in the other tabs forever.
+    if (localStorage.getItem(KEY) === json) return
+    localStorage.setItem(KEY, json)
+  })
+
+  // Live cross-tab sync: when another tab writes new state (e.g. the user adds a
+  // payment method in a Billing tab opened from the change-plan modal), patch it in
+  // so this tab reacts immediately. `storage` fires only in *other* tabs, never the
+  // writer, so this never recurses on our own writes.
+  window.addEventListener('storage', (event) => {
+    if (event.key !== KEY || !event.newValue) return
+    try {
+      store.$patch(JSON.parse(event.newValue))
+    } catch {
+      // Ignore malformed payloads — the next valid write will sync.
+    }
   })
 })
 

@@ -41,10 +41,13 @@
                   <Tooltip text="This plan exceeds your credit — add billing details first.">
                     <span class="lucide-alert-circle size-3.5 shrink-0 text-ink-red-3" />
                   </Tooltip>
-                  <span
+                  <a
+                    :href="router.resolve('/billing').href"
+                    target="_blank"
+                    rel="noopener"
                     class="cursor-pointer text-xs font-medium text-ink-gray-7 underline hover:text-ink-gray-9"
-                    @click.stop="router.push('/billing')"
-                  >Go to Billing</span>
+                    @click.stop
+                  >Go to Billing</a>
                 </template>
               </span>
             </span>
@@ -264,15 +267,34 @@ const currentProvider = computed(() => providerById(currentRegion.value.provider
 const INR_PER_USD = 83
 
 function isPlanAffordable(planId) {
-  if (store.cardOnFile) return true
-  const planMonthlyUSD = priceFor(planId, regionId.value) / INR_PER_USD
-  return planMonthlyUSD <= (props.server?.creditBalance ?? 0)
+  // Billing is set up via a recurring method — the cardOnFile flag (AddCardDialog
+  // path) or any saved card/UPI in the list (Payment methods path).
+  if (store.cardOnFile || store.paymentMethods.length > 0) return true
+  // …otherwise prepaid funds must cover it: server credit + wallet (both in ₹).
+  const monthlyINR = priceFor(planId, regionId.value)
+  const creditINR = (props.server?.creditBalance ?? 0) * INR_PER_USD
+  return monthlyINR <= creditINR + store.walletBalance
 }
 
 const canAffordPlan = computed(() => {
   if (!selected.value) return true
   return isPlanAffordable(selectedId.value)
 })
+
+// When billing is set up in another tab (the "Go to Billing" link opens Central
+// billing in a new tab), the store syncs back via localStorage. Watch billing state
+// directly — not canAffordPlan — so plan row clicks never trigger the toast.
+watch(
+  [() => store.cardOnFile, () => store.paymentMethods.length, () => store.walletBalance],
+  () => {
+    if (!open.value) return
+    if (canAffordPlan.value) {
+      toast.success('Billing updated — this plan is now available')
+    } else {
+      toast.success('Billing updated')
+    }
+  },
+)
 
 const regionChanged = computed(() => regionId.value !== props.server?.regionId)
 const providerChanged = computed(() => region.value.providerId !== currentRegion.value.providerId)
