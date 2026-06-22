@@ -235,12 +235,13 @@ const themeOptions = computed(() =>
 const serverMenu = computed(() => [
   {
     label: 'Central',
-    description: store.team?.name,
-    slots: {
-      prefix: () => h('img', { src: cloudLogo, alt: '', class: 'size-4 shrink-0 rounded' }),
-      // Widen the menu to at least the sidebar width (issue: dropdown felt cramped).
-      label: () => h('span', { class: 'block min-w-[12rem]' }, 'Central'),
-    },
+    icon: 'lucide-cloud',
+    // description: store.team?.name,
+    // slots: {
+    //   prefix: () => h('img', { src: cloudLogo, alt: '', class: 'size-4 shrink-0 rounded' }),
+    //   // Widen the menu to at least the sidebar width (issue: dropdown felt cramped).
+    //   label: () => h('span', { class: 'block min-w-[12rem]' }, 'Central'),
+    // },
     // Central is its own workspace — open it in a new tab.
     onClick: () => window.open('/servers', '_blank', 'noopener'),
   },
