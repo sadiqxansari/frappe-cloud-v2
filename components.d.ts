@@ -28,6 +28,7 @@ declare module 'vue' {
     MoveSiteDialog: typeof import('./src/components/MoveSiteDialog.vue')['default']
     NewSiteDialog: typeof import('./src/components/NewSiteDialog.vue')['default']
     OnboardingShell: typeof import('./src/components/OnboardingShell.vue')['default']
+    PlanHistoryDialog: typeof import('./src/components/PlanHistoryDialog.vue')['default']
     ProfileDialog: typeof import('./src/components/ProfileDialog.vue')['default']
     ProviderRegionPicker: typeof import('./src/components/ProviderRegionPicker.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

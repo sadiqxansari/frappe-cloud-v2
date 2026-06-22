@@ -47,7 +47,7 @@
               <Button variant="subtle" size="sm" label="Sort" icon-left="lucide-arrow-up-down" />
             </Dropdown>
             <div class="flex shrink-0 overflow-hidden rounded border border-outline-gray-2">
-              <button class="grid size-7 place-items-center" :class="view === 'grid' ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-5 hover:bg-surface-gray-2'" aria-label="Grid view" @click="view = 'grid'">
+              <button class="grid size-7 place-items-center" :class="view === 'cards' ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-5 hover:bg-surface-gray-2'" aria-label="Card view" @click="view = 'cards'">
                 <span class="lucide-layout-grid size-4" />
               </button>
               <button class="grid size-7 place-items-center border-l border-outline-gray-2" :class="view === 'list' ? 'bg-surface-gray-3 text-ink-gray-9' : 'text-ink-gray-5 hover:bg-surface-gray-2'" aria-label="List view" @click="view = 'list'">
@@ -67,40 +67,32 @@
             <Button v-if="!q && !statusFilter && server.status === 'active'" variant="solid" size="sm" label="New site" icon-left="lucide-plus" @click="newSiteOpen = true" />
           </EmptyState>
 
-          <!-- Grid -->
-          <div v-else-if="view === 'grid'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <!-- Cards — operational: status + a compact facts line. Two per row. -->
+          <div v-else-if="view === 'cards'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div
               v-for="site in filteredSites"
               :key="site.id"
               role="button"
               tabindex="0"
-              class="cursor-pointer overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-white transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
+              class="cursor-pointer rounded-xl border border-outline-gray-2 bg-surface-white p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
             >
-              <div class="p-4">
-                <div class="flex items-start justify-between gap-2">
-                  <span class="min-w-0 flex-1 truncate font-medium text-ink-gray-9">{{ site.name }}</span>
-                  <Dropdown :options="siteOptions(site)" placement="bottom-end">
-                    <button class="-mr-1 -mt-1 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Actions for ${site.name}`" @click.stop><span class="lucide-ellipsis size-4" /></button>
-                  </Dropdown>
-                </div>
-                <div class="mt-1.5 flex items-center gap-1.5 text-sm">
-                  <span class="size-1.5 rounded-full" :class="statusDot(site)" />
-                  <span class="text-ink-gray-6">{{ statusLabel(site) }}</span>
-                </div>
-                <div class="mt-3 space-y-1.5 text-sm text-ink-gray-6">
-                  <div class="flex items-center gap-2"><span class="lucide-rocket size-4 shrink-0 text-ink-gray-5" />{{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</div>
-                  <div v-if="hasUpdate(site)" class="flex items-center gap-2">
-                    <span class="lucide-layout-grid size-4 shrink-0 text-ink-gray-5" />Updates available
-                    
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="truncate font-medium text-ink-gray-9">{{ site.name }}</div>
+                  <div class="mt-0.5 flex items-center gap-1.5 text-xs">
+                    <span class="size-1.5 rounded-full" :class="statusDot(site)" />
+                    <span class="text-ink-gray-6">{{ statusLabel(site) }}</span>
+                    <Badge v-if="hasUpdate(site)" theme="orange" variant="subtle" label="Update" class="ml-0.5" />
                   </div>
-                  <div v-else class="flex items-center gap-2"><span class="lucide-layout-grid size-4 shrink-0 text-ink-gray-5" />{{ versionLabel }}</div>
                 </div>
+                <Dropdown :options="siteOptions(site)" placement="bottom-end">
+                  <button class="-mr-1 -mt-1 shrink-0 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Actions for ${site.name}`" @click.stop><span class="lucide-ellipsis size-4" /></button>
+                </Dropdown>
               </div>
-              <div class="flex items-center gap-2 border-t border-outline-gray-1 px-4 py-3 text-sm text-ink-gray-6">
-                <Avatar :label="store.user.name || 'You'" size="sm" />
-                Created {{ timeAgo(site.createdAt) }}
+              <div class="mt-3 truncate border-t border-outline-gray-1 pt-3 text-xs text-ink-gray-5">
+                {{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }} · {{ versionBadge }} · backed up {{ backupLabel(site) }}
               </div>
             </div>
           </div>
@@ -141,6 +133,7 @@
           </div>
           <div class="mt-3 flex min-w-0 items-center gap-2">
             <span class="min-w-0 truncate font-semibold text-ink-gray-9">{{ server.name }}</span>
+            <Badge theme="gray" variant="subtle" :label="versionBadge" class="shrink-0" />
             <Badge v-if="server.status === 'broken'" theme="red" variant="subtle" label="Broken" class="shrink-0" />
             <Badge v-else-if="server.status === 'suspended'" theme="orange" variant="subtle" label="Suspended" class="shrink-0" />
             <Badge v-else-if="server.status === 'active'" theme="green" variant="subtle" label="Active" class="shrink-0" />
@@ -153,9 +146,21 @@
           </div>
         </div>
 
+        <!-- About — specs and ownership in one block (accordion) -->
         <div class="border-b border-outline-gray-2 p-4">
-          <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Specifications</div>
-          <dl class="mt-2 space-y-1.5 text-sm">
+          <button
+            class="flex w-full items-center gap-2"
+            :aria-expanded="aboutOpen"
+            @click="aboutOpen = !aboutOpen"
+          >
+            <span class="lucide-info size-3.5 text-ink-gray-5" />
+            <span class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">About</span>
+            <span
+              class="lucide-chevron-down ml-auto size-4 text-ink-gray-5 transition-transform"
+              :class="{ 'rotate-180': aboutOpen }"
+            />
+          </button>
+          <dl v-show="aboutOpen" class="mt-3 space-y-1.5 text-sm">
             <div class="grid grid-cols-[7rem_1fr] gap-2">
               <dt class="text-ink-gray-5 text-p-sm">Provider</dt>
               <dd class="flex items-center gap-1.5 text-ink-gray-8 text-p-sm">
@@ -164,7 +169,6 @@
               </dd>
             </div>
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Region</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ region.name }}</dd></div>
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Frappe version</dt><dd class="text-ink-gray-8 text-p-sm">{{ versionLabel }}</dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Monthly cost</dt><dd class="text-ink-gray-8 text-p-sm">{{ inr(monthlyPrice) }} <span class="text-ink-gray-5 text-p-sm">({{ inr(store.perDayOf(server)) }}/day)</span></dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2">
               <dt class="flex items-center gap-1 text-ink-gray-5 text-p-sm">
@@ -185,45 +189,57 @@
               <dd class="tabular-nums text-ink-gray-8 text-p-sm">{{ server.outboundIp }}</dd>
             </div>
           </dl>
-        </div>
 
-        <div class="border-b border-outline-gray-2 p-4">
-          <div class="flex items-center justify-between">
-            <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Plan</div>
-            <span class="text-sm font-medium text-ink-gray-8">{{ plan.name }} · {{ inr(monthlyPrice) }}/mo</span>
-          </div>
-          <div class="mt-3 space-y-3">
-            <div v-for="row in usageRows" :key="row.label">
-              <div class="flex justify-between text-xs">
-                <span class="text-ink-gray-5">{{ row.label }}</span>
-                <span class="tabular-nums text-ink-gray-7">{{ row.value }}</span>
-              </div>
-              <Progress :value="row.pct" size="sm" class="mt-1" />
-            </div>
-          </div>
-        </div>
+          <div v-show="aboutOpen" class="my-3 border-t border-outline-gray-1" />
 
-        <div class="border-b border-outline-gray-2 p-4">
-          <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Details</div>
-          <dl class="mt-2 space-y-1.5 text-sm">
+          <dl v-show="aboutOpen" class="space-y-1.5 text-sm">
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Created by</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ store.user.name || 'You' }}</dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Created on</dt><dd class="text-ink-gray-8 text-p-sm">{{ fmtDateTime(server.createdAt) }}</dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Owned by</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ store.user.email || '—' }}</dd></div>
           </dl>
         </div>
 
+        <!-- Plan history — most recent first, capped at 2 with a View all (accordion) -->
         <div class="p-4">
-          <div class="flex items-center justify-between">
-            <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Tags</div>
-            <button class="text-xs text-ink-gray-5 hover:text-ink-gray-7">+ Add</button>
+          <button
+            class="flex w-full items-center gap-2"
+            :aria-expanded="planOpen"
+            @click="planOpen = !planOpen"
+          >
+            <span class="lucide-history size-3.5 text-ink-gray-5" />
+            <span class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Plan history</span>
+            <span
+              class="lucide-chevron-down ml-auto size-4 text-ink-gray-5 transition-transform"
+              :class="{ 'rotate-180': planOpen }"
+            />
+          </button>
+          <div v-show="planOpen">
+            <div v-if="server.planHistory.length" class="mt-3 space-y-3">
+              <div v-for="h in server.planHistory.slice(0, 2)" :key="h.id" class="flex items-start gap-2.5">
+                <span
+                  class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full"
+                  :class="h.direction === 'upgrade' ? 'bg-surface-green-2 text-ink-green-3' : 'bg-surface-amber-2 text-ink-amber-3'"
+                >
+                  <span class="size-3" :class="h.direction === 'upgrade' ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="truncate text-ink-gray-8 text-p-sm">{{ h.from }} → {{ h.to }}</div>
+                  <div class="text-xs text-ink-gray-5"><span class="capitalize">{{ h.direction }}</span> · {{ h.date }}</div>
+                </div>
+              </div>
+              <div v-if="server.planHistory.length > 2" class="flex justify-end">
+                <button class="text-xs text-ink-gray-5 hover:text-ink-gray-7" @click="historyOpen = true">View all</button>
+              </div>
+            </div>
+            <p v-else class="mt-3 text-sm text-ink-gray-4">No plan changes yet.</p>
           </div>
-          <p class="mt-1.5 text-sm text-ink-gray-4">No tags yet.</p>
         </div>
       </aside>
     </div>
 
     <ChangePlanDialog v-model:open="resizeOpen" :server="server" />
     <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
+    <PlanHistoryDialog v-model:open="historyOpen" :server="server" />
     <AddCardDialog v-model:open="addCardOpen" />
     <NewSiteDialog v-model:open="newSiteOpen" :server="server" />
   </ServerShell>
@@ -232,13 +248,14 @@
 <script setup>
 import { computed, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Alert, Avatar, Badge, Button, Dropdown, FormControl, Progress, Tooltip, toast } from 'frappe-ui'
+import { Alert, Badge, Button, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NewSiteDialog from '../../components/NewSiteDialog.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import ChangePlanDialog from '../../components/ChangePlanDialog.vue'
+import PlanHistoryDialog from '../../components/PlanHistoryDialog.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import { providerById, versionById } from '../../data/catalog'
@@ -255,12 +272,14 @@ watchEffect(() => {
 })
 
 const base = computed(() => `/manage/${server.value.id}`)
-const plan = computed(() => store.planOf(server.value))
 const region = computed(() => store.regionOf(server.value))
 const prov = computed(() => providerById(region.value.providerId))
 const monthlyPrice = computed(() => store.monthlyPriceOf(server.value))
-const health = computed(() => store.healthOf(server.value))
 const versionLabel = computed(() => versionById(server.value.version).label)
+const versionBadge = computed(() => {
+  const m = versionLabel.value.match(/\d+/)
+  return m ? `v${m[0]}` : versionLabel.value
+})
 
 const crumbs = computed(() => [{ label: 'Sites', route: base.value }])
 
@@ -268,16 +287,15 @@ const locatorPins = computed(() => [
   { id: server.value.regionId, lat: region.value.lat, lng: region.value.lng, status: server.value.status, selected: true },
 ])
 
-const usageRows = computed(() => [
-  { label: 'vCPU', value: `${health.value.cpuPct}%`, pct: health.value.cpuPct },
-  { label: 'Memory', value: `${health.value.memUsed} of ${health.value.memTotal} GB`, pct: health.value.memPct },
-  { label: 'Storage', value: `${health.value.diskUsed} of ${health.value.diskTotal} GB`, pct: health.value.diskPct },
-])
+// — Rail section state (accordions closed by default)
+const aboutOpen = ref(false)
+const planOpen = ref(false)
+const historyOpen = ref(false)
 
 // — Sites list controls
 const q = ref('')
 const statusFilter = ref('')
-const view = ref('grid')
+const view = ref('cards')
 const sortBy = ref('name')
 const statusOptions = [
   { label: 'Status', value: '' },
@@ -317,6 +335,10 @@ function statusDot(site) {
 }
 function statusLabel(site) {
   return { live: 'Active', creating: 'Setting up…', restoring: 'Restoring…', moving: 'Moving…', suspended: 'Paused' }[site.status] || site.status
+}
+function backupLabel(site) {
+  const b = store.lastBackupOf(site)
+  return b ? timeAgo(b.at) : 'none yet'
 }
 function siteOptions(site) {
   return [

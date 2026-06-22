@@ -15,9 +15,6 @@
     </template>
   </Dialog>
 
-  <!-- Change plan / region (migrates when the region changes) -->
-  <ChangePlanDialog v-model:open="resizeOpen" :server="server" />
-
   <!-- Drop server (type to confirm) -->
   <Dialog v-model:open="dropOpen" size="sm">
     <template #title><span class="text-xl font-semibold text-ink-gray-9">Drop this server</span></template>
@@ -50,7 +47,6 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Dialog, Dropdown, FormControl, toast } from 'frappe-ui'
 import ConfirmDialog from './ConfirmDialog.vue'
-import ChangePlanDialog from './ChangePlanDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 
 const props = defineProps({
@@ -61,7 +57,6 @@ const store = useCloudStore()
 const router = useRouter()
 
 const renameOpen = ref(false)
-const resizeOpen = ref(false)
 const dropOpen = ref(false)
 const confirmOpen = ref(false)
 
@@ -74,7 +69,6 @@ const dropMatches = computed(() => dropTyped.value.trim().toLowerCase() === prop
 
 const options = computed(() => [
   { label: 'Rename', icon: 'lucide-pencil', onClick: openRename },
-  { label: 'Change plan', icon: 'lucide-scaling', onClick: () => (resizeOpen.value = true) },
   { label: 'Restart', icon: 'lucide-rotate-cw', onClick: () => ask('restart') },
   {
     label: props.server.status === 'suspended' ? 'Resume' : 'Suspend',
