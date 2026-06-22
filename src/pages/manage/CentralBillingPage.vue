@@ -140,7 +140,7 @@
                 v-else
                 icon="lucide-credit-card"
                 title="No payment method yet"
-                description="Add a card or UPI so your servers keep running. The primary is charged first; add a backup and we fall back to it automatically."
+                description="Add a card or UPI to keep your servers running. We charge the primary first, then any backup."
               >
                 <Button variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="openPm" />
               </EmptyState>
@@ -287,7 +287,7 @@
             class="mt-5"
             icon="lucide-receipt"
             title="No invoices yet"
-            description="Your first invoice will appear here at the end of the billing cycle. We'll email a copy to your invoice recipient too."
+            description="Your first invoice appears here at the end of the billing cycle — we'll email a copy too."
           />
         </template>
         </div>
@@ -390,7 +390,7 @@
                 v-else
                 icon="lucide-wallet"
                 title="No wallet activity yet"
-                description="Credit you add and charges we apply will show up here."
+                description="Credit you add and charges we apply show up here."
               />
             </div>
 
@@ -435,19 +435,85 @@
     <!-- Add / update payment method -->
     <Dialog v-model:open="pmOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">{{ editingPmId ? 'Update payment method' : 'Add payment method' }}</span></template>
-      <div class="space-y-3">
-        <FormControl v-model="pmForm.kind" type="select" label="Type" :options="[{ label: 'Card', value: 'card' }, { label: 'UPI', value: 'upi' }]" />
-        <FormControl
-          v-model="pmForm.value"
-          type="text"
-          :label="pmForm.kind === 'upi' ? 'UPI ID' : 'Card number'"
-          :placeholder="pmForm.kind === 'upi' ? 'you@okbank' : '4242 4242 4242 4242'"
-        />
+      <div class="space-y-4">
+        <!-- Billing details first if we don't have them yet — invoices need them. -->
+        <div v-if="pmNeedsContact" class="space-y-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
+          <p class="text-sm text-ink-gray-6">We need your billing details before adding a payment method — they go on every invoice.</p>
+          <div>
+            <FormControl v-model="pmForm.email" type="text" label="Billing email" placeholder="billing@company.com" />
+            <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-xs text-ink-red-4">{{ pmContactEmailError }}</p>
+          </div>
+          <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
+        </div>
+
+        <!-- Type — two selectable cards, not a dropdown. -->
+        <div v-if="!editingPmId" class="grid grid-cols-2 gap-2">
+          <button
+            v-for="opt in [{ value: 'card', label: 'Card', detail: 'Visa, Mastercard, RuPay, Amex', icon: 'lucide-credit-card' }, { value: 'upi', label: 'UPI', detail: 'Pay from any UPI app', icon: 'lucide-smartphone' }]"
+            :key="opt.value"
+            type="button"
+            class="flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors"
+            :class="pmForm.kind === opt.value ? 'border-outline-gray-4 bg-surface-gray-1 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+            @click="pmForm.kind = opt.value"
+          >
+            <span class="mt-0.5 size-4 shrink-0 text-ink-gray-6" :class="opt.icon" />
+            <span class="min-w-0">
+              <span class="block text-sm font-medium text-ink-gray-9">{{ opt.label }}</span>
+              <span class="block text-xs leading-4 text-ink-gray-5">{{ opt.detail }}</span>
+            </span>
+          </button>
+        </div>
+
+        <!-- Card details -->
+        <div v-if="pmForm.kind === 'card'" class="space-y-3">
+          <FormControl
+            :modelValue="pmForm.number"
+            type="text"
+            label="Card number"
+            placeholder="1234 1234 1234 1234"
+            inputmode="numeric"
+            autocomplete="cc-number"
+            @update:modelValue="(v) => (pmForm.number = formatCardNumber(v))"
+          >
+            <template v-if="pmCardBrand" #suffix><span class="text-xs font-medium text-ink-gray-5">{{ pmCardBrand }}</span></template>
+          </FormControl>
+          <div class="grid grid-cols-2 gap-3">
+            <FormControl
+              :modelValue="pmForm.expiry"
+              type="text"
+              label="Expiry"
+              placeholder="MM / YY"
+              inputmode="numeric"
+              autocomplete="cc-exp"
+              @update:modelValue="(v) => (pmForm.expiry = formatExpiry(v))"
+            />
+            <FormControl
+              :modelValue="pmForm.cvc"
+              type="text"
+              label="CVC"
+              placeholder="123"
+              inputmode="numeric"
+              autocomplete="cc-csc"
+              @update:modelValue="(v) => (pmForm.cvc = v.replace(/\D/g, '').slice(0, 4))"
+            />
+          </div>
+        </div>
+
+        <!-- UPI details -->
+        <div v-else>
+          <FormControl v-model="pmForm.upi" type="text" label="UPI ID" placeholder="yourname@okhdfc" autocomplete="off" />
+          <p class="mt-1.5 text-xs text-ink-gray-5">We'll send a collect request to approve in your UPI app.</p>
+        </div>
+
+        <p class="flex items-center gap-1.5 text-xs text-ink-gray-5">
+          <span class="lucide-lock size-3 shrink-0" />
+          Details are encrypted and handled by our payments partner — we never store your full {{ pmForm.kind === 'upi' ? 'UPI ID' : 'card number' }}.
+        </p>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="pmOpen = false" />
-          <Button variant="solid" :label="editingPmId ? 'Save' : 'Add method'" :disabled="!pmForm.value.trim()" @click="addPm" />
+          <Button variant="solid" :label="editingPmId ? 'Save' : 'Add payment method'" :disabled="!pmValid" @click="addPm" />
         </div>
       </template>
     </Dialog>
@@ -706,31 +772,78 @@ function resumeBilling() {
 
 // — Payment methods
 const pmOpen = ref(false)
-const pmForm = reactive({ kind: 'card', value: '' })
+const pmForm = reactive({ kind: 'card', number: '', expiry: '', cvc: '', upi: '', email: '', address: '' })
 const editingPmId = ref(null) // null = adding; otherwise updating that method
+// We can't issue invoices without billing details, so when they're missing the
+// add-method dialog collects them first, in the same step.
+const pmNeedsContact = ref(false)
+
+function resetPmForm() {
+  pmForm.kind = 'card'
+  pmForm.number = ''
+  pmForm.expiry = ''
+  pmForm.cvc = ''
+  pmForm.upi = ''
+  pmForm.email = store.billingProfile.billingEmail || ''
+  pmForm.address = store.billingProfile.address || ''
+}
 function openPm() {
   editingPmId.value = null
-  pmForm.kind = 'card'
-  pmForm.value = ''
+  resetPmForm()
+  pmNeedsContact.value = !store.billingProfile.billingEmail || !store.billingProfile.address
   pmOpen.value = true
 }
 // "Update" on a declined/expired method — re-enter details to fix it.
 function updatePm(pm) {
   editingPmId.value = pm.id
+  resetPmForm()
   pmForm.kind = pm.kind
-  pmForm.value = ''
+  pmNeedsContact.value = false // editing a method never blocks on contact details
   pmOpen.value = true
 }
+
+// Card formatting & brand — light, realistic touches.
+function formatCardNumber(v) {
+  return v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
+}
+function formatExpiry(v) {
+  const d = v.replace(/\D/g, '').slice(0, 4)
+  return d.length >= 3 ? `${d.slice(0, 2)}/${d.slice(2)}` : d
+}
+const pmCardDigits = computed(() => pmForm.number.replace(/\D/g, ''))
+const pmCardBrand = computed(() => {
+  const n = pmCardDigits.value
+  if (/^4/.test(n)) return 'Visa'
+  if (/^(5[1-5]|2[2-7])/.test(n)) return 'Mastercard'
+  if (/^3[47]/.test(n)) return 'Amex'
+  if (/^(60|65|81|82|508)/.test(n)) return 'RuPay'
+  return ''
+})
+
+// Validity — enough to feel real without faking a real gateway.
+const pmContactEmailError = computed(() => validateEmail(pmForm.email, { required: true }))
+const pmContactValid = computed(() => !pmNeedsContact.value || (!pmContactEmailError.value && !!pmForm.address.trim()))
+const pmMethodValid = computed(() => {
+  if (pmForm.kind === 'upi') return /^[\w.-]+@[a-z]{2,}$/i.test(pmForm.upi.trim())
+  const expOk = /^\d{2}\/\d{2}$/.test(pmForm.expiry) && Number(pmForm.expiry.slice(0, 2)) >= 1 && Number(pmForm.expiry.slice(0, 2)) <= 12
+  return pmCardDigits.value.length >= 13 && expOk && pmForm.cvc.length >= 3
+})
+const pmValid = computed(() => pmMethodValid.value && pmContactValid.value)
+
 function addPm() {
-  const v = pmForm.value.trim()
-  if (!v) return
-  const detail = pmForm.kind === 'upi' ? v : '•••• ' + v.replace(/\s/g, '').slice(-4)
+  if (!pmValid.value) return
+  // Save any newly-collected billing details alongside the method.
+  if (pmNeedsContact.value) {
+    store.setBillingProfile({ billingEmail: pmForm.email.trim(), address: pmForm.address.trim(), emailBounced: false })
+  }
+  const isUpi = pmForm.kind === 'upi'
+  const detail = isUpi ? pmForm.upi.trim() : `•••• ${pmCardDigits.value.slice(-4)}`
   if (editingPmId.value) {
-    store.updatePaymentMethod(editingPmId.value, { detail, status: null })
+    store.updatePaymentMethod(editingPmId.value, { detail, status: null, ...(isUpi ? {} : { expiry: pmForm.expiry }) })
     toast.success('Payment method updated')
   } else {
-    const label = pmForm.kind === 'upi' ? 'UPI' : 'Card'
-    store.addPaymentMethod({ kind: pmForm.kind, label, detail })
+    const label = isUpi ? 'UPI' : pmCardBrand.value || 'Card'
+    store.addPaymentMethod({ kind: pmForm.kind, label, detail, ...(isUpi ? {} : { expiry: pmForm.expiry }) })
     toast.success('Payment method added')
   }
   pmOpen.value = false
