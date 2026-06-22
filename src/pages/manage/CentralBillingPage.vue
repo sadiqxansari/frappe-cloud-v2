@@ -432,22 +432,26 @@
       </template>
     </Dialog>
 
-    <!-- Add / update payment method -->
-    <Dialog v-model:open="pmOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">{{ editingPmId ? 'Update payment method' : 'Add payment method' }}</span></template>
-      <div class="space-y-4">
-        <!-- Billing details first if we don't have them yet — invoices need them. -->
-        <div v-if="pmNeedsContact" class="space-y-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
-          <p class="text-sm text-ink-gray-6">We need your billing details before adding a payment method — they go on every invoice.</p>
-          <div>
-            <FormControl v-model="pmForm.email" type="text" label="Billing email" placeholder="billing@company.com" />
-            <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-xs text-ink-red-4">{{ pmContactEmailError }}</p>
-          </div>
-          <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
-        </div>
+    <!-- Add / update payment method — two steps when billing details are missing -->
+    <Dialog v-model:open="pmOpen" size="md">
+      <template #title>
+        <span class="text-xl font-semibold text-ink-gray-9">{{ pmStep === 1 ? 'Add billing details' : editingPmId ? 'Update payment method' : 'Add payment method' }}</span>
+      </template>
 
+      <!-- Step 1: billing details (only when we don't have them yet) -->
+      <div v-if="pmStep === 1" class="space-y-3">
+        <p class="text-sm text-ink-gray-6">These go on every invoice — we'll need them before adding a payment method.</p>
+        <div>
+          <FormControl v-model="pmForm.email" type="text" label="Billing email" placeholder="billing@company.com" />
+          <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-xs text-ink-red-4">{{ pmContactEmailError }}</p>
+        </div>
+        <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
+      </div>
+
+      <!-- Step 2: the payment method -->
+      <div v-else class="space-y-4">
         <!-- Type — two selectable cards, not a dropdown. -->
-        <div v-if="!editingPmId" class="grid grid-cols-2 gap-2">
+        <div v-if="!editingPmId" class="grid grid-cols-2 gap-3">
           <button
             v-for="opt in [{ value: 'card', label: 'Card', detail: 'Visa, Mastercard, RuPay, Amex', icon: 'lucide-credit-card' }, { value: 'upi', label: 'UPI', detail: 'Pay from any UPI app', icon: 'lucide-smartphone' }]"
             :key="opt.value"
@@ -512,8 +516,14 @@
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
-          <Button label="Cancel" @click="pmOpen = false" />
-          <Button variant="solid" :label="editingPmId ? 'Save' : 'Add payment method'" :disabled="!pmValid" @click="addPm" />
+          <template v-if="pmStep === 1">
+            <Button label="Cancel" @click="pmOpen = false" />
+            <Button variant="solid" label="Next" :disabled="!pmContactValid" @click="pmStep = 2" />
+          </template>
+          <template v-else>
+            <Button :label="pmNeedsContact ? 'Back' : 'Cancel'" @click="pmNeedsContact ? (pmStep = 1) : (pmOpen = false)" />
+            <Button variant="solid" :label="editingPmId ? 'Save' : 'Add payment method'" :disabled="!pmMethodValid" @click="addPm" />
+          </template>
         </div>
       </template>
     </Dialog>
@@ -775,8 +785,9 @@ const pmOpen = ref(false)
 const pmForm = reactive({ kind: 'card', number: '', expiry: '', cvc: '', upi: '', email: '', address: '' })
 const editingPmId = ref(null) // null = adding; otherwise updating that method
 // We can't issue invoices without billing details, so when they're missing the
-// add-method dialog collects them first, in the same step.
+// dialog opens on a first step that collects them before the payment method.
 const pmNeedsContact = ref(false)
+const pmStep = ref(1) // 1 = billing details, 2 = payment method
 
 function resetPmForm() {
   pmForm.kind = 'card'
@@ -791,6 +802,7 @@ function openPm() {
   editingPmId.value = null
   resetPmForm()
   pmNeedsContact.value = !store.billingProfile.billingEmail || !store.billingProfile.address
+  pmStep.value = pmNeedsContact.value ? 1 : 2
   pmOpen.value = true
 }
 // "Update" on a declined/expired method — re-enter details to fix it.
@@ -799,6 +811,7 @@ function updatePm(pm) {
   resetPmForm()
   pmForm.kind = pm.kind
   pmNeedsContact.value = false // editing a method never blocks on contact details
+  pmStep.value = 2
   pmOpen.value = true
 }
 
