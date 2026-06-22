@@ -21,7 +21,8 @@ const routes = [
   { path: '/manage/:serverId?', name: 'server-overview', component: () => import('./pages/manage/OverviewPage.vue') },
   { path: '/manage/:serverId/sites/:siteId', name: 'site-detail', component: () => import('./pages/manage/SiteDetailPage.vue') },
   { path: '/manage/:serverId/analytics', name: 'server-analytics', component: () => import('./pages/manage/AnalyticsPage.vue') },
-  { path: '/manage/:serverId/settings', name: 'server-settings', component: () => import('./pages/manage/ServerSettingsPage.vue') },
+  // Settings moved into a modal on the brand dropdown; keep old links working.
+  { path: '/manage/:serverId/settings', redirect: (to) => `/manage/${to.params.serverId}` },
   // Billing is account-level now — old per-server links land on Central billing.
   { path: '/manage/:serverId/billing', redirect: '/billing' },
   { path: '/manage/:serverId/marketplace', name: 'server-marketplace', component: () => import('./pages/manage/MarketplacePage.vue') },

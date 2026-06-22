@@ -107,6 +107,7 @@
 
       <ProfileDialog v-model:open="profileOpen" />
       <SystemInfoDialog v-model:open="systemInfoOpen" :server="server" />
+      <ServerSettingsDialog v-model:open="settingsOpen" :server="server" />
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col">
@@ -149,6 +150,7 @@ import { Avatar, Breadcrumbs, Button, Dropdown, Tooltip } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
 import ProfileDialog from './ProfileDialog.vue'
 import SystemInfoDialog from './SystemInfoDialog.vue'
+import ServerSettingsDialog from './ServerSettingsDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -187,8 +189,6 @@ const items = computed(() => {
   const b = base.value
   return [
     { label: 'Sites', icon: 'lucide-layout-grid', to: b, active: route.path === b || route.path.startsWith(`${b}/sites`) },
-    { label: 'Insights', icon: 'lucide-chart-line', to: `${b}/analytics`, active: route.path.startsWith(`${b}/analytics`) },
-    { label: 'Settings', icon: 'lucide-settings', to: `${b}/settings`, active: route.path.startsWith(`${b}/settings`) },
     { label: 'Marketplace', icon: 'lucide-store', to: `${b}/marketplace`, active: route.path.startsWith(`${b}/marketplace`) },
   ]
 })
@@ -196,12 +196,13 @@ const items = computed(() => {
 const devItems = computed(() => {
   const b = base.value
   return [
+    { label: 'Insights', icon: 'lucide-chart-line', to: `${b}/analytics`, active: route.path.startsWith(`${b}/analytics`) },
     { label: 'Logs', icon: 'lucide-scroll-text', to: `${b}/developer/logs`, active: route.path.startsWith(`${b}/developer/logs`) },
     { label: 'Database', icon: 'lucide-database', to: `${b}/developer/database`, active: route.path.startsWith(`${b}/developer/database`) },
     { label: 'Tasks', icon: 'lucide-list-checks', to: `${b}/developer/tasks`, active: route.path.startsWith(`${b}/developer/tasks`) },
   ]
 })
-const devActive = computed(() => route.path.startsWith(`${base.value}/developer`))
+const devActive = computed(() => route.path.startsWith(`${base.value}/developer`) || route.path.startsWith(`${base.value}/analytics`))
 const devOpen = ref(devActive.value)
 watch(devActive, (on) => {
   if (on) devOpen.value = true
@@ -211,6 +212,7 @@ watch(devActive, (on) => {
 // Central, open read-only System info, switch theme. Anything that *changes*
 // the server (version, firewall, workers) lives on the Settings page, not here.
 const systemInfoOpen = ref(false)
+const settingsOpen = ref(false)
 
 // Light / dark / system, with a check on the active choice. Theme is an
 // account-wide pref applied in App.vue.
@@ -241,6 +243,13 @@ const serverMenu = computed(() => [
     },
     // Central is its own workspace — open it in a new tab.
     onClick: () => window.open('/servers', '_blank', 'noopener'),
+  },
+  {
+    label: 'Settings',
+    icon: 'lucide-settings',
+    onClick: () => {
+      settingsOpen.value = true
+    },
   },
   {
     label: 'System info',

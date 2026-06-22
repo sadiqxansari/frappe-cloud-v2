@@ -68,39 +68,28 @@
           </EmptyState>
 
           <!-- Grid -->
-          <div v-else-if="view === 'grid'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div v-else-if="view === 'grid'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div
               v-for="site in filteredSites"
               :key="site.id"
               role="button"
               tabindex="0"
-              class="cursor-pointer overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
+              class="cursor-pointer rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
             >
-              <div class="p-4">
-                <div class="flex items-start justify-between gap-2">
-                  <span class="min-w-0 flex-1 truncate font-medium text-ink-gray-9">{{ site.name }}</span>
-                  <Dropdown :options="siteOptions(site)" placement="bottom-end">
-                    <button class="-mr-1 -mt-1 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Actions for ${site.name}`" @click.stop><span class="lucide-ellipsis size-4" /></button>
-                  </Dropdown>
-                </div>
-                <div class="mt-1.5 flex items-center gap-1.5 text-sm">
-                  <span class="size-1.5 rounded-full" :class="statusDot(site)" />
-                  <span class="text-ink-gray-6">{{ statusLabel(site) }}</span>
-                </div>
-                <div class="mt-3 space-y-1.5 text-sm text-ink-gray-6">
-                  <div class="flex items-center gap-2"><span class="lucide-rocket size-4 shrink-0 text-ink-gray-5" />{{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</div>
-                  <div v-if="hasUpdate(site)" class="flex items-center gap-2">
-                    <span class="lucide-layout-grid size-4 shrink-0 text-ink-gray-5" />Updates available
-                    
-                  </div>
-                  <div v-else class="flex items-center gap-2"><span class="lucide-layout-grid size-4 shrink-0 text-ink-gray-5" />{{ versionLabel }}</div>
-                </div>
+              <div class="flex items-start justify-between gap-2">
+                <span class="min-w-0 flex-1 truncate text-base font-semibold text-ink-gray-9">{{ site.name }}</span>
+                <Dropdown :options="siteOptions(site)" placement="bottom-end">
+                  <button class="-mr-1 -mt-0.5 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${site.name}`" @click.stop><span class="lucide-ellipsis size-4" /></button>
+                </Dropdown>
               </div>
-              <div class="flex items-center gap-2 border-t border-outline-gray-1 px-4 py-3 text-sm text-ink-gray-6">
-                <Avatar :label="store.user.name || 'You'" size="sm" />
-                Created {{ timeAgo(site.createdAt) }}
+              <div class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm text-ink-gray-5">
+                <span class="size-1.5 shrink-0 rounded-full" :class="statusDot(site)" />
+                <span>{{ statusLabel(site) }}</span>
+                <span class="text-ink-gray-4">·</span>
+                <span>{{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</span>
+                <Badge v-if="hasUpdate(site)" theme="orange" variant="subtle" label="Update available" class="ml-1" />
               </div>
             </div>
           </div>
@@ -117,14 +106,14 @@
               @keydown.enter="goSite(site)"
             >
               <div class="min-w-0 flex-1">
-                <div class="truncate font-medium text-ink-gray-9">{{ site.name }}</div>
-                <div class="mt-0.5 flex items-center gap-1.5 text-xs">
-                  <span class="size-1.5 rounded-full" :class="statusDot(site)" />
-                  <span class="text-ink-gray-6">{{ statusLabel(site) }}</span>
-                  <span class="text-ink-gray-4">· {{ site.apps.length }} apps · {{ versionLabel }}</span>
+                <div class="truncate font-semibold text-ink-gray-9">{{ site.name }}</div>
+                <div class="mt-0.5 flex items-center gap-1.5 text-xs text-ink-gray-5">
+                  <span class="size-1.5 shrink-0 rounded-full" :class="statusDot(site)" />
+                  <span>{{ statusLabel(site) }}</span>
+                  <span class="text-ink-gray-4">· {{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</span>
                 </div>
               </div>
-              <span class="hidden shrink-0 text-xs text-ink-gray-5 sm:block">Created {{ timeAgo(site.createdAt) }}</span>
+              <Badge v-if="hasUpdate(site)" theme="orange" variant="subtle" label="Update available" class="hidden shrink-0 sm:inline-flex" />
               <Dropdown :options="siteOptions(site)" placement="bottom-end">
                 <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" :aria-label="`Actions for ${site.name}`" @click.stop />
               </Dropdown>
@@ -139,12 +128,13 @@
           <div class="h-32 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-gray-1">
             <WorldMap :pins="locatorPins" :focus="server.regionId" :pin-scale="3" class="h-full w-full" />
           </div>
-          <div class="mt-3 flex min-w-0 items-center gap-2">
+          <div class="mt-3 flex min-w-0 items-center gap-1.5">
             <span class="min-w-0 truncate font-semibold text-ink-gray-9">{{ server.name }}</span>
             <Badge v-if="server.status === 'broken'" theme="red" variant="subtle" label="Broken" class="shrink-0" />
             <Badge v-else-if="server.status === 'suspended'" theme="orange" variant="subtle" label="Suspended" class="shrink-0" />
             <Badge v-else-if="server.status === 'active'" theme="green" variant="subtle" label="Active" class="shrink-0" />
             <Badge v-else theme="orange" variant="subtle" label="Setting up…" class="shrink-0" />
+            <Badge theme="gray" variant="subtle" :label="server.version" class="shrink-0" />
           </div>
           <div class="mt-2 flex items-center gap-1">
             <Button variant="subtle" size="sm" label="Change plan" class="flex-1" @click="resizeOpen = true" />
@@ -153,9 +143,8 @@
           </div>
         </div>
 
-        <div class="border-b border-outline-gray-2 p-4">
-          <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Specifications</div>
-          <dl class="mt-2 space-y-1.5 text-sm">
+        <RailAccordion title="About server" icon="lucide-server">
+          <dl class="space-y-1.5 text-sm">
             <div class="grid grid-cols-[7rem_1fr] gap-2">
               <dt class="text-ink-gray-5 text-p-sm">Provider</dt>
               <dd class="flex items-center gap-1.5 text-ink-gray-8 text-p-sm">
@@ -164,8 +153,6 @@
               </dd>
             </div>
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Region</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ region.name }}</dd></div>
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Frappe version</dt><dd class="text-ink-gray-8 text-p-sm">{{ versionLabel }}</dd></div>
-            <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Monthly cost</dt><dd class="text-ink-gray-8 text-p-sm">{{ inr(monthlyPrice) }} <span class="text-ink-gray-5 text-p-sm">({{ inr(store.perDayOf(server)) }}/day)</span></dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2">
               <dt class="flex items-center gap-1 text-ink-gray-5 text-p-sm">
                 Inbound IP
@@ -184,41 +171,32 @@
               </dt>
               <dd class="tabular-nums text-ink-gray-8 text-p-sm">{{ server.outboundIp }}</dd>
             </div>
-          </dl>
-        </div>
-
-        <div class="border-b border-outline-gray-2 p-4">
-          <div class="flex items-center justify-between">
-            <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Plan</div>
-            <span class="text-sm font-medium text-ink-gray-8">{{ plan.name }} · {{ inr(monthlyPrice) }}/mo</span>
-          </div>
-          <div class="mt-3 space-y-3">
-            <div v-for="row in usageRows" :key="row.label">
-              <div class="flex justify-between text-xs">
-                <span class="text-ink-gray-5">{{ row.label }}</span>
-                <span class="tabular-nums text-ink-gray-7">{{ row.value }}</span>
-              </div>
-              <Progress :value="row.pct" size="sm" class="mt-1" />
-            </div>
-          </div>
-        </div>
-
-        <div class="border-b border-outline-gray-2 p-4">
-          <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Details</div>
-          <dl class="mt-2 space-y-1.5 text-sm">
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Created by</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ store.user.name || 'You' }}</dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Created on</dt><dd class="text-ink-gray-8 text-p-sm">{{ fmtDateTime(server.createdAt) }}</dd></div>
             <div class="grid grid-cols-[7rem_1fr] gap-2"><dt class="text-ink-gray-5 text-p-sm">Owned by</dt><dd class="truncate text-ink-gray-8 text-p-sm">{{ store.user.email || '—' }}</dd></div>
           </dl>
-        </div>
+        </RailAccordion>
 
-        <div class="p-4">
+        <RailAccordion title="Plan" icon="lucide-receipt-text">
           <div class="flex items-center justify-between">
-            <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Tags</div>
-            <button class="text-xs text-ink-gray-5 hover:text-ink-gray-7">+ Add</button>
+            <span class="text-sm font-medium text-ink-gray-8">{{ plan.name }}</span>
+            <span class="text-sm tabular-nums text-ink-gray-6">{{ inr(monthlyPrice) }}/mo</span>
           </div>
-          <p class="mt-1.5 text-p-sm text-ink-gray-4">No tags yet.</p>
-        </div>
+          <template v-if="server.planHistory.length">
+            <div class="mt-4 text-xs font-medium uppercase tracking-wide text-ink-gray-5">Plan history</div>
+            <div class="mt-2 space-y-3">
+              <PlanChangeRow v-for="h in recentHistory" :key="h.id" :entry="h" />
+            </div>
+            <button
+              v-if="server.planHistory.length > recentHistory.length"
+              class="mt-3 text-xs font-medium text-ink-gray-7 hover:text-ink-gray-9"
+              @click="historyOpen = true"
+            >
+              View all {{ server.planHistory.length }} changes →
+            </button>
+          </template>
+          <p v-else class="mt-3 text-p-sm text-ink-gray-5">No plan changes yet.</p>
+        </RailAccordion>
       </aside>
     </div>
 
@@ -226,24 +204,32 @@
     <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
     <AddCardDialog v-model:open="addCardOpen" />
     <NewSiteDialog v-model:open="newSiteOpen" :server="server" />
+
+    <Dialog v-model:open="historyOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Plan history</span></template>
+      <div class="space-y-3">
+        <PlanChangeRow v-for="h in server.planHistory" :key="h.id" :entry="h" />
+      </div>
+    </Dialog>
   </ServerShell>
 </template>
 
 <script setup>
-import { computed, ref, watchEffect } from 'vue'
+import { computed, h, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Alert, Avatar, Badge, Button, Dropdown, FormControl, Progress, Tooltip, toast } from 'frappe-ui'
+import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NewSiteDialog from '../../components/NewSiteDialog.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import ChangePlanDialog from '../../components/ChangePlanDialog.vue'
+import RailAccordion from '../../components/RailAccordion.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import ServerShell from '../../components/ServerShell.vue'
-import { providerById, versionById } from '../../data/catalog'
+import { providerById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
-import { fmtDateTime, inr, timeAgo } from '../../utils/format'
+import { fmtDateTime, inr } from '../../utils/format'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -259,19 +245,27 @@ const plan = computed(() => store.planOf(server.value))
 const region = computed(() => store.regionOf(server.value))
 const prov = computed(() => providerById(region.value.providerId))
 const monthlyPrice = computed(() => store.monthlyPriceOf(server.value))
-const health = computed(() => store.healthOf(server.value))
-const versionLabel = computed(() => versionById(server.value.version).label)
+// Plan history: show the two most recent inline; the rest live in a modal.
+const recentHistory = computed(() => server.value.planHistory.slice(0, 2))
+const historyOpen = ref(false)
+
+// A single plan-change row, reused inline and in the "view all" modal.
+const PlanChangeRow = (p) => {
+  const up = p.entry.direction === 'upgrade'
+  return h('div', { class: 'flex items-center gap-2.5 text-sm' }, [
+    h('span', { class: `grid size-5 shrink-0 place-items-center rounded-full ${up ? 'bg-surface-green-2 text-ink-green-6' : 'bg-surface-amber-2 text-ink-amber-8'}` }, [
+      h('span', { class: `size-3 ${up ? 'lucide-arrow-up' : 'lucide-arrow-down'}` }),
+    ]),
+    h('div', { class: 'min-w-0 flex-1 truncate text-ink-gray-7' }, `${p.entry.from} → ${p.entry.to}`),
+    h('span', { class: 'shrink-0 tabular-nums text-xs text-ink-gray-5' }, p.entry.date),
+  ])
+}
+PlanChangeRow.props = ['entry']
 
 const crumbs = computed(() => [{ label: 'Sites', route: base.value }])
 
 const locatorPins = computed(() => [
   { id: server.value.regionId, lat: region.value.lat, lng: region.value.lng, status: server.value.status, selected: true },
-])
-
-const usageRows = computed(() => [
-  { label: 'vCPU', value: `${health.value.cpuPct}%`, pct: health.value.cpuPct },
-  { label: 'Memory', value: `${health.value.memUsed} of ${health.value.memTotal} GB`, pct: health.value.memPct },
-  { label: 'Storage', value: `${health.value.diskUsed} of ${health.value.diskTotal} GB`, pct: health.value.diskPct },
 ])
 
 // — Sites list controls
