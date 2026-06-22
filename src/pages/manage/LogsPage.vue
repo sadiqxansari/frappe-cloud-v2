@@ -1,7 +1,7 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs" roomy>
     <h1 class="text-xl font-semibold text-ink-gray-9">Logs</h1>
-    <p class="mt-1 text-base text-ink-gray-5">Output from {{ server.name }}'s services. Pick a file to tail.</p>
+    <p class="mt-1 text-p-base text-ink-gray-5">Output from {{ server.name }}'s services. Pick a file to tail.</p>
 
     <div class="mt-5 flex h-[68vh] overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
       <!-- File list -->
@@ -36,8 +36,8 @@
           </button>
         </div>
 
-        <pre v-if="placeholder" class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-gray-5">{{ placeholder }}</pre>
-        <pre v-else class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-base">{{ shownLines.join('\n') }}</pre>
+        <pre v-if="placeholder" class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-p-xs text-ink-gray-5">{{ placeholder }}</pre>
+        <pre v-else class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-p-xs text-ink-base">{{ shownLines.join('\n') }}</pre>
 
         <div class="flex items-center gap-2 border-t border-outline-gray-1 px-3 py-1.5 text-xs text-ink-gray-5">
           <span v-if="tailing" class="flex items-center gap-1.5 text-ink-green-7">

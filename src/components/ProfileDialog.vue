@@ -32,12 +32,12 @@
       <!-- Refer & Earn -->
       <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <h2 class="text-base font-semibold text-ink-gray-8">Refer &amp; Earn</h2>
-        <p class="mt-0.5 text-sm text-ink-gray-5">Your unique referral link</p>
+        <p class="mt-0.5 text-p-sm text-ink-gray-5">Your unique referral link</p>
         <div class="mt-3 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-2 px-3 py-2">
           <code class="min-w-0 flex-1 truncate font-mono text-sm text-ink-gray-8">{{ referralLink }}</code>
           <button class="text-ink-gray-5 hover:text-ink-gray-7" aria-label="Copy referral link" @click="copy(referralLink)"><span class="lucide-copy size-4" /></button>
         </div>
-        <p class="mt-3 text-sm text-ink-gray-5">
+        <p class="mt-3 text-p-sm text-ink-gray-5">
           Invite someone to Frappe Cloud and <span class="font-medium text-ink-gray-8">get $10 in Frappe Cloud credits</span> when they sign up and spend at least $25!
         </p>
       </section>

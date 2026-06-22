@@ -5,7 +5,7 @@
     </template>
 
     <div v-if="server?.migration">
-      <p class="text-sm text-ink-gray-6">
+      <p class="text-p-sm text-ink-gray-6">
         {{ server.name }} is scheduled to migrate on
         <span class="font-medium text-ink-gray-9">{{ formattedDate }}</span>.
       </p>
@@ -25,7 +25,7 @@
         </div>
       </div>
 
-      <p class="mt-3 text-xs text-ink-gray-4">
+      <p class="mt-3 text-p-xs text-ink-gray-4">
         You can cancel the scheduled migration at any time before it starts.
       </p>
     </div>

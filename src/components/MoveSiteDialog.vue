@@ -6,7 +6,7 @@
       </span>
     </template>
 
-    <p class="text-base leading-6 text-ink-gray-6">
+    <p class="text-p-base text-ink-gray-6">
       A site's version comes from the server it runs on — so {{ site.name }} moves to a server running the
       version you pick. The address stays the same; visitors won't notice.
     </p>
@@ -57,7 +57,7 @@
       class="mt-3 flex items-start gap-2.5 rounded-lg border border-outline-amber-1 bg-surface-amber-1 px-3 py-2.5"
     >
       <span class="lucide-info mt-0.5 size-4 shrink-0 text-ink-amber-4" />
-      <p class="text-sm leading-5 text-ink-amber-4">
+      <p class="text-p-sm text-ink-amber-4">
         This adds a second server to your bill — {{ inr(newPrice) }}/month (≈{{ inr(Math.round(newPrice / 30)) }}/day),
         on top of what you pay today. Your current server keeps running for your other sites.
       </p>

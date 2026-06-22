@@ -9,7 +9,7 @@
           </span>
           <div class="min-w-0 flex-1">
             <h2 class="truncate text-lg font-semibold text-ink-gray-9">{{ server.name }}</h2>
-            <p class="mt-0.5 flex items-center gap-1.5 text-sm text-ink-gray-5">
+            <p class="mt-0.5 flex items-center gap-1.5 text-p-sm text-ink-gray-5">
               <span>{{ region.flag }} {{ region.name }}</span>
               <span class="text-ink-gray-4">·</span>
               <span>{{ provider.name }}</span>
@@ -61,7 +61,7 @@
         </div>
 
         <!-- Footer — say who owns these, and where to actually change them -->
-        <p class="border-t border-outline-gray-1 px-5 py-3 text-xs leading-relaxed text-ink-gray-5">
+        <p class="border-t border-outline-gray-1 px-5 py-3 text-p-xs text-ink-gray-5">
           Frappe Cloud keeps these tuned for you, so there's nothing to set here. To move to a newer
           Frappe version, go to <span class="font-medium text-ink-gray-7">Settings → Change version</span>;
           for more disk, change your plan.

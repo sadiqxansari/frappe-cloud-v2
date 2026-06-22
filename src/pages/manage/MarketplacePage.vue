@@ -1,7 +1,7 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs">
     <h1 class="text-xl font-semibold text-ink-gray-9">Marketplace</h1>
-    <p class="mt-1 text-base leading-6 text-ink-gray-5">
+    <p class="mt-1 text-p-base text-ink-gray-5">
       Apps built by developers worldwide, ready to install on {{ server.name }}'s sites.
     </p>
 
@@ -41,7 +41,7 @@
               <span class="truncate text-sm font-medium text-ink-gray-9">{{ app.name }}</span>
               <span class="text-xs text-ink-gray-4">{{ app.version }}</span>
             </div>
-            <div class="mt-0.5 line-clamp-2 text-sm leading-5 text-ink-gray-5">{{ app.tagline }}</div>
+            <div class="mt-0.5 line-clamp-2 text-p-sm text-ink-gray-5">{{ app.tagline }}</div>
           </div>
         </div>
         <div class="flex items-center justify-between">
@@ -92,7 +92,7 @@
           <span v-if="s.id === preselectId" class="lucide-check size-4 shrink-0 text-ink-gray-7" />
         </button>
       </div>
-      <p v-else class="text-base leading-6 text-ink-gray-6">
+      <p v-else class="text-p-base text-ink-gray-6">
         {{ server.name }} has no live site yet — create one first, then install apps on it.
       </p>
     </Dialog>
@@ -138,7 +138,7 @@
           </span>
         </button>
       </div>
-      <p v-else class="text-base leading-6 text-ink-gray-6">
+      <p v-else class="text-p-base text-ink-gray-6">
         {{ server.name }} has no live site yet — create one first, then install apps on it.
       </p>
 

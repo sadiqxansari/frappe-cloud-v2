@@ -6,7 +6,7 @@
           <!-- Header -->
           <div class="flex flex-col gap-1">
             <h1 class="text-xl font-semibold text-ink-gray-9">Spending Limits</h1>
-            <p class="text-base leading-6 text-ink-gray-5">
+            <p class="text-p-base text-ink-gray-5">
               These determine your monthly spending limit on Frappe Cloud. You are
               automatically moved to a higher tier once your usage and payment history
               meet the qualifying conditions.

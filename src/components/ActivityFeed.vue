@@ -21,12 +21,12 @@
           :class="openId === e.id && 'rotate-180'"
         />
       </component>
-      <p v-if="e.detail && openId === e.id" class="mb-2 ml-10 rounded-lg bg-surface-gray-1 px-3 py-2 text-sm text-ink-gray-6">
+      <p v-if="e.detail && openId === e.id" class="mb-2 ml-10 rounded-lg bg-surface-gray-1 px-3 py-2 text-p-sm text-ink-gray-6">
         {{ e.detail }}
       </p>
     </div>
   </div>
-  <p v-else class="py-2 text-sm text-ink-gray-5">Nothing yet — things you do here will show up as plain history.</p>
+  <p v-else class="py-2 text-p-sm text-ink-gray-5">Nothing yet — things you do here will show up as plain history.</p>
 </template>
 
 <script setup>

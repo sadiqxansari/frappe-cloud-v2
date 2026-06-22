@@ -8,7 +8,7 @@
     <div v-if="step === 1" class="space-y-4">
       <div class="flex items-start gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
         <span class="lucide-info mt-0.5 size-4 shrink-0 text-ink-gray-5" />
-        <p class="text-sm text-ink-gray-7">
+        <p class="text-p-sm text-ink-gray-7">
           This suspends every server at once. Your sites go offline until you resume — <span class="font-medium">nothing is deleted</span>.
         </p>
       </div>
@@ -29,7 +29,7 @@
       <span class="mx-auto grid size-12 place-items-center rounded-full bg-surface-amber-1 text-ink-amber-8">
         <span class="lucide-pause size-6" />
       </span>
-      <p class="mx-auto mt-3 max-w-sm text-sm text-ink-gray-6">
+      <p class="mx-auto mt-3 max-w-sm text-p-sm text-ink-gray-6">
         {{ result.suspended.length }} server{{ result.suspended.length === 1 ? '' : 's' }} and their sites were suspended. You won't be charged while they're stopped.
       </p>
       <p class="mx-auto mt-2 max-w-sm text-p-sm text-ink-gray-5">

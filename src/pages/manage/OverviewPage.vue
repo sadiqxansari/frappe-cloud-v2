@@ -159,7 +159,7 @@
             <div class="grid grid-cols-[7rem_1fr] gap-2">
               <dt class="text-ink-gray-5 text-p-sm">Provider</dt>
               <dd class="flex items-center gap-1.5 text-ink-gray-8 text-p-sm">
-                <span class="grid size-4 shrink-0 place-items-center rounded text-[8px] font-bold leading-none" :class="prov.tile">{{ prov.mono }}</span>
+                <span class="grid size-4 shrink-0 place-items-center rounded text-[8px] font-bold" :class="prov.tile">{{ prov.mono }}</span>
                 {{ region.provider }}
               </dd>
             </div>
@@ -217,7 +217,7 @@
             <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Tags</div>
             <button class="text-xs text-ink-gray-5 hover:text-ink-gray-7">+ Add</button>
           </div>
-          <p class="mt-1.5 text-sm text-ink-gray-4">No tags yet.</p>
+          <p class="mt-1.5 text-p-sm text-ink-gray-4">No tags yet.</p>
         </div>
       </aside>
     </div>

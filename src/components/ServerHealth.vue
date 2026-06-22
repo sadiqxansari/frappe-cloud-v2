@@ -27,7 +27,7 @@
         <Progress :value="row.pct" size="sm" class="mt-2" />
       </div>
       <div class="flex items-center justify-between">
-        <p class="text-sm text-ink-gray-5">Backups don't count against your storage.</p>
+        <p class="text-p-sm text-ink-gray-5">Backups don't count against your storage.</p>
         <Button variant="subtle" size="sm" label="Resize server" icon-left="lucide-scaling" @click="$emit('resize')" />
       </div>
     </div>

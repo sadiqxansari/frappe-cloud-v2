@@ -17,7 +17,7 @@
           @keydown="onProviderKeydown"
         >
           <span
-            class="grid size-5 shrink-0 place-items-center rounded text-[9px] font-bold leading-none"
+            class="grid size-5 shrink-0 place-items-center rounded text-[9px] font-bold"
             :class="selectedProvider.tile"
           >{{ selectedProvider.mono }}</span>
           <span class="min-w-0 flex-1 truncate text-ink-gray-9">{{ selectedProvider.name }}</span>
@@ -49,7 +49,7 @@
             @click="selectProvider(p.id)"
           >
             <span
-              class="grid size-6 shrink-0 place-items-center rounded text-[10px] font-bold leading-none"
+              class="grid size-6 shrink-0 place-items-center rounded text-[10px] font-bold"
               :class="p.tile"
             >{{ p.mono }}</span>
             <div class="min-w-0 flex-1">

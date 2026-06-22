@@ -86,7 +86,7 @@
         <div class="flex items-center gap-3 p-3">
           <div class="flex min-w-0 flex-1 items-center gap-2.5">
             <span
-              class="grid size-7 shrink-0 place-items-center rounded text-[10px] font-bold leading-none"
+              class="grid size-7 shrink-0 place-items-center rounded text-[10px] font-bold"
               :class="currentProvider.tile"
             >{{ currentProvider.mono }}</span>
             <div class="min-w-0">
@@ -98,7 +98,7 @@
           <span class="lucide-arrow-right size-4 shrink-0 text-ink-gray-4" />
           <div class="flex min-w-0 flex-1 items-center gap-2.5">
             <span
-              class="grid size-7 shrink-0 place-items-center rounded text-[10px] font-bold leading-none"
+              class="grid size-7 shrink-0 place-items-center rounded text-[10px] font-bold"
               :class="destProvider.tile"
             >{{ destProvider.mono }}</span>
             <div class="min-w-0">

@@ -49,7 +49,7 @@
             <span class="shrink-0 tabular-nums text-ink-gray-5">{{ h.date }}</span>
           </div>
         </div>
-        <p v-else class="mt-2 text-sm text-ink-gray-5">No plan changes yet.</p>
+        <p v-else class="mt-2 text-p-sm text-ink-gray-5">No plan changes yet.</p>
       </div>
 
     </div>
@@ -121,7 +121,7 @@
               <Button v-if="w.status === 'failing'" variant="subtle" size="sm" label="Send test" @click="testHook(w)" />
               <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="store.removeWebhook(w.id)" />
             </div>
-            <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-xs text-ink-red-4">
+            <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-p-xs text-ink-red-4">
               <span class="lucide-triangle-alert size-3 shrink-0" /> {{ w.lastError }} — check the endpoint, then send a test.
             </p>
           </div>
@@ -140,7 +140,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <FormControl v-model="rule.port" type="text" label="Port" placeholder="8080" />
-            <p v-if="rule.port && portError" class="mt-1 text-xs text-ink-red-4">{{ portError }}</p>
+            <p v-if="rule.port && portError" class="mt-1 text-p-xs text-ink-red-4">{{ portError }}</p>
           </div>
           <FormControl v-model="rule.action" type="select" label="Action" :options="['Allow', 'Deny']" />
         </div>
@@ -186,7 +186,7 @@
     <Dialog v-model:open="hookOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Add webhook</span></template>
       <FormControl v-model="hookUrl" type="text" label="Endpoint URL" placeholder="https://example.com/hooks/fc" />
-      <p v-if="hookUrl && hookError" class="mt-1 text-xs text-ink-red-4">{{ hookError }}</p>
+      <p v-if="hookUrl && hookError" class="mt-1 text-p-xs text-ink-red-4">{{ hookError }}</p>
       <template #actions>
         <div class="flex justify-end gap-2"><Button label="Cancel" @click="hookOpen = false" /><Button variant="solid" label="Add webhook" :disabled="!!hookError" @click="addHook" /></div>
       </template>

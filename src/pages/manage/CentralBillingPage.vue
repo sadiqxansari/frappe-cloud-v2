@@ -7,7 +7,7 @@
         <template v-if="view === 'overview'">
           <div>
             <h1 class="text-xl font-semibold text-ink-gray-9">Billing</h1>
-            <p class="mt-1 text-base leading-6 text-ink-gray-5">One account funds every server.</p>
+            <p class="mt-1 text-p-base text-ink-gray-5">One account funds every server.</p>
           </div>
 
           <Alert v-if="store.creditExpired" theme="red" class="mt-5" title="Your credit ran out, so your sites are paused" :dismissible="false">
@@ -99,7 +99,7 @@
                   <span v-if="store.autoRecharge">Auto-recharge on · below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}</span>
                   <span v-else>Auto-recharge off</span>
                 </button>
-                <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8">
+                <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-p-xs text-ink-amber-8">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
                   Won't cover the {{ inr(store.estimatedThisCycle) }} invoice.
                 </p>
@@ -202,7 +202,7 @@
                 <Button v-if="store.payoutBalance > 0 && !store.payoutAccount" variant="solid" size="sm" label="Add payout account" @click="payoutOpen = true" />
                 <Button v-else variant="subtle" size="sm" label="Request payout" :disabled="store.payoutBalance <= 0 || !store.payoutAccount" @click="requestPayout" />
               </div>
-              <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8">
+              <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-p-xs text-ink-amber-8">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
                 Add a bank account to withdraw your earnings.
               </p>
@@ -232,11 +232,11 @@
                 <div class="min-w-0">
                   <template v-if="allSuspended">
                     <h2 class="text-base font-semibold text-ink-gray-8">Billing stopped</h2>
-                    <p class="mt-0.5 text-sm text-ink-gray-5">All servers suspended. Resume to bring your sites back online.</p>
+                    <p class="mt-0.5 text-p-sm text-ink-gray-5">All servers suspended. Resume to bring your sites back online.</p>
                   </template>
                   <template v-else>
                     <h2 class="text-base font-semibold text-ink-gray-8">Stop billing</h2>
-                    <p class="mt-0.5 text-sm text-ink-gray-5">Suspend all servers to pause charges. Sites go offline; nothing is deleted.</p>
+                    <p class="mt-0.5 text-p-sm text-ink-gray-5">Suspend all servers to pause charges. Sites go offline; nothing is deleted.</p>
                   </template>
                 </div>
                 <Button v-if="allSuspended" variant="solid" theme="green" label="Resume billing" @click="resumeBilling" />
@@ -251,7 +251,7 @@
           <div class="flex items-start justify-between gap-3">
             <div>
               <h1 class="text-xl font-semibold text-ink-gray-9">Invoices</h1>
-              <p class="mt-1 text-base leading-6 text-ink-gray-5">
+              <p class="mt-1 text-p-base text-ink-gray-5">
                 Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }} · in {{ langLabel(store.billingProfile.invoiceLanguage) }}
               </p>
             </div>
@@ -440,10 +440,10 @@
 
       <!-- Step 1: billing details (only when we don't have them yet) -->
       <div v-if="pmStep === 1" class="space-y-3">
-        <p class="text-sm text-ink-gray-6">These go on every invoice — we'll need them before adding a payment method.</p>
+        <p class="text-p-sm text-ink-gray-6">These go on every invoice — we'll need them before adding a payment method.</p>
         <div>
           <FormControl v-model="pmForm.email" type="text" label="Billing email" placeholder="billing@company.com" />
-          <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-xs text-ink-red-4">{{ pmContactEmailError }}</p>
+          <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-p-xs text-ink-red-4">{{ pmContactEmailError }}</p>
         </div>
         <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
       </div>
@@ -463,7 +463,7 @@
             <span class="mt-0.5 size-4 shrink-0 text-ink-gray-6" :class="opt.icon" />
             <span class="min-w-0">
               <span class="block text-sm font-medium text-ink-gray-9">{{ opt.label }}</span>
-              <span class="block text-xs leading-4 text-ink-gray-5">{{ opt.detail }}</span>
+              <span class="block text-p-xs text-ink-gray-5">{{ opt.detail }}</span>
             </span>
           </button>
         </div>
@@ -506,10 +506,10 @@
         <!-- UPI details -->
         <div v-else>
           <FormControl v-model="pmForm.upi" type="text" label="UPI ID" placeholder="yourname@okhdfc" autocomplete="off" />
-          <p class="mt-1.5 text-xs text-ink-gray-5">We'll send a collect request to approve in your UPI app.</p>
+          <p class="mt-1.5 text-p-xs text-ink-gray-5">We'll send a collect request to approve in your UPI app.</p>
         </div>
 
-        <p class="flex items-center gap-1.5 text-xs text-ink-gray-5">
+        <p class="flex items-center gap-1.5 text-p-xs text-ink-gray-5">
           <span class="lucide-lock size-3 shrink-0" />
           Details are encrypted and handled by our payments partner — we never store your full {{ pmForm.kind === 'upi' ? 'UPI ID' : 'card number' }}.
         </p>
@@ -535,7 +535,7 @@
         <FormControl v-model="taxForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
         <div>
           <FormControl v-model="taxForm.taxValue" type="text" :label="taxFormRegion.idLabel" :placeholder="taxFormRegion.placeholder" />
-          <p v-if="taxForm.taxValue && taxFormError" class="mt-1 text-xs text-ink-red-4">{{ taxFormError }}</p>
+          <p v-if="taxForm.taxValue && taxFormError" class="mt-1 text-p-xs text-ink-red-4">{{ taxFormError }}</p>
         </div>
       </div>
       <template #actions>
@@ -552,7 +552,7 @@
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
-          <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-xs text-ink-red-4">{{ billingEmailError }}</p>
+          <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-p-xs text-ink-red-4">{{ billingEmailError }}</p>
         </div>
         <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
       </div>
@@ -570,7 +570,7 @@
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.invoiceRecipient" type="text" label="Invoice email recipient" placeholder="accounts@company.com" />
-          <p v-if="details.invoiceRecipient && recipientError" class="mt-1 text-xs text-ink-red-4">{{ recipientError }}</p>
+          <p v-if="details.invoiceRecipient && recipientError" class="mt-1 text-p-xs text-ink-red-4">{{ recipientError }}</p>
         </div>
         <FormControl v-model="details.invoiceLanguage" type="select" label="Invoice language" :options="LANGUAGES" />
       </div>

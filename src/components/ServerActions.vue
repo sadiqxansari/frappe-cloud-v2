@@ -21,7 +21,7 @@
   <!-- Drop server (type to confirm) -->
   <Dialog v-model:open="dropOpen" size="sm">
     <template #title><span class="text-xl font-semibold text-ink-gray-9">Drop this server</span></template>
-    <p class="text-base text-ink-gray-6">
+    <p class="text-p-base text-ink-gray-6">
       This permanently removes <span class="font-medium text-ink-gray-8">{{ server.name }}</span> and all its sites.
       Backups are kept for 30 days.
     </p>

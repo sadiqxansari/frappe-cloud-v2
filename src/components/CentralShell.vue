@@ -15,8 +15,8 @@
           <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0 rounded-md" />
           <template v-if="!collapsed">
             <span class="min-w-0 flex-1 text-left">
-              <span class="block truncate text-sm font-semibold leading-tight text-ink-gray-9">Frappe Cloud</span>
-              <span class="block truncate text-xs leading-tight text-ink-gray-5">{{ store.team.name }}</span>
+              <span class="block truncate text-p-sm font-semibold text-ink-gray-9">Frappe Cloud</span>
+              <span class="block truncate text-p-xs text-ink-gray-5">{{ store.team.name }}</span>
             </span>
             <span class="lucide-chevrons-up-down size-3.5 shrink-0 text-ink-gray-5" />
           </template>
@@ -189,7 +189,7 @@
     <Dialog v-model:open="createTeamOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Create a team</span></template>
       <FormControl v-model="newTeamName" type="text" label="Team name" placeholder="e.g. Acme Innovations" />
-      <p class="mt-2 text-sm text-ink-gray-5">You'll switch to the new team right away. Add servers and members from there.</p>
+      <p class="mt-2 text-p-sm text-ink-gray-5">You'll switch to the new team right away. Add servers and members from there.</p>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="createTeamOpen = false" />

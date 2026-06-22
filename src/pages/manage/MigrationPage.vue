@@ -13,7 +13,7 @@
             <h1 class="mt-1 text-xl font-semibold text-ink-gray-9">
               {{ isPaused ? 'Plan change paused' : 'Changing your server plan' }}
             </h1>
-            <p class="mt-0.5 text-sm text-ink-gray-5">
+            <p class="mt-0.5 text-p-sm text-ink-gray-5">
               {{ fromRegion?.name }} ({{ fromProvider?.short }}) → {{ toRegion?.name }} ({{ toProvider?.short }})
             </p>
           </div>
@@ -88,12 +88,12 @@
         <!-- Region labels -->
         <div class="absolute bottom-4 left-4 right-4 flex justify-between">
           <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1/90 px-3 py-1.5 backdrop-blur-sm">
-            <p class="text-xs text-ink-gray-5">From</p>
-            <p class="text-sm font-medium text-ink-gray-9">{{ fromRegion?.name }}</p>
+            <p class="text-p-xs text-ink-gray-5">From</p>
+            <p class="text-p-sm font-medium text-ink-gray-9">{{ fromRegion?.name }}</p>
           </div>
           <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1/90 px-3 py-1.5 backdrop-blur-sm">
-            <p class="text-xs text-ink-gray-5">To</p>
-            <p class="text-sm font-medium text-ink-gray-9">{{ toRegion?.name }}</p>
+            <p class="text-p-xs text-ink-gray-5">To</p>
+            <p class="text-p-sm font-medium text-ink-gray-9">{{ toRegion?.name }}</p>
           </div>
         </div>
       </div>

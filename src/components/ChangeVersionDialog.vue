@@ -2,7 +2,7 @@
   <Dialog v-model:open="open" size="lg">
     <template #title><span class="text-xl font-semibold text-ink-gray-9">Change Frappe version</span></template>
 
-    <p class="text-sm text-ink-gray-5">
+    <p class="text-p-sm text-ink-gray-5">
       {{ server?.name }} runs {{ currentLabel }}. Pick a version to move it — and all its sites — to. You can go up or down.
     </p>
 
@@ -19,7 +19,7 @@
           <Badge v-if="v.id === server?.version" theme="gray" variant="outline" label="Current" />
           <Badge v-else-if="directionFor(v.id) === 'down'" theme="orange" variant="subtle" label="Downgrade" />
         </div>
-        <p class="mt-0.5 text-sm text-ink-gray-5">{{ v.note }}</p>
+        <p class="mt-0.5 text-p-sm text-ink-gray-5">{{ v.note }}</p>
       </button>
     </div>
 

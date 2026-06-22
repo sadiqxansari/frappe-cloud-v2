@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 class="text-xl font-semibold text-ink-gray-9">Analytics / insights</h1>
-        <p class="mt-1 text-base text-ink-gray-5">How {{ server.name }} is doing over time.</p>
+        <p class="mt-1 text-p-base text-ink-gray-5">How {{ server.name }} is doing over time.</p>
       </div>
       <div class="flex items-center gap-2">
         <FormControl v-model="range" type="select" :options="rangeOptions" />

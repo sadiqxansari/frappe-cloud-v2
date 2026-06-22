@@ -5,7 +5,7 @@
     </template>
 
     <FormControl v-model="domain" type="text" label="Domain" placeholder="shop.mycompany.in" />
-    <p class="mt-2 text-sm text-ink-gray-5">
+    <p class="mt-2 text-p-sm text-ink-gray-5">
       We'll show the DNS records to add at your provider. Add them, then verify — we set up SSL once DNS checks out.
     </p>
 

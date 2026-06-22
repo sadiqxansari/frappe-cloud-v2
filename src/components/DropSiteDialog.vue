@@ -4,7 +4,7 @@
       <span class="text-xl font-semibold text-ink-gray-9">Delete this site</span>
     </template>
 
-    <p class="text-base text-ink-gray-6">
+    <p class="text-p-base text-ink-gray-6">
       This permanently deletes <span class="font-medium text-ink-gray-8">{{ site.name }}</span> and everything on
       it. Backups are kept for 30 days, just in case.
     </p>

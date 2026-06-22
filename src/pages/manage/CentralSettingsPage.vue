@@ -84,7 +84,7 @@
                   Admin
                   <template v-if="chip.serverCount !== null" #suffix>
                     <Tooltip :text="chip.serverNames.join(', ')">
-                      <span class="inline-flex min-w-[14px] items-center justify-center rounded-full bg-orange-200 px-0.5 text-[9px] font-semibold leading-none text-orange-900">{{ chip.serverCount }}</span>
+                      <span class="inline-flex min-w-[14px] items-center justify-center rounded-full bg-orange-200 px-0.5 text-[9px] font-semibold text-orange-900">{{ chip.serverCount }}</span>
                     </Tooltip>
                   </template>
                 </Badge>
@@ -94,7 +94,7 @@
                 >
                   {{ chip.roleName }}
                   <Tooltip v-if="chip.serverCount !== null" :text="chip.serverNames.join(', ')">
-                    <span class="ml-1 inline-flex size-4 items-center justify-center rounded-full bg-surface-gray-4 text-[10px] font-semibold leading-none text-ink-gray-7">
+                    <span class="ml-1 inline-flex size-4 items-center justify-center rounded-full bg-surface-gray-4 text-[10px] font-semibold text-ink-gray-7">
                       {{ chip.serverCount }}
                     </span>
                   </Tooltip>
@@ -119,7 +119,7 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-base font-semibold text-ink-gray-8">Frappe Partner</h2>
-            <p class="mt-0.5 text-sm text-ink-gray-5">Manage partner access to your account</p>
+            <p class="mt-0.5 text-p-sm text-ink-gray-5">Manage partner access to your account</p>
           </div>
           <Button
             variant="subtle"
@@ -129,10 +129,10 @@
             @click="openPartner"
           />
         </div>
-        <p v-if="store.partnerCode" class="mt-3 text-sm text-ink-gray-6">
+        <p v-if="store.partnerCode" class="mt-3 text-p-sm text-ink-gray-6">
           Linked to Partner code <span class="font-mono font-medium text-ink-gray-8">{{ store.partnerCode }}</span>.
         </p>
-        <p v-else class="mt-3 text-sm text-ink-gray-6">
+        <p v-else class="mt-3 text-p-sm text-ink-gray-6">
           Have a Frappe Partner Referral Code? Click on <span class="font-medium text-ink-gray-8">Add Partner Code</span> to link with your Partner team.
         </p>
       </div>
@@ -143,7 +143,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-base font-semibold text-ink-gray-8">Roles</h2>
-          <p class="text-sm text-ink-gray-5">Define roles here, then assign them to people on the Team tab.</p>
+          <p class="text-p-sm text-ink-gray-5">Define roles here, then assign them to people on the Team tab.</p>
         </div>
         <Button variant="subtle" size="sm" label="New role" icon-left="lucide-plus" @click="openRole" />
       </div>
@@ -203,7 +203,7 @@
     <Dialog v-model:open="partnerOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Add Partner Code</span></template>
       <FormControl v-model="partnerDraft" type="text" label="Partner Referral Code" placeholder="e.g. ABC123" />
-      <p class="mt-2 text-sm text-ink-gray-5">Link your account with a Frappe Partner team using their referral code.</p>
+      <p class="mt-2 text-p-sm text-ink-gray-5">Link your account with a Frappe Partner team using their referral code.</p>
       <template #actions>
         <div class="flex justify-end gap-2"><Button label="Cancel" @click="partnerOpen = false" /><Button variant="solid" label="Link" :disabled="!partnerDraft.trim()" @click="savePartner" /></div>
       </template>
@@ -215,7 +215,7 @@
         <FormControl v-model="invite.email" type="email" label="Email" placeholder="teammate@company.com" />
         <FormControl :modelValue="invite.roleId" type="select" label="Role" :options="roleInviteOptions" @update:modelValue="(v) => { invite.roleId = v; if (v === 'role-owner') invite.resourceId = '' }" />
         <FormControl v-if="invite.roleId !== 'role-owner'" :modelValue="invite.resourceId" type="select" label="Access to" :options="serverSelectOptions" @update:modelValue="(v) => { invite.resourceId = v }" />
-        <p v-else class="text-xs text-ink-gray-4">Owner role applies to all servers.</p>
+        <p v-else class="text-p-xs text-ink-gray-4">Owner role applies to all servers.</p>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2"><Button label="Cancel" @click="inviteOpen = false" /><Button variant="solid" label="Send invite" :disabled="!invite.email.trim()" @click="sendInvite" /></div>
@@ -247,7 +247,7 @@
             <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
               <div>
                 <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
-                <p v-if="permLocked(perm, newRole.permissions)" class="text-xs text-ink-gray-4">Available to Admin roles only</p>
+                <p v-if="permLocked(perm, newRole.permissions)" class="text-p-xs text-ink-gray-4">Available to Admin roles only</p>
               </div>
               <Switch
                 :modelValue="newRole.permissions[perm.key]"
@@ -305,7 +305,7 @@
                 <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
                   <div>
                     <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
-                    <p v-if="!roleDialogRole.system && permLocked(perm, roleDialogPerms)" class="text-xs text-ink-gray-4">Available to Admin roles only</p>
+                    <p v-if="!roleDialogRole.system && permLocked(perm, roleDialogPerms)" class="text-p-xs text-ink-gray-4">Available to Admin roles only</p>
                   </div>
                   <div :class="roleDialogRole.system ? 'pointer-events-none opacity-40' : ''">
                     <Switch
@@ -317,7 +317,7 @@
                 </div>
               </div>
             </div>
-            <p v-if="roleDialogRole.system" class="text-xs text-ink-gray-4">Built-in role — permissions cannot be changed.</p>
+            <p v-if="roleDialogRole.system" class="text-p-xs text-ink-gray-4">Built-in role — permissions cannot be changed.</p>
           </div>
 
           <!-- Members tab -->
@@ -332,7 +332,7 @@
                 <span class="shrink-0 text-xs text-ink-gray-4">{{ serverContextFor(m, roleDialogRole.id) }}</span>
               </div>
             </div>
-            <p v-else class="py-6 text-center text-sm text-ink-gray-4">No one has this role yet.</p>
+            <p v-else class="py-6 text-center text-p-sm text-ink-gray-4">No one has this role yet.</p>
 
             <!-- Add an existing team member directly — no invite (issue #7).
                  Assigning the Owner role transfers ownership, so it's owner-only. -->
@@ -345,8 +345,8 @@
                 :options="addableMemberOptions(roleDialogRole.id)"
                 @update:modelValue="onAddMemberToRole"
               />
-              <p v-else class="text-center text-xs text-ink-gray-4">Everyone on the team already has this role.</p>
-              <p v-if="roleDialogRole.id === 'role-owner'" class="mt-1.5 text-xs text-ink-gray-4">
+              <p v-else class="text-center text-p-xs text-ink-gray-4">Everyone on the team already has this role.</p>
+              <p v-if="roleDialogRole.id === 'role-owner'" class="mt-1.5 text-p-xs text-ink-gray-4">
                 There's only one Owner — adding someone transfers ownership to them.
               </p>
             </div>
@@ -379,7 +379,7 @@
       <!-- View mode: compact roles table -->
       <div v-if="memberDialogMode === 'view' && memberDialogTarget" class="max-h-[28rem] overflow-y-auto rounded-xl border border-outline-gray-2">
         <div v-for="row in memberDialogRows(memberDialogTarget)" :key="row.key" class="flex items-center gap-3 border-b border-outline-gray-1 px-3 py-2.5 last:border-b-0">
-          <span v-if="row.providerId" class="grid size-6 shrink-0 place-items-center rounded text-[9px] font-bold leading-none" :class="row.providerTile">{{ row.providerMono }}</span>
+          <span v-if="row.providerId" class="grid size-6 shrink-0 place-items-center rounded text-[9px] font-bold" :class="row.providerTile">{{ row.providerMono }}</span>
           <span v-else class="grid size-6 shrink-0 place-items-center rounded bg-surface-gray-2">
             <span class="lucide-globe size-3.5 text-ink-gray-5" />
           </span>
@@ -437,7 +437,7 @@
       <template #title>
         <span class="text-xl font-semibold text-ink-gray-9">Remove {{ removeMemberTarget?.name }}?</span>
       </template>
-      <p class="text-sm text-ink-gray-6">
+      <p class="text-p-sm text-ink-gray-6">
         They'll immediately lose access to <span class="font-medium text-ink-gray-8">{{ store.team.name }}</span> and all its servers and sites. You can re-invite them at any time.
       </p>
       <template #actions>
@@ -454,11 +454,11 @@
         <span class="text-xl font-semibold text-ink-gray-9">{{ leaveStep === 1 ? 'Transfer ownership first' : 'Leave team' }}</span>
       </template>
       <div v-if="leaveStep === 1" class="space-y-3">
-        <p class="text-sm text-ink-gray-6">You're the Owner. Choose someone to take over before you leave.</p>
+        <p class="text-p-sm text-ink-gray-6">You're the Owner. Choose someone to take over before you leave.</p>
         <FormControl v-model="newOwnerForLeave" type="select" label="New owner" :options="nonOwnerMemberOptions" />
       </div>
       <div v-else>
-        <p class="text-sm text-ink-gray-6">
+        <p class="text-p-sm text-ink-gray-6">
           Are you sure you want to leave <span class="font-medium text-ink-gray-8">{{ store.team.name }}</span>? You'll lose access immediately.
         </p>
       </div>
@@ -477,7 +477,7 @@
         <span class="text-xl font-semibold text-ink-gray-9">Delete "{{ deleteTarget?.name }}"</span>
       </template>
       <div class="space-y-3">
-        <p class="text-sm text-ink-gray-6">These members have this role. Assign them a new role before deleting.</p>
+        <p class="text-p-sm text-ink-gray-6">These members have this role. Assign them a new role before deleting.</p>
         <div class="space-y-3">
           <div v-for="({ member, resourceId }, i) in deleteAffected" :key="i" class="flex items-center gap-3">
             <div class="flex min-w-0 flex-1 items-center gap-2">

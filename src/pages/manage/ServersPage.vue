@@ -68,7 +68,7 @@
             </button>
 
             <button class="flex min-w-0 items-center gap-2 text-left" @click="goServer(srv.id)">
-              <span class="grid size-5 shrink-0 place-items-center rounded text-[9px] font-bold leading-none" :class="provOf(srv).tile">
+              <span class="grid size-5 shrink-0 place-items-center rounded text-[9px] font-bold" :class="provOf(srv).tile">
                 {{ provOf(srv).mono }}
               </span>
               <span class="truncate text-sm text-ink-gray-8">{{ city(srv) }}</span>

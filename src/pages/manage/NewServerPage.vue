@@ -33,7 +33,7 @@
       <!-- Form (right) — width matches the server list panel so the map is the same size on both -->
       <div class="w-full overflow-y-auto p-6 lg:w-[40rem] lg:shrink-0">
         <h1 class="text-xl font-semibold text-ink-gray-9">Add a new server</h1>
-        <p class="mt-1 text-sm text-ink-gray-5">Pick where it lives and how big it is. You can resize anytime.</p>
+        <p class="mt-1 text-p-sm text-ink-gray-5">Pick where it lives and how big it is. You can resize anytime.</p>
 
         <Alert v-if="deployError" theme="red" class="mt-4" :title="`Couldn't deploy in ${regionName}`" :dismissible="false">
           <template #description>{{ deployError }}</template>
@@ -140,7 +140,7 @@
             </div>
             <div class="min-w-0 flex-1">
               <FormControl type="select" label="Frappe version" v-model="version" :options="versionOptions" />
-              <p class="mt-4 flex items-center gap-1.5 text-xs text-ink-gray-5">
+              <p class="mt-4 flex items-center gap-1.5 text-p-xs text-ink-gray-5">
                 <span class="lucide-map-pin size-3.5" />
                 Runs in {{ regionName }} — this is where your data lives.
               </p>

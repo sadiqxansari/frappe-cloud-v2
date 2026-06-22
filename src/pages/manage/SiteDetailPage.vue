@@ -90,7 +90,7 @@
     <!-- Config — the raw site_config.json, as an editable key/value table. -->
     <section v-else-if="tab === 'config'" class="mt-5">
       <div class="flex items-center justify-between gap-2">
-        <p class="text-sm text-ink-gray-5">Keys passed to this site's <span class="font-mono text-ink-gray-7">site_config.json</span>.</p>
+        <p class="text-p-sm text-ink-gray-5">Keys passed to this site's <span class="font-mono text-ink-gray-7">site_config.json</span>.</p>
         <div class="flex items-center gap-2">
           <Button variant="ghost" size="sm" icon="lucide-rotate-cw" aria-label="Refresh" @click="toast.success('Refreshed')" />
           <Button variant="subtle" size="sm" label="Add config" icon-left="lucide-plus" @click="addConfig" />
@@ -198,7 +198,7 @@
                   </span>
                 </div>
               </div>
-              <p class="mt-2 flex items-start gap-1.5 text-xs text-ink-gray-5">
+              <p class="mt-2 flex items-start gap-1.5 text-p-xs text-ink-gray-5">
                 <span class="lucide-info mt-px size-3 shrink-0" />
                 Add these at your DNS provider, then verify. DNS changes can take up to an hour to propagate — we keep checking in the background.
               </p>
@@ -301,7 +301,7 @@
           </div>
           <Button variant="subtle" size="sm" label="Update" @click="updateApp(app)" />
         </div>
-        <p v-if="!updatableApps.length" class="py-2 text-center text-sm text-ink-gray-5">Everything's up to date.</p>
+        <p v-if="!updatableApps.length" class="py-2 text-center text-p-sm text-ink-gray-5">Everything's up to date.</p>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">

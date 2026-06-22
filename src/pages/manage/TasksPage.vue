@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 class="text-xl font-semibold text-ink-gray-9">Tasks</h1>
-        <p class="mt-1 text-base text-ink-gray-5">Background jobs {{ server.name }} has run — backups, deploys, migrations and more.</p>
+        <p class="mt-1 text-p-base text-ink-gray-5">Background jobs {{ server.name }} has run — backups, deploys, migrations and more.</p>
       </div>
       <Button variant="subtle" size="sm" label="Refresh" icon-left="lucide-rotate-cw" @click="refresh" />
     </div>

@@ -11,7 +11,7 @@
         <FormControl v-model="form.expiry" type="text" label="Expiry" placeholder="12/29" />
         <FormControl v-model="form.cvc" type="text" label="CVC" placeholder="123" />
       </div>
-      <p class="text-sm text-ink-gray-5">This is a prototype — nothing is charged.</p>
+      <p class="text-p-sm text-ink-gray-5">This is a prototype — nothing is charged.</p>
     </div>
 
     <template #actions>

@@ -7,7 +7,7 @@
     <div class="space-y-5">
       <div>
         <FormControl v-model="label" type="text" label="Site name" placeholder="e.g. My Shop" />
-        <p class="mt-1.5 text-sm text-ink-gray-5">
+        <p class="mt-1.5 text-p-sm text-ink-gray-5">
           Web address: <span class="font-medium text-ink-gray-7">{{ subdomain }}</span>
         </p>
       </div>
@@ -37,7 +37,7 @@
         </div>
       </div>
 
-      <p class="flex items-start gap-1.5 text-sm text-ink-gray-5">
+      <p class="flex items-start gap-1.5 text-p-sm text-ink-gray-5">
         <span class="lucide-info mt-0.5 size-3.5 shrink-0" />
         Runs on {{ server?.name || 'your server' }}<template v-if="planName"> ({{ planName }})</template> — sites share its compute and storage, so there's nothing more to pay.
       </p>

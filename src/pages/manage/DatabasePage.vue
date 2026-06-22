@@ -1,7 +1,7 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs" roomy>
     <h1 class="text-xl font-semibold text-ink-gray-9">Database</h1>
-    <p class="mt-1 text-base text-ink-gray-5">Run read-only queries against a replica of {{ server.name }}.</p>
+    <p class="mt-1 text-p-base text-ink-gray-5">Run read-only queries against a replica of {{ server.name }}.</p>
 
     <div class="mt-5 grid gap-4 sm:grid-cols-3">
       <div v-for="s in dbTiles" :key="s.label" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
@@ -20,7 +20,7 @@
         v-model="query"
         rows="3"
         spellcheck="false"
-        class="mt-2 w-full rounded-lg border border-outline-gray-2 bg-surface-gray-7 p-3 font-mono text-xs leading-5 text-ink-base focus:outline-none focus:ring-2 focus:ring-outline-gray-4"
+        class="mt-2 w-full rounded-lg border border-outline-gray-2 bg-surface-gray-7 p-3 font-mono text-p-xs text-ink-base focus:outline-none focus:ring-2 focus:ring-outline-gray-4"
       />
       <div class="mt-2 flex items-center justify-end gap-2">
         <Button variant="subtle" size="sm" label="Export results" :disabled="!result || !result.rows.length" icon-left="lucide-download" @click="exportCsv" />
@@ -54,7 +54,7 @@
         <div v-else class="mt-3 rounded-lg border border-dashed border-outline-gray-2 p-6 text-center text-sm text-ink-gray-5">
           No rows returned — the query ran fine but matched nothing.
         </div>
-        <p class="mt-2 text-xs text-ink-gray-5">{{ result.rows.length }} rows · {{ result.ms }} ms</p>
+        <p class="mt-2 text-p-xs text-ink-gray-5">{{ result.rows.length }} rows · {{ result.ms }} ms</p>
       </template>
     </div>
 

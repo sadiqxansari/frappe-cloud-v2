@@ -48,7 +48,7 @@
       </div>
     </div>
 
-    <p class="mt-3 flex items-center gap-1.5 text-sm text-ink-gray-5">
+    <p class="mt-3 flex items-center gap-1.5 text-p-sm text-ink-gray-5">
       <span class="lucide-refresh-cw size-3.5" />
       Resize anytime — start small and grow when you need to.
     </p>
@@ -69,7 +69,7 @@
     </template>
     <div class="mb-4 rounded-lg border border-outline-gray-2 p-3">
       <ProviderRegionPicker v-model="regionId" />
-      <p class="mt-2 text-xs text-ink-gray-5">Provider &amp; region — prices below update with your choice.</p>
+      <p class="mt-2 text-p-xs text-ink-gray-5">Provider &amp; region — prices below update with your choice.</p>
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
       <div
