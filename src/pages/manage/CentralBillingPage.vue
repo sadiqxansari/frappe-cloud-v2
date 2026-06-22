@@ -136,7 +136,30 @@
                   </Dropdown>
                 </div>
               </div>
-              <p v-else class="mt-2 text-sm text-ink-gray-5">No payment method yet.</p>
+              <EmptyState
+                v-else
+                icon="lucide-credit-card"
+                title="No payment method yet"
+                description="Add a card or UPI so your servers keep running. The primary is charged first; add a backup and we fall back to it automatically."
+              >
+                <Button variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="openPm" />
+              </EmptyState>
+
+              <!-- Billing contact — email & address live with payment methods (#14) -->
+              <div class="mt-4 border-t border-outline-gray-1 pt-4">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-sm font-medium text-ink-gray-7">Billing contact</h3>
+                  <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
+                </div>
+                <dl class="mt-2 space-y-1.5 text-p-sm">
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-4' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
+                </dl>
+                <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-3 transition-colors hover:text-ink-red-4" @click="openContact">
+                  <span class="lucide-triangle-alert size-3 shrink-0" />
+                  Invoices are bouncing back — update your billing email.
+                </button>
+              </div>
             </section>
 
             <!-- Subscriptions (one per server) -->
@@ -185,24 +208,6 @@
               </p>
             </section>
 
-            <!-- Contact & address -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
-              <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-ink-gray-8">Contact &amp; address</h2>
-                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit contact & address" @click="openDetails"><span class="lucide-pencil size-3.5" /></button>
-              </div>
-              <dl class="mt-3 space-y-1.5 text-p-sm">
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing email</dt><dd class="text-p-sm" :class="store.billingProfile.emailBounced ? 'text-ink-red-4' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice recipient</dt><dd class="text-ink-gray-8 text-p-sm">{{ store.billingProfile.invoiceRecipient || 'Not added' }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Invoice language</dt><dd class="text-ink-gray-8 text-p-sm">{{ langLabel(store.billingProfile.invoiceLanguage) }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8 text-p-sm">{{ store.billingProfile.address || 'Not added' }}</dd></div>
-              </dl>
-              <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-3 transition-colors hover:text-ink-red-4" @click="openDetails">
-                <span class="lucide-triangle-alert size-3 shrink-0" />
-                Invoices are bouncing back — update your billing email.
-              </button>
-            </section>
-
             <!-- Tax & compliance -->
             <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
               <div class="flex items-center justify-between">
@@ -243,9 +248,17 @@
 
         <!-- ── Invoices ─────────────────────────────────────────── -->
         <template v-else>
-          <div>
-            <h1 class="text-xl font-semibold text-ink-gray-9">Invoices</h1>
-            <p class="mt-1 text-base leading-6 text-ink-gray-5">Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }}</p>
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-semibold text-ink-gray-9">Invoices</h1>
+              <p class="mt-1 text-base leading-6 text-ink-gray-5">
+                Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }} · in {{ langLabel(store.billingProfile.invoiceLanguage) }}
+              </p>
+            </div>
+            <button class="mt-1 flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-sm text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" @click="openInvoiceSettings">
+              <span class="lucide-pencil size-3.5" />
+              Recipient &amp; language
+            </button>
           </div>
 
           <div v-if="store.invoices.length" class="mt-5 divide-y divide-outline-gray-1">
@@ -269,7 +282,13 @@
               </div>
             </button>
           </div>
-          <p v-else class="mt-5 text-sm text-ink-gray-5">No invoices yet.</p>
+          <EmptyState
+            v-else
+            class="mt-5"
+            icon="lucide-receipt"
+            title="No invoices yet"
+            description="Your first invoice will appear here at the end of the billing cycle. We'll email a copy to your invoice recipient too."
+          />
         </template>
         </div>
       </div>
@@ -367,7 +386,12 @@
                   </span>
                 </div>
               </div>
-              <p v-else class="text-sm text-ink-gray-5">No wallet activity yet.</p>
+              <EmptyState
+                v-else
+                icon="lucide-wallet"
+                title="No wallet activity yet"
+                description="Credit you add and charges we apply will show up here."
+              />
             </div>
 
             <div class="space-y-3 border-t border-outline-gray-2 p-4">
@@ -446,25 +470,38 @@
       </template>
     </Dialog>
 
-    <!-- Contact & address -->
-    <Dialog v-model:open="detailsOpen" size="md">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Contact &amp; address</span></template>
+    <!-- Billing contact — email & address (paired with payment methods) -->
+    <Dialog v-model:open="contactOpen" size="md">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Billing contact</span></template>
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
           <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-xs text-ink-red-4">{{ billingEmailError }}</p>
         </div>
+        <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
+      </div>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="contactOpen = false" />
+          <Button variant="solid" label="Save" :disabled="!!billingEmailError" @click="saveDetails(() => (contactOpen = false))" />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Invoice settings — recipient & language (paired with invoices) -->
+    <Dialog v-model:open="invoiceSettingsOpen" size="md">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Invoice recipient &amp; language</span></template>
+      <div class="space-y-3">
         <div>
           <FormControl v-model="details.invoiceRecipient" type="text" label="Invoice email recipient" placeholder="accounts@company.com" />
           <p v-if="details.invoiceRecipient && recipientError" class="mt-1 text-xs text-ink-red-4">{{ recipientError }}</p>
         </div>
         <FormControl v-model="details.invoiceLanguage" type="select" label="Invoice language" :options="LANGUAGES" />
-        <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
-          <Button label="Cancel" @click="detailsOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!detailsValid" @click="saveDetails" />
+          <Button label="Cancel" @click="invoiceSettingsOpen = false" />
+          <Button variant="solid" label="Save" :disabled="!!recipientError" @click="saveDetails(() => (invoiceSettingsOpen = false))" />
         </div>
       </template>
     </Dialog>
@@ -518,12 +555,13 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
 import CentralShell from '../../components/CentralShell.vue'
+import EmptyState from '../../components/EmptyState.vue'
 import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
 import { CYCLE_DAYS, useCloudStore } from '../../stores/cloud'
 import { inr, usd } from '../../utils/format'
@@ -606,6 +644,11 @@ function langLabel(v) {
 
 // — The one docked panel: either an invoice or the wallet history.
 const openPanel = ref(null)
+// Switching between the Billing and Invoices tabs closes the docked panel —
+// an invoice opened on one tab shouldn't linger over the other. (#31)
+watch(view, () => {
+  openPanel.value = null
+})
 
 // — Cycle figures: where we are in the 30-day cycle and when it bills.
 const cycleDays = CYCLE_DAYS
@@ -763,24 +806,33 @@ function saveTax() {
   taxOpen.value = false
 }
 
-// — Contact & address
-const detailsOpen = ref(false)
+// — Billing contact & invoice settings. Split into two dialogs (#14) — email &
+// address sit with payment methods; recipient & language sit with invoices — but
+// both edit the same billing profile, so they share one form object.
+const contactOpen = ref(false)
+const invoiceSettingsOpen = ref(false)
 const details = reactive({ address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en' })
-function openDetails() {
+function loadDetails() {
   details.address = store.billingProfile.address
   details.billingEmail = store.billingProfile.billingEmail
   details.invoiceRecipient = store.billingProfile.invoiceRecipient
   details.invoiceLanguage = store.billingProfile.invoiceLanguage
-  detailsOpen.value = true
+}
+function openContact() {
+  loadDetails()
+  contactOpen.value = true
+}
+function openInvoiceSettings() {
+  loadDetails()
+  invoiceSettingsOpen.value = true
 }
 const billingEmailError = computed(() => validateEmail(details.billingEmail, { required: true }))
 const recipientError = computed(() => validateEmail(details.invoiceRecipient))
-const detailsValid = computed(() => !billingEmailError.value && !recipientError.value)
-function saveDetails() {
-  if (!detailsValid.value) return
+function saveDetails(done) {
+  if (billingEmailError.value || recipientError.value) return
   store.setBillingProfile({ ...details, emailBounced: false })
   toast.success('Billing details saved')
-  detailsOpen.value = false
+  done?.()
 }
 
 // — Budget alert
