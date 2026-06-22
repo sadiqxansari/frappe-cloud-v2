@@ -292,7 +292,11 @@ const brandOptions = computed(() => [
       switchTeamOpen.value = true
     },
   },
-  { group: 'Theme', options: themeOptions.value },
+  {
+    label: 'Theme',
+    icon: 'lucide-sun-moon',
+    submenu: themeOptions.value,
+  },
 ])
 
 const profileOpen = ref(false)

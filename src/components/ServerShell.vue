@@ -243,12 +243,15 @@ const serverMenu = computed(() => [
   {
     label: 'System info',
     icon: 'lucide-info',
-    description: 'Versions, storage, services',
     onClick: () => {
       systemInfoOpen.value = true
     },
   },
-  { group: 'Theme', options: themeOptions.value },
+  {
+    label: 'Theme',
+    icon: 'lucide-sun-moon',
+    submenu: themeOptions.value,
+  },
 ])
 
 const profileOpen = ref(false)
