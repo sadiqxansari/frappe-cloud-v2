@@ -6,14 +6,14 @@
 
     <FormControl v-model="domain" type="text" label="Domain" placeholder="shop.mycompany.in" />
     <p class="mt-2 text-sm text-ink-gray-5">
-      Point a CNAME record at <span class="font-medium text-ink-gray-7">{{ site.name }}</span> first. We'll check
-      it and set up SSL automatically.
+      We'll show the exact DNS records to add at your provider. Once you've added them, hit Verify —
+      we set up SSL automatically after DNS checks out.
     </p>
 
     <template #actions>
       <div class="flex justify-end gap-2">
         <Button label="Cancel" @click="open = false" />
-        <Button variant="solid" label="Connect domain" :disabled="!valid" @click="add" />
+        <Button variant="solid" label="Add domain" :disabled="!valid" @click="add" />
       </div>
     </template>
   </Dialog>
@@ -42,6 +42,6 @@ const valid = computed(() => /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain.value.trim(
 function add() {
   store.addDomain(props.site.id, domain.value.trim().toLowerCase())
   open.value = false
-  toast.success('Checking DNS — this takes a moment')
+  toast.success('Domain added — add the DNS records, then verify')
 }
 </script>

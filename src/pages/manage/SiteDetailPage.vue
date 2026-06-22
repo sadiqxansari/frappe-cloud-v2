@@ -167,23 +167,40 @@
                   <span class="truncate text-sm font-medium text-ink-gray-9">{{ d.name }}</span>
                   <Badge v-if="d.status === 'verifying'" theme="orange" variant="subtle" label="Checking DNS…" />
                   <Badge v-else-if="d.status === 'failed'" theme="red" variant="subtle" label="Verification failed" />
+                  <Badge v-else-if="d.status === 'pending'" theme="orange" variant="subtle" label="DNS setup needed" />
                 </div>
                 <div v-if="d.ssl" class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-3"><span class="lucide-lock size-3" /> SSL active</div>
                 <div v-else-if="d.status === 'failed'" class="mt-0.5 text-sm text-ink-red-4">We couldn't find the records below at your DNS provider.</div>
+                <div v-else-if="d.status === 'pending'" class="mt-0.5 text-sm text-ink-gray-5">Add the records below at your domain provider, then verify.</div>
                 <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
               </div>
-              <Button v-if="d.status === 'failed'" variant="subtle" size="sm" label="Retry" icon-left="lucide-refresh-cw" @click="retryDomain(d)" />
+              <Button v-if="d.status === 'pending'" variant="solid" size="sm" label="Verify" icon-left="lucide-check" @click="verifyDomain(d)" />
+              <Button v-else-if="d.status === 'failed'" variant="subtle" size="sm" label="Retry" icon-left="lucide-refresh-cw" @click="verifyDomain(d)" />
             </div>
 
-            <!-- Failed verification: show the exact records to add -->
-            <div v-if="d.status === 'failed' && d.dnsRecords?.length" class="mt-3 overflow-hidden rounded-lg border border-outline-gray-2">
-              <div class="grid grid-cols-[5rem_1fr_1fr] gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
-                <span>Type</span><span>Host</span><span>Value</span>
+            <!-- Records to add at the DNS provider (before first verify, or after a failure) -->
+            <template v-if="(d.status === 'pending' || d.status === 'failed') && d.dnsRecords?.length">
+              <div class="mt-3 overflow-hidden rounded-lg border border-outline-gray-2">
+                <div class="grid grid-cols-[4rem_1fr_1fr] gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
+                  <span>Type</span><span>Host</span><span>Value</span>
+                </div>
+                <div v-for="(rec, i) in d.dnsRecords" :key="i" class="grid grid-cols-[4rem_1fr_1fr] gap-3 border-b border-outline-gray-1 px-3 py-2 font-mono text-xs text-ink-gray-7 last:border-b-0">
+                  <span>{{ rec.type }}</span>
+                  <span class="flex min-w-0 items-center gap-1">
+                    <span class="truncate">{{ rec.host }}</span>
+                    <Button variant="ghost" size="xs" icon="lucide-copy" :aria-label="`Copy host ${rec.host}`" @click="copyValue(rec.host)" />
+                  </span>
+                  <span class="flex min-w-0 items-center gap-1">
+                    <span class="truncate">{{ rec.value }}</span>
+                    <Button variant="ghost" size="xs" icon="lucide-copy" :aria-label="`Copy value ${rec.value}`" @click="copyValue(rec.value)" />
+                  </span>
+                </div>
               </div>
-              <div v-for="(rec, i) in d.dnsRecords" :key="i" class="grid grid-cols-[5rem_1fr_1fr] gap-3 border-b border-outline-gray-1 px-3 py-2 font-mono text-xs text-ink-gray-7 last:border-b-0">
-                <span>{{ rec.type }}</span><span class="truncate">{{ rec.host }}</span><span class="truncate">{{ rec.value }}</span>
-              </div>
-            </div>
+              <p class="mt-2 flex items-start gap-1.5 text-xs text-ink-gray-5">
+                <span class="lucide-info mt-px size-3 shrink-0" />
+                Add these at your domain provider, then click Verify. DNS changes can take up to an hour to propagate — we keep checking in the background.
+              </p>
+            </template>
           </div>
         </div>
         <Button variant="subtle" size="sm" label="Use your own domain" icon-left="lucide-plus" class="mt-3" @click="addDomainOpen = true" />
@@ -338,9 +355,13 @@ const tabs = [
 ]
 
 const addDomainOpen = ref(false)
-function retryDomain(d) {
-  store.retryDomainVerification(site.value.id, d.id)
-  toast('Re-checking DNS…')
+function verifyDomain(d) {
+  store.verifyDomain(site.value.id, d.id)
+  toast('Checking DNS…')
+}
+function copyValue(text) {
+  navigator.clipboard?.writeText(text)
+  toast.success('Copied')
 }
 const dropOpen = ref(false)
 const deactivateOpen = ref(false)
