@@ -397,16 +397,20 @@
 
       <!-- Manage mode: role assignment editor -->
       <div v-else-if="memberDialogMode === 'manage'" class="space-y-3">
-        <Alert v-if="draftHasExclusive" theme="yellow" title="Owner and global Admin give full access — they can't be combined with other roles." />
-        <div v-for="(dr, i) in draftRoles" :key="i" class="flex items-center gap-2">
+        <Alert v-if="draftHasExclusive" theme="yellow" title="Admin for all resources already covers every permission">
+          <template #description>
+            The other roles below stay saved but are disabled while this is active. Remove the Admin (all resources) or Owner role to re-enable them.
+          </template>
+        </Alert>
+        <div v-for="(dr, i) in draftRoles" :key="i" class="flex items-center gap-2" :class="isRowCovered(i) ? 'opacity-50' : ''">
           <div class="flex-1">
-            <FormControl type="select" :modelValue="dr.roleId" :options="roleSelectOptions" @update:modelValue="(v) => setDraftRoleId(i, v)" />
+            <FormControl type="select" :modelValue="dr.roleId" :options="roleSelectOptions" :disabled="isRowCovered(i)" @update:modelValue="(v) => setDraftRoleId(i, v)" />
           </div>
           <span class="shrink-0 text-xs text-ink-gray-4">on</span>
           <div class="flex-1">
-            <FormControl type="select" :modelValue="dr.resourceId" :options="serverSelectOptions" @update:modelValue="(v) => setDraftResourceId(i, v)" />
+            <FormControl type="select" :modelValue="dr.resourceId" :options="serverSelectOptions" :disabled="isRowCovered(i)" @update:modelValue="(v) => setDraftResourceId(i, v)" />
           </div>
-          <Button variant="ghost" size="sm" icon="lucide-x" aria-label="Remove" @click="removeDraftRole(i)" />
+          <Button variant="ghost" size="sm" icon="lucide-x" aria-label="Remove" :disabled="isRowCovered(i)" @click="removeDraftRole(i)" />
         </div>
         <Button variant="subtle" size="sm" label="+ Add role for a resource" :disabled="draftHasExclusive" @click="addDraftRole" />
       </div>
@@ -774,24 +778,28 @@ function memberMenuOptions(m) {
 
 const draftRoles = ref([])
 
-const draftHasExclusive = computed(() =>
-  draftRoles.value.some((r) =>
+// An Owner or an Admin-for-ALL-resources role grants full access. A
+// specific-resource admin (role-admin WITH a resourceId) does not and can
+// coexist with other roles.
+const exclusiveIndex = computed(() =>
+  draftRoles.value.findIndex((r) =>
     r.roleId === 'role-owner' || (r.roleId === 'role-admin' && !r.resourceId)
   )
 )
+const draftHasExclusive = computed(() => exclusiveIndex.value !== -1)
+
+// When such a role is present, the OTHER rows are kept but disabled — granting
+// admin no longer silently wipes a member's existing role settings. (#17)
+function isRowCovered(i) {
+  return draftHasExclusive.value && i !== exclusiveIndex.value
+}
 
 function setDraftRoleId(i, roleId) {
   draftRoles.value[i].roleId = roleId
-  if (roleId === 'role-owner' || (roleId === 'role-admin' && !draftRoles.value[i].resourceId)) {
-    draftRoles.value = [{ roleId, resourceId: '' }]
-  }
 }
 
 function setDraftResourceId(i, resourceId) {
   draftRoles.value[i].resourceId = resourceId
-  if (draftRoles.value[i].roleId === 'role-admin' && !resourceId) {
-    draftRoles.value = [{ roleId: 'role-admin', resourceId: '' }]
-  }
 }
 
 function openManageRoles(m) {
