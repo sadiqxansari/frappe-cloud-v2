@@ -18,7 +18,7 @@
           <span class="text-xs text-ink-gray-5">{{ selected.length }} selected</span>
         </div>
         <p class="mt-0.5 text-xs text-ink-gray-5">
-          Start with one or more. You can add custom or marketplace apps later from the Marketplace — it won't change your bill.
+          Start with one or more. Add custom or marketplace apps later — it won't change your bill.
         </p>
 
         <div class="mt-2 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
@@ -50,7 +50,7 @@
 
       <p class="flex items-start gap-1.5 text-sm text-ink-gray-5">
         <span class="lucide-info mt-0.5 size-3.5 shrink-0" />
-        Runs on {{ server?.name || 'your server' }}<template v-if="planName"> ({{ planName }})</template> — new sites share the server's existing compute and storage.
+        Runs on {{ server?.name || 'your server' }}<template v-if="planName"> ({{ planName }})</template> — sites share its compute and storage, so there's nothing more to pay.
       </p>
     </div>
 

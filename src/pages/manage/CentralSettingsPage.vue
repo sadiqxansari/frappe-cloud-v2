@@ -399,7 +399,7 @@
       <div v-else-if="memberDialogMode === 'manage'" class="space-y-3">
         <Alert v-if="draftHasExclusive" theme="yellow" title="Admin for all resources already covers every permission">
           <template #description>
-            The other roles below stay saved but are disabled while this is active. Remove the Admin (all resources) or Owner role to re-enable them.
+            The roles below stay saved but inactive while this is on. Remove the Admin (all resources) or Owner role to use them again.
           </template>
         </Alert>
         <div v-for="(dr, i) in draftRoles" :key="i" class="flex items-center gap-2" :class="isRowCovered(i) ? 'opacity-50' : ''">

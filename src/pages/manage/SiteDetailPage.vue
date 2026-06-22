@@ -170,8 +170,8 @@
                   <Badge v-else-if="d.status === 'pending'" theme="orange" variant="subtle" label="DNS setup needed" />
                 </div>
                 <div v-if="d.ssl" class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-3"><span class="lucide-lock size-3" /> SSL active</div>
-                <div v-else-if="d.status === 'failed'" class="mt-0.5 text-sm text-ink-red-4">We couldn't find the records below at your DNS provider.</div>
-                <div v-else-if="d.status === 'pending'" class="mt-0.5 text-sm text-ink-gray-5">Add the records below at your domain provider, then verify.</div>
+                <div v-else-if="d.status === 'failed'" class="mt-0.5 text-sm text-ink-red-4">We couldn't find these records yet — double-check them and retry.</div>
+                <div v-else-if="d.status === 'pending'" class="mt-0.5 text-sm text-ink-gray-5">Add these records at your DNS provider, then verify.</div>
                 <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
               </div>
               <Button v-if="d.status === 'pending'" variant="solid" size="sm" label="Verify" icon-left="lucide-check" @click="verifyDomain(d)" />
@@ -198,7 +198,7 @@
               </div>
               <p class="mt-2 flex items-start gap-1.5 text-xs text-ink-gray-5">
                 <span class="lucide-info mt-px size-3 shrink-0" />
-                Add these at your domain provider, then click Verify. DNS changes can take up to an hour to propagate — we keep checking in the background.
+                Add these at your DNS provider, then verify. DNS changes can take up to an hour to propagate — we keep checking in the background.
               </p>
             </template>
           </div>
@@ -357,7 +357,7 @@ const tabs = [
 const addDomainOpen = ref(false)
 function verifyDomain(d) {
   store.verifyDomain(site.value.id, d.id)
-  toast('Checking DNS…')
+  toast('Checking DNS — this can take a few minutes')
 }
 function copyValue(text) {
   navigator.clipboard?.writeText(text)

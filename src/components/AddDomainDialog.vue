@@ -6,8 +6,7 @@
 
     <FormControl v-model="domain" type="text" label="Domain" placeholder="shop.mycompany.in" />
     <p class="mt-2 text-sm text-ink-gray-5">
-      We'll show the exact DNS records to add at your provider. Once you've added them, hit Verify —
-      we set up SSL automatically after DNS checks out.
+      We'll show the DNS records to add at your provider. Add them, then verify — we set up SSL once DNS checks out.
     </p>
 
     <template #actions>
