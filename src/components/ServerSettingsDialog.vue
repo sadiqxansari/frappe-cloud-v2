@@ -1,12 +1,12 @@
 <template>
-  <Dialog v-model:open="open" :options="{ size: '4xl', bare: true }">
+  <Dialog v-model:open="open" :options="{ size: '4xl' }" bare>
     <template #default>
       <!-- Height hugs content (no dead space on short tabs) with a comfortable
            floor; long tabs cap at 85vh and the right pane scrolls. -->
       <div v-if="server" class="flex max-h-[85vh] min-h-[26rem]">
         <!-- Left nav — settings categories, frappe-ui idiom -->
         <nav class="flex w-52 shrink-0 flex-col gap-0.5 border-r border-outline-gray-2 bg-surface-gray-1 p-3">
-          <div class="px-2 pb-2 pt-1 text-base font-semibold text-ink-gray-9">Settings</div>
+          <div class="p-2 text-base font-semibold text-ink-gray-9">Settings</div>
           <button
             v-for="t in tabs"
             :key="t.value"
@@ -20,7 +20,7 @@
         </nav>
 
         <!-- Right pane — scrolls; leave room for the Dialog's close button -->
-        <div class="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-5 pr-12">
+        <div class="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">
           <!-- General -->
           <div v-if="tab === 'general'" class="space-y-3">
             <h2 class="text-lg font-semibold text-ink-gray-9">General</h2>
