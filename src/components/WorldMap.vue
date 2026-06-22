@@ -182,12 +182,13 @@ const zoomStyle = computed(() => {
   }
 })
 
-const BLACK = '#171717'
-const BLACK_ON_DARK = '#171717'
-const RED = 'var(--ink-red-3)'
-const GREEN = 'var(--ink-green-3)'
-const AMBER = 'var(--ink-amber-3)'
-const DEFAULT_LINE_COLOR = 'var(--ink-blue-3)'
+// Idle pins use a token (not a fixed hex) so they flip with the active
+// theme — near-black in light, near-white in dark — like the status colors.
+const NEUTRAL = 'var(--ink-gray-9)'
+const RED = 'var(--ink-red-7)'
+const GREEN = 'var(--ink-green-7)'
+const AMBER = 'var(--ink-amber-7)'
+const DEFAULT_LINE_COLOR = 'var(--ink-blue-8)'
 
 const projectedConnections = computed(() => {
   return props.connections.map((c) => {
@@ -210,7 +211,7 @@ const projected = computed(() => {
     const broken = p.status === 'broken'
     const isHover = p.id === props.highlight
     const hot = isHover || !!p.selected
-    const nullColor = props.dark ? BLACK_ON_DARK : BLACK
+    const nullColor = NEUTRAL
     const status = broken
       ? RED
       : p.status === 'provisioning' || p.status === 'suspended'

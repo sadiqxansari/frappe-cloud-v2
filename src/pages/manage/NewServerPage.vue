@@ -19,7 +19,7 @@
             @select="selectRegion"
             @hover="hoverRegion = $event"
           />
-          <div class="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white shadow-sm">
+          <div class="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1 shadow-sm">
             <button class="grid size-8 place-items-center text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom in" @click="zoom(0.4)">
               <span class="lucide-zoom-in size-4" />
             </button>
@@ -122,7 +122,7 @@
                   </span>
                   <span class="flex min-w-0 flex-1 items-center gap-1.5">
                     <span class="text-sm font-medium text-ink-gray-9">{{ p.name }}</span>
-                    <span v-if="p.recommended" class="lucide-star size-3 shrink-0 text-ink-amber-3" />
+                    <span v-if="p.recommended" class="lucide-star size-3 shrink-0 text-ink-amber-8" />
                     <span v-if="showSpecs" class="truncate text-xs text-ink-gray-5">· {{ p.specs.compute }} · {{ p.specs.disk }}</span>
                   </span>
                   <span class="shrink-0 text-sm font-semibold tabular-nums text-ink-gray-9">

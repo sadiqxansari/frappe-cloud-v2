@@ -38,7 +38,7 @@
           </div>
 
           <!-- Tiers table -->
-          <div class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white">
+          <div class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
             <table class="w-full text-left">
               <thead>
                 <tr class="border-b border-outline-gray-2 bg-surface-gray-1">
@@ -68,7 +68,7 @@
                       >
                         <span
                           class="size-3.5 shrink-0"
-                          :class="req.met ? 'lucide-check-circle-2 text-ink-green-3' : 'lucide-circle-dashed text-ink-gray-4'"
+                          :class="req.met ? 'lucide-check-circle-2 text-ink-green-6' : 'lucide-circle-dashed text-ink-gray-4'"
                         />
                         <span class="text-sm" :class="req.met ? 'text-ink-gray-9' : 'text-ink-gray-6'">
                           {{ req.text }}
@@ -76,7 +76,7 @@
                         <RouterLink
                           v-if="req.nudge"
                           :to="req.nudge"
-                          class="text-sm text-ink-blue-3 hover:text-ink-blue-4"
+                          class="text-sm text-ink-blue-8 transition-opacity hover:opacity-80"
                         >
                           Go to Billing →
                         </RouterLink>
@@ -92,7 +92,7 @@
           </div>
 
           <!-- How tiers work -->
-          <div class="rounded-lg border border-outline-gray-2 bg-surface-white p-5">
+          <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
             <div class="flex flex-col gap-2">
               <div class="flex items-center gap-2">
                 <span class="lucide-info size-5 shrink-0 text-ink-gray-5" />
@@ -116,7 +116,7 @@
                     href="https://support.frappe.io"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="text-ink-blue-3 underline underline-offset-2 hover:text-ink-blue-4"
+                    class="text-ink-blue-8 underline underline-offset-2 transition-opacity hover:opacity-80"
                   >support</a>
                   and we will review your account.
                 </li>

@@ -4,7 +4,7 @@
     <button class="flex w-full items-center gap-2.5 text-left" @click="expanded = !expanded">
       <span
         class="size-4 shrink-0"
-        :class="health.ok ? 'lucide-circle-check text-ink-green-3' : 'lucide-triangle-alert text-ink-amber-3'"
+        :class="health.ok ? 'lucide-circle-check text-ink-green-6' : 'lucide-triangle-alert text-ink-amber-8'"
       />
       <span class="flex-1 text-sm font-medium text-ink-gray-8">
         {{ health.ok ? 'Everything looks healthy' : 'Running a little hot' }}

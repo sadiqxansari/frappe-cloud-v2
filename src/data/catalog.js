@@ -90,10 +90,10 @@ export const PLANS = [
 // brand monogram in the picker.
 export const PROVIDERS = [
   { id: 'aws', name: 'Amazon Web Services', short: 'AWS', mono: 'AWS', tile: 'bg-surface-gray-3 text-ink-gray-8', priceFactor: 1 },
-  { id: 'hetzner', name: 'Hetzner', short: 'Hetzner', mono: 'H', tile: 'bg-surface-red-2 text-ink-red-3', priceFactor: 0.8 },
-  { id: 'frappe', name: 'Frappe', short: 'Frappe', mono: 'F', tile: 'bg-surface-gray-8 text-ink-white', priceFactor: 0.7 },
-  { id: 'oracle', name: 'Oracle Cloud', short: 'Oracle', mono: 'O', tile: 'bg-surface-amber-2 text-ink-amber-3', priceFactor: 0.95 },
-  { id: 'digitalocean', name: 'DigitalOcean', short: 'DO', mono: 'DO', tile: 'bg-surface-blue-2 text-ink-blue-3', priceFactor: 0.9 },
+  { id: 'hetzner', name: 'Hetzner', short: 'Hetzner', mono: 'H', tile: 'bg-surface-red-2 text-ink-red-8', priceFactor: 0.8 },
+  { id: 'frappe', name: 'Frappe', short: 'Frappe', mono: 'F', tile: 'bg-surface-gray-8 text-ink-base', priceFactor: 0.7 },
+  { id: 'oracle', name: 'Oracle Cloud', short: 'Oracle', mono: 'O', tile: 'bg-surface-amber-2 text-ink-amber-8', priceFactor: 0.95 },
+  { id: 'digitalocean', name: 'DigitalOcean', short: 'DO', mono: 'DO', tile: 'bg-surface-blue-2 text-ink-blue-8', priceFactor: 0.9 },
 ]
 
 // Each region belongs to a provider; some are still in beta.
@@ -146,7 +146,7 @@ export const APP_CATALOG = [
     tagline: 'Accounting, inventory and orders — the core of your business',
     compat: ['v15', 'v16'],
     letter: 'E',
-    tile: 'bg-surface-blue-2 text-ink-blue-3',
+    tile: 'bg-surface-blue-2 text-ink-blue-8',
   },
   {
     key: 'hr',
@@ -157,7 +157,7 @@ export const APP_CATALOG = [
     tagline: 'Payroll, leave and your whole team in one place',
     compat: ['v15', 'v16'],
     letter: 'H',
-    tile: 'bg-surface-green-2 text-ink-green-3',
+    tile: 'bg-surface-green-2 text-ink-green-6',
   },
   {
     key: 'crm',
@@ -168,7 +168,7 @@ export const APP_CATALOG = [
     tagline: 'Leads and deals, without the spreadsheet',
     compat: ['v15', 'v16'],
     letter: 'C',
-    tile: 'bg-surface-amber-2 text-ink-amber-3',
+    tile: 'bg-surface-amber-2 text-ink-amber-8',
   },
   {
     key: 'helpdesk',
@@ -179,7 +179,7 @@ export const APP_CATALOG = [
     tagline: 'Customer support tickets, kept tidy',
     compat: ['v15', 'v16'],
     letter: 'D',
-    tile: 'bg-surface-red-2 text-ink-red-3',
+    tile: 'bg-surface-red-2 text-ink-red-8',
   },
   {
     key: 'drive',
@@ -201,7 +201,7 @@ export const APP_CATALOG = [
     tagline: 'Dashboards and reports from the data you already have',
     compat: ['v15', 'v16'],
     letter: 'I',
-    tile: 'bg-surface-blue-2 text-ink-blue-3',
+    tile: 'bg-surface-blue-2 text-ink-blue-8',
   },
   {
     key: 'builder',
@@ -223,7 +223,7 @@ export const APP_CATALOG = [
     tagline: 'Loans, EMIs and repayments, tracked properly',
     compat: ['v15', 'v16'],
     letter: 'L',
-    tile: 'bg-surface-green-2 text-ink-green-3',
+    tile: 'bg-surface-green-2 text-ink-green-6',
   },
   {
     key: 'lms',
@@ -234,7 +234,7 @@ export const APP_CATALOG = [
     tagline: 'Courses and training for your team or your customers',
     compat: ['v15', 'v16'],
     letter: 'L',
-    tile: 'bg-surface-amber-2 text-ink-amber-3',
+    tile: 'bg-surface-amber-2 text-ink-amber-8',
   },
   {
     key: 'mail',
@@ -245,7 +245,7 @@ export const APP_CATALOG = [
     tagline: 'Email for your team, on your own domain',
     compat: ['v16'],
     letter: 'M',
-    tile: 'bg-surface-blue-2 text-ink-blue-3',
+    tile: 'bg-surface-blue-2 text-ink-blue-8',
   },
   {
     key: 'school',
@@ -256,7 +256,7 @@ export const APP_CATALOG = [
     tagline: 'Run a school — admissions to report cards',
     compat: ['v15'],
     letter: 'S',
-    tile: 'bg-surface-red-2 text-ink-red-3',
+    tile: 'bg-surface-red-2 text-ink-red-8',
   },
 ]
 

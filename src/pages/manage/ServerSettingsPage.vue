@@ -6,21 +6,21 @@
 
     <!-- General — actions only; the read-only facts live on the server overview. -->
     <div v-if="tab === 'general'" class="mt-5 space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div>
           <div class="text-sm font-medium text-ink-gray-9">Server name</div>
           <div class="mt-0.5 text-sm text-ink-gray-5">Currently <span class="font-medium text-ink-gray-7">{{ server.name }}</span>.</div>
         </div>
         <Button variant="subtle" size="sm" label="Rename" @click="openRename" />
       </div>
-      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div>
           <div class="text-sm font-medium text-ink-gray-9">Frappe version</div>
           <div class="mt-0.5 text-sm text-ink-gray-5">Currently <span class="font-medium text-ink-gray-7">{{ versionLabel }}</span>. Changing it migrates every site on this server.</div>
         </div>
         <Button variant="subtle" size="sm" label="Change version" @click="versionOpen = true" />
       </div>
-      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div>
           <div class="text-sm font-medium text-ink-gray-9">Restart server</div>
           <div class="mt-0.5 text-sm text-ink-gray-5">Reboots the machine. Sites are briefly unavailable while it comes back.</div>
@@ -29,7 +29,7 @@
       </div>
 
       <!-- Plan history -->
-      <div class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="flex items-center justify-between">
           <div class="text-sm font-medium text-ink-gray-9">Plan history</div>
           <span class="text-xs text-ink-gray-5">Currently {{ plan.name }} · {{ inr(monthlyPrice) }}/mo</span>
@@ -38,7 +38,7 @@
           <div v-for="h in server.planHistory" :key="h.id" class="flex items-center gap-3 text-sm">
             <span
               class="grid size-6 shrink-0 place-items-center rounded-full"
-              :class="h.direction === 'upgrade' ? 'bg-surface-green-2 text-ink-green-3' : 'bg-surface-amber-2 text-ink-amber-3'"
+              :class="h.direction === 'upgrade' ? 'bg-surface-green-2 text-ink-green-6' : 'bg-surface-amber-2 text-ink-amber-8'"
             >
               <span class="size-3.5" :class="h.direction === 'upgrade' ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
             </span>
@@ -76,7 +76,7 @@
 
     <!-- Developer — API access, SSH keys & webhooks (account-wide) -->
     <div v-else class="mt-5 space-y-5">
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-base font-semibold text-ink-gray-8">API access</h2>
           <Button variant="subtle" size="sm" label="Regenerate" icon-left="lucide-refresh-cw" @click="regenerate" />
@@ -87,7 +87,7 @@
         </div>
       </section>
 
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-base font-semibold text-ink-gray-8">SSH keys</h2>
           <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
@@ -107,7 +107,7 @@
         </EmptyState>
       </section>
 
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-base font-semibold text-ink-gray-8">Webhooks</h2>
           <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />

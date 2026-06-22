@@ -1,16 +1,17 @@
 <template>
-  <div class="flex h-screen overflow-hidden bg-surface-white">
+  <div class="flex h-screen overflow-hidden bg-surface-elevation-1">
     <aside
-      class="relative flex shrink-0 flex-col border-r border-outline-gray-1 bg-surface-menu-bar p-2 transition-all duration-300 ease-in-out"
+      class="relative flex shrink-0 flex-col border-r border-outline-gray-1 bg-surface-sidebar p-2 transition-all duration-300 ease-in-out"
       :class="collapsed ? 'w-14' : 'w-60'"
     >
       <!-- Brand — the server you're managing; the dropdown jumps to Central -->
       <Dropdown :options="serverMenu" placement="bottom-start">
         <button
           class="mb-3 flex h-12 w-full shrink-0 items-center gap-2 rounded-lg px-1.5 hover:bg-surface-gray-2"
+          :class="collapsed && 'justify-center'"
           :title="collapsed ? server?.name : undefined"
         >
-          <span class="grid size-7 shrink-0 place-items-center rounded-md bg-[var(--ink-gray-9)] text-ink-white">
+          <span class="grid size-7 shrink-0 place-items-center rounded-md bg-[var(--ink-gray-9)] text-ink-base">
             <span class="lucide-server size-4" />
           </span>
           <template v-if="!collapsed">
@@ -24,7 +25,7 @@
         <Tooltip v-for="item in items" :key="item.label" :text="collapsed ? item.label : ''" placement="right" :hover-delay="0">
           <button
             class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
-            :class="item.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+            :class="[item.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2', collapsed && 'justify-center']"
             @click="router.push(item.to)"
           >
             <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
@@ -48,7 +49,7 @@
               v-for="d in devItems"
               :key="d.label"
               class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
-              :class="d.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+              :class="d.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
               @click="router.push(d.to)"
             >
               <span class="size-4 shrink-0 text-ink-gray-6" :class="d.icon" />
@@ -66,8 +67,8 @@
           :hover-delay="0"
         >
           <button
-            class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
-            :class="d.active ? 'bg-surface-selected text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+            class="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
+            :class="d.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
             @click="router.push(d.to)"
           >
             <span class="size-4 shrink-0 text-ink-gray-6" :class="d.icon" />
@@ -78,6 +79,7 @@
       <!-- Explicit, remembered collapse toggle (issue #3) -->
       <button
         class="mb-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-6 transition-colors hover:bg-surface-gray-2"
+        :class="collapsed && 'justify-center'"
         :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         @click="collapsed = !collapsed"
@@ -87,7 +89,7 @@
       </button>
 
       <Dropdown :options="userOptions" placement="top-start">
-        <button class="flex w-full shrink-0 items-center gap-2 rounded-[8px] p-1.5 hover:bg-surface-gray-2">
+        <button class="flex w-full shrink-0 items-center gap-2 rounded-[8px] p-1.5 hover:bg-surface-gray-2" :class="collapsed && 'justify-center'">
           <Avatar :label="store.user.name || 'You'" size="sm" />
           <template v-if="!collapsed">
             <span class="min-w-0 flex-1 truncate text-left text-sm text-ink-gray-8">{{ store.user.name || 'You' }}</span>
@@ -112,19 +114,19 @@
         <div v-if="store.busy > 0" class="console-bar absolute inset-y-0 left-0 bg-[var(--ink-gray-8)]" />
       </div>
 
-      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-gray-1 bg-surface-white px-4">
+      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-gray-1 bg-surface-elevation-1 px-4">
         <Breadcrumbs v-if="crumbs?.length" :items="crumbs" class="min-w-0" />
         <div v-else />
         <div class="flex shrink-0 items-center gap-2">
           <button
             v-if="showCredit"
             class="hidden items-center gap-1.5 rounded-full border px-3 py-1 text-sm sm:flex"
-            :class="store.creditExpired ? 'border-outline-red-1 text-ink-red-3' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+            :class="store.creditExpired ? 'border-outline-red-1 text-ink-red-8' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
             @click="router.push('/billing')"
           >
-            <span class="lucide-zap size-3.5" :class="store.creditExpired ? 'text-ink-red-3' : 'text-ink-amber-3'" />
-            <span class="font-medium" :class="store.creditExpired ? 'text-ink-red-3' : 'text-ink-gray-8'">{{ usd(store.accountCredit) }}</span>
-            <span :class="store.creditExpired ? 'text-ink-red-3' : 'text-ink-gray-5'">credit</span>
+            <span class="lucide-zap size-3.5" :class="store.creditExpired ? 'text-ink-red-8' : 'text-ink-amber-8'" />
+            <span class="font-medium" :class="store.creditExpired ? 'text-ink-red-8' : 'text-ink-gray-8'">{{ usd(store.accountCredit) }}</span>
+            <span :class="store.creditExpired ? 'text-ink-red-8' : 'text-ink-gray-5'">credit</span>
           </button>
           <!-- Primary action sits right-most. -->
           <slot name="actions" />

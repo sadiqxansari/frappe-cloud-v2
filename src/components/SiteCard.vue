@@ -1,6 +1,6 @@
 <template>
   <button
-    class="flex w-full items-center gap-3 rounded-lg border border-outline-gray-2 bg-surface-white p-4 text-left transition-colors hover:bg-surface-gray-1"
+    class="flex w-full items-center gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4 text-left transition-colors hover:bg-surface-gray-1"
     @click="$emit('open', site)"
   >
     <AppIcon :app-key="site.apps[0]?.key || 'erpnext'" size="md" />

@@ -18,7 +18,7 @@
 
     <Button variant="outline" size="md" class="w-full" @click="go">
       <template #prefix>
-        <span class="grid size-4 place-items-center rounded-full bg-surface-blue-2 text-[10px] font-bold text-ink-blue-3">G</span>
+        <span class="grid size-4 place-items-center rounded-full bg-surface-blue-2 text-[10px] font-bold text-ink-blue-8">G</span>
       </template>
       Continue with Google
     </Button>

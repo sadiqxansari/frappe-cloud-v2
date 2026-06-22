@@ -4,7 +4,7 @@
 
     <div class="space-y-5">
       <!-- Identity + account settings -->
-      <div class="divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-white">
+      <div class="divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
         <div class="flex items-center gap-3 p-4">
           <Avatar :label="store.user.name || 'You'" size="lg" />
           <div class="min-w-0 flex-1">
@@ -30,7 +30,7 @@
       </div>
 
       <!-- Refer & Earn -->
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <h2 class="text-base font-semibold text-ink-gray-8">Refer &amp; Earn</h2>
         <p class="mt-0.5 text-sm text-ink-gray-5">Your unique referral link</p>
         <div class="mt-3 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-2 px-3 py-2">

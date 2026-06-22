@@ -17,33 +17,22 @@
           <span class="text-sm font-medium text-ink-gray-8">Choose apps</span>
           <span class="text-xs text-ink-gray-5">{{ selected.length }} selected</span>
         </div>
-        <p class="mt-0.5 text-xs text-ink-gray-5">
-          Start with one or more. Add custom or marketplace apps later — it won't change your bill.
-        </p>
 
-        <div class="mt-2 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+        <!-- p-1 keeps the selected card's ring from being clipped by the scroll container -->
+        <div class="mt-2 grid max-h-72 gap-2 overflow-y-auto p-1 sm:grid-cols-2">
           <button
             v-for="app in APP_CATALOG"
             :key="app.key"
             type="button"
             :disabled="!isCompatible(app)"
-            class="flex items-start gap-3 rounded-lg border p-3 text-left transition-colors"
+            class="flex items-center gap-3 rounded-lg border p-3 text-left transition-colors"
             :class="cardClass(app)"
+            :title="isCompatible(app) ? undefined : `Needs ${neededLabel(app)}`"
             @click="toggle(app.key)"
           >
             <AppIcon :app-key="app.key" size="md" />
-            <span class="min-w-0 flex-1">
-              <span class="truncate text-sm font-medium text-ink-gray-9">{{ app.name }}</span>
-              <span class="mt-0.5 block line-clamp-2 text-xs leading-4 text-ink-gray-5">
-                {{ isCompatible(app) ? app.tagline : `Needs ${neededLabel(app)}` }}
-              </span>
-            </span>
-            <span
-              class="mt-0.5 grid size-4 shrink-0 place-items-center rounded border"
-              :class="selected.includes(app.key) ? 'border-ink-gray-9 bg-ink-gray-9 text-surface-white' : 'border-outline-gray-3'"
-            >
-              <span v-if="selected.includes(app.key)" class="lucide-check size-3" />
-            </span>
+            <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink-gray-9">{{ app.name }}</span>
+            <Checkbox :model-value="selected.includes(app.key)" tabindex="-1" class="pointer-events-none shrink-0" />
           </button>
         </div>
       </div>
@@ -66,7 +55,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Dialog, FormControl, toast } from 'frappe-ui'
+import { Button, Checkbox, Dialog, FormControl, toast } from 'frappe-ui'
 import AppIcon from './AppIcon.vue'
 import { APP_CATALOG, versionById } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'

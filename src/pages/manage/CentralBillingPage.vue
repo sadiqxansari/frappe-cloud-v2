@@ -61,15 +61,15 @@
             <!-- What it'll cost + what funds it -->
             <div class="grid gap-4 sm:grid-cols-2">
               <!-- Estimated this cycle -->
-              <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
+              <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
-                  <Button variant="ghost" size="xs" class="-mr-1 shrink-0" :class="budgetCrossed ? '!text-ink-red-3' : store.budgetAlert ? '!text-ink-amber-3' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
+                  <Button variant="ghost" size="xs" class="-mr-1 shrink-0" :class="budgetCrossed ? '!text-ink-red-8' : store.budgetAlert ? '!text-ink-amber-8' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
                 </div>
                 <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                   <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
-                  <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-3' : 'text-ink-green-3'">
+                  <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-8' : 'text-ink-green-6'">
                     <span class="size-3" :class="deltaUp ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
                     {{ Math.abs(store.estimateDeltaPct) }}% vs last month
                   </span>
@@ -79,7 +79,7 @@
               <!-- Wallet — the title and chevron open the history panel (no longer
                    a whole-tile button, so the "Add" inside isn't a nested control). -->
               <div
-                class="rounded-xl border bg-surface-white p-5 transition-colors"
+                class="rounded-xl border bg-surface-elevation-1 p-5 transition-colors"
                 :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
               >
                 <div class="flex items-center justify-between">
@@ -95,11 +95,11 @@
                 </div>
                 <!-- Auto-recharge state surfaced here; full controls live in the panel. -->
                 <button class="mt-2 flex items-center gap-1.5 text-xs transition-colors hover:text-ink-gray-8" :class="store.autoRecharge ? 'text-ink-gray-6' : 'text-ink-gray-5'" @click="openPanel = { type: 'wallet' }">
-                  <span class="lucide-zap size-3 shrink-0" :class="store.autoRecharge ? 'text-ink-green-3' : 'text-ink-gray-4'" />
+                  <span class="lucide-zap size-3 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
                   <span v-if="store.autoRecharge">Auto-recharge on · below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}</span>
                   <span v-else>Auto-recharge off</span>
                 </button>
-                <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3">
+                <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
                   Won't cover the {{ inr(store.estimatedThisCycle) }} invoice.
                 </p>
@@ -107,7 +107,7 @@
             </div>
 
             <!-- Payment methods -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-1.5">
                   <h2 class="text-base font-semibold text-ink-gray-8">Payment methods</h2>
@@ -155,7 +155,7 @@
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-4' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
                 </dl>
-                <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-3 transition-colors hover:text-ink-red-4" @click="openContact">
+                <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-4" @click="openContact">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
                   Invoices are bouncing back — update your billing email.
                 </button>
@@ -163,7 +163,7 @@
             </section>
 
             <!-- Subscriptions (one per server) -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
               <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
               <div class="mt-2 divide-y divide-outline-gray-1">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
@@ -172,7 +172,7 @@
                     <div class="min-w-0">
                       <div class="flex items-center gap-2">
                         <span class="truncate text-base font-medium text-ink-gray-9 transition-colors group-hover:text-ink-gray-7">{{ srv.name }}</span>
-                        <span v-if="srv.status === 'suspended'" class="shrink-0 text-p-xs text-ink-amber-3">Suspended</span>
+                        <span v-if="srv.status === 'suspended'" class="shrink-0 text-p-xs text-ink-amber-8">Suspended</span>
                       </div>
                       <div class="truncate text-p-sm text-ink-gray-5">{{ store.planOf(srv).name }} · {{ store.regionOf(srv).name }} ({{ store.regionOf(srv).provider }})</div>
                     </div>
@@ -189,7 +189,7 @@
 
             <!-- Marketplace payouts — only relevant to app publishers, so it's
                  hidden unless there are earnings or a payout account set up. -->
-            <section v-if="store.payoutBalance > 0 || store.payoutAccount" class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
+            <section v-if="store.payoutBalance > 0 || store.payoutAccount" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <div class="flex items-center gap-2">
                 <h2 class="text-base font-semibold text-ink-gray-8">Marketplace payouts</h2>
                 <Badge theme="gray" variant="subtle" label="Paid in USD" />
@@ -202,23 +202,23 @@
                 <Button v-if="store.payoutBalance > 0 && !store.payoutAccount" variant="solid" size="sm" label="Add payout account" @click="payoutOpen = true" />
                 <Button v-else variant="subtle" size="sm" label="Request payout" :disabled="store.payoutBalance <= 0 || !store.payoutAccount" @click="requestPayout" />
               </div>
-              <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3">
+              <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
                 Add a bank account to withdraw your earnings.
               </p>
             </section>
 
             <!-- Tax & compliance -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-white p-5 pt-4">
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
               <div class="flex items-center justify-between">
                 <h2 class="text-base font-semibold text-ink-gray-8">Tax &amp; compliance</h2>
                 <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit tax & compliance" @click="openTax"><span class="lucide-pencil size-3.5" /></button>
               </div>
               <dl class="mt-3 space-y-1.5 text-p-sm">
                 <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-3' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-8' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
               </dl>
-              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-3 transition-colors hover:text-ink-amber-4" @click="openTax">
+              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openTax">
                 <span class="lucide-triangle-alert size-3 shrink-0" />
                 Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
               </button>
@@ -227,7 +227,7 @@
             <!-- Stop / resume billing — the single global switch. Suspends every
                  server (reversible); nothing is deleted, so it stays calm — a plain
                  card with a single subtle red action, not an alarming red card. -->
-            <section v-if="store.allServers.length" class="rounded-xl border border-outline-gray-2 bg-surface-white p-5">
+            <section v-if="store.allServers.length" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="min-w-0">
                   <template v-if="allSuspended">
@@ -295,7 +295,7 @@
 
       <!-- Docked panel — invoice detail OR wallet history -->
       <Transition name="slide">
-        <aside v-if="openPanel" class="flex w-[24rem] shrink-0 flex-col border-l border-outline-gray-2 bg-surface-white">
+        <aside v-if="openPanel" class="flex w-[24rem] shrink-0 flex-col border-l border-outline-gray-2 bg-surface-elevation-1">
           <!-- Invoice -->
           <template v-if="openPanel.type === 'invoice'">
             <div class="flex items-start justify-between gap-3 border-b border-outline-gray-2 p-4">
@@ -338,11 +338,11 @@
               <dl class="space-y-1.5 text-sm">
                 <div class="flex justify-between"><dt class="text-ink-gray-5">Subtotal</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(subtotal(openPanel.data)) }}</dd></div>
                 <div class="flex justify-between"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openPanel.data)) }}</dd></div>
-                <div v-if="openPanel.data.credits" class="flex justify-between"><dt class="text-ink-green-3">Credits applied</dt><dd class="tabular-nums text-ink-green-3">−{{ inr(openPanel.data.credits) }}</dd></div>
+                <div v-if="openPanel.data.credits" class="flex justify-between"><dt class="text-ink-green-6">Credits applied</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(openPanel.data.credits) }}</dd></div>
                 <div class="flex justify-between border-t border-outline-gray-1 pt-1.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data)) }}</dd></div>
                 <!-- Wallet credit is auto-applied on payment, so preview it here. -->
                 <template v-if="openPanel.data.status === 'Unpaid' && walletApplyPreview > 0">
-                  <div class="flex justify-between"><dt class="text-ink-green-3">Wallet credit (applied on payment)</dt><dd class="tabular-nums text-ink-green-3">−{{ inr(walletApplyPreview) }}</dd></div>
+                  <div class="flex justify-between"><dt class="text-ink-green-6">Wallet credit (applied on payment)</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(walletApplyPreview) }}</dd></div>
                   <div class="flex justify-between font-semibold"><dt class="text-ink-gray-8">You'll pay</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data) - walletApplyPreview) }}</dd></div>
                 </template>
               </dl>
@@ -373,7 +373,7 @@
               <div v-if="store.walletHistory.length" class="divide-y divide-outline-gray-1">
                 <div v-for="tx in store.walletHistory" :key="tx.id" class="flex items-center justify-between gap-3 py-2.5">
                   <div class="flex min-w-0 items-center gap-2.5">
-                    <span class="grid size-7 shrink-0 place-items-center rounded-full" :class="tx.amount >= 0 ? 'bg-surface-green-2 text-ink-green-3' : 'bg-surface-gray-2 text-ink-gray-6'">
+                    <span class="grid size-7 shrink-0 place-items-center rounded-full" :class="tx.amount >= 0 ? 'bg-surface-green-2 text-ink-green-6' : 'bg-surface-gray-2 text-ink-gray-6'">
                       <span class="size-3.5" :class="tx.amount >= 0 ? 'lucide-arrow-down-left' : 'lucide-arrow-up-right'" />
                     </span>
                     <div class="min-w-0">
@@ -381,7 +381,7 @@
                       <div class="text-p-sm text-ink-gray-5">{{ tx.date }}</div>
                     </div>
                   </div>
-                  <span class="shrink-0 text-sm font-medium tabular-nums" :class="tx.amount >= 0 ? 'text-ink-green-3' : 'text-ink-gray-8'">
+                  <span class="shrink-0 text-sm font-medium tabular-nums" :class="tx.amount >= 0 ? 'text-ink-green-6' : 'text-ink-gray-8'">
                     {{ tx.amount >= 0 ? '+' : '−' }}{{ inr(Math.abs(tx.amount)) }}
                   </span>
                 </div>
@@ -704,7 +704,7 @@ function expiryLabel(pm) {
 function expiryClass(pm) {
   const s = expiryState(pm)
   if (s === 'expired') return 'text-ink-red-4'
-  if (s === 'soon') return 'text-ink-amber-3'
+  if (s === 'soon') return 'text-ink-amber-8'
   return 'text-ink-gray-5'
 }
 

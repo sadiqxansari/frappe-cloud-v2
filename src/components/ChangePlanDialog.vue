@@ -39,7 +39,7 @@
                 <Badge v-else-if="p.recommended" theme="green" variant="subtle" label="Recommended" size="sm" />
                 <template v-if="isSelected(p) && !isPlanAffordable(p.id)">
                   <Tooltip text="This plan exceeds your credit — add billing details first.">
-                    <span class="lucide-alert-circle size-3.5 shrink-0 text-ink-red-3" />
+                    <span class="lucide-alert-circle size-3.5 shrink-0 text-ink-red-8" />
                   </Tooltip>
                   <a
                     :href="router.resolve('/billing').href"
@@ -54,7 +54,7 @@
             <span class="w-24 text-sm text-ink-gray-6">{{ p.specs.database }}</span>
             <span class="w-20 text-sm text-ink-gray-6">{{ p.specs.disk }}</span>
             <span class="flex w-24 justify-center">
-              <span v-if="p.enterprise" class="lucide-check size-4 text-ink-green-3" />
+              <span v-if="p.enterprise" class="lucide-check size-4 text-ink-green-6" />
               <span v-else class="lucide-x size-4 text-ink-gray-4" />
             </span>
             <span class="w-28 text-right">

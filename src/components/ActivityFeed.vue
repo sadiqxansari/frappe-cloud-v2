@@ -9,7 +9,7 @@
         <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-surface-gray-2">
           <span class="size-3.5 text-ink-gray-6" :class="icons[e.tag] || 'lucide-circle-dot'" />
         </span>
-        <span class="min-w-0 flex-1 text-sm" :class="e.status === 'failed' ? 'text-ink-red-3' : 'text-ink-gray-8'">
+        <span class="min-w-0 flex-1 text-sm" :class="e.status === 'failed' ? 'text-ink-red-8' : 'text-ink-gray-8'">
           {{ e.title }}
         </span>
         <Badge v-if="e.status === 'running'" theme="orange" variant="subtle" label="In progress" />

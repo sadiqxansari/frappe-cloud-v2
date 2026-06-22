@@ -17,7 +17,7 @@
           <Badge v-else theme="green" variant="subtle" label="Live" />
         </div>
         <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-gray-5">
-          <span class="inline-flex items-center gap-1.5 text-ink-green-3"><span class="lucide-lock size-3.5" /> SSL active</span>
+          <span class="inline-flex items-center gap-1.5 text-ink-green-6"><span class="lucide-lock size-3.5" /> SSL active</span>
           <span class="inline-flex items-center gap-1.5"><span class="lucide-box size-3.5" /> {{ versionLabel }}</span>
         </div>
         <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -42,7 +42,7 @@
               <span class="text-sm font-medium text-ink-gray-9">{{ app.name }}</span>
               <span class="text-sm text-ink-gray-4">{{ app.version }}</span>
             </div>
-            <div v-if="store.appUpdate(app)" class="text-sm text-ink-blue-3">{{ store.appUpdate(app) }} is available</div>
+            <div v-if="store.appUpdate(app)" class="text-sm text-ink-blue-8">{{ store.appUpdate(app) }} is available</div>
           </div>
           <Button v-if="store.appUpdate(app)" variant="subtle" size="sm" label="Update" @click="updateApp(app)" />
           <Button v-if="site.apps.length > 1" variant="ghost" size="sm" label="Uninstall" @click="askUninstall(app)" />
@@ -52,7 +52,7 @@
 
     <!-- Backups -->
     <section v-else-if="tab === 'backups'" class="mt-5 space-y-4">
-      <div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div class="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="w-44">
           <FormControl
             type="select"
@@ -68,7 +68,7 @@
         </div>
       </div>
 
-      <div v-if="site.backups.length" class="divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-white">
+      <div v-if="site.backups.length" class="divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
         <div v-for="b in site.backups" :key="b.id" class="flex items-center gap-3 p-4">
           <span class="lucide-archive size-4 shrink-0 text-ink-gray-5" />
           <div class="min-w-0 flex-1">
@@ -97,7 +97,7 @@
         </div>
       </div>
 
-      <div class="mt-3 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-white">
+      <div class="mt-3 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
         <div class="grid grid-cols-[1fr_1fr_6rem_2rem] gap-3 border-b border-outline-gray-2 bg-surface-gray-1 px-4 py-2 text-xs font-medium text-ink-gray-5">
           <div>Config name</div>
           <div>Value</div>
@@ -127,7 +127,7 @@
       <!-- General -->
       <div>
         <h2 class="text-sm font-semibold text-ink-gray-8">General</h2>
-        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-white">
+        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
           <div class="flex items-center justify-between gap-4 p-4">
             <div>
               <div class="text-sm font-medium text-ink-gray-9">Frappe version</div>
@@ -148,7 +148,7 @@
       <!-- Domains -->
       <div>
         <h2 class="text-sm font-semibold text-ink-gray-8">Domains</h2>
-        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-white">
+        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
           <div class="flex items-center gap-3 p-4">
             <span class="lucide-globe size-4 shrink-0 text-ink-gray-5" />
             <div class="min-w-0 flex-1">
@@ -156,7 +156,7 @@
                 <span class="truncate text-sm font-medium text-ink-gray-9">{{ site.name }}</span>
                 <Badge theme="gray" variant="subtle" label="Included" />
               </div>
-              <div class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-3"><span class="lucide-lock size-3" /> SSL active</div>
+              <div class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-6"><span class="lucide-lock size-3" /> SSL active</div>
             </div>
           </div>
           <div v-for="d in site.domains" :key="d.id" class="p-4">
@@ -169,7 +169,7 @@
                   <Badge v-else-if="d.status === 'failed'" theme="red" variant="subtle" label="Verification failed" />
                   <Badge v-else-if="d.status === 'pending'" theme="orange" variant="subtle" label="DNS setup needed" />
                 </div>
-                <div v-if="d.ssl" class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-3"><span class="lucide-lock size-3" /> SSL active</div>
+                <div v-if="d.ssl" class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-6"><span class="lucide-lock size-3" /> SSL active</div>
                 <div v-else-if="d.status === 'failed'" class="mt-0.5 text-sm text-ink-red-4">We couldn't find these records yet — double-check them and retry.</div>
                 <div v-else-if="d.status === 'pending'" class="mt-0.5 text-sm text-ink-gray-5">Add these records at your DNS provider, then verify.</div>
                 <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
@@ -211,7 +211,7 @@
       <!-- Site actions -->
       <div>
         <h2 class="text-sm font-semibold text-ink-gray-8">Actions</h2>
-        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-white">
+        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
           <div v-for="a in siteActions" :key="a.label" class="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <div class="text-sm font-medium text-ink-gray-9">{{ a.label }}</div>
@@ -226,21 +226,21 @@
       <div>
         <h2 class="text-sm font-semibold text-ink-gray-8">Danger</h2>
         <div class="mt-2 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
             <div>
               <div class="text-sm font-medium text-ink-gray-9">Deactivate this site</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">Takes {{ site.name }} offline without deleting anything. Reactivate anytime.</div>
             </div>
             <Button variant="subtle" :label="site.status === 'suspended' ? 'Reactivate site' : 'Deactivate site'" @click="deactivateOpen = true" />
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
             <div>
               <div class="text-sm font-medium text-ink-gray-9">Reset this site</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">Wipes the database back to a fresh install. Apps stay; all your data is removed.</div>
             </div>
             <Button variant="subtle" theme="red" label="Reset site" @click="resetOpen = true" />
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-red-1 bg-surface-white p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-red-1 bg-surface-elevation-1 p-4">
             <div>
               <div class="text-sm font-medium text-ink-gray-9">Drop this site</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">Permanently deletes {{ site.name }} and all its data. Backups are kept for 30 days after.</div>
@@ -296,7 +296,7 @@
             <div class="text-sm text-ink-gray-5">
               <span class="font-mono">{{ app.version }}</span>
               <span class="lucide-arrow-right mx-1 inline-block size-3 align-middle" />
-              <span class="font-mono text-ink-green-3">{{ store.appUpdate(app) }}</span>
+              <span class="font-mono text-ink-green-6">{{ store.appUpdate(app) }}</span>
             </div>
           </div>
           <Button variant="subtle" size="sm" label="Update" @click="updateApp(app)" />

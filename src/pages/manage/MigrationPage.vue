@@ -1,5 +1,5 @@
 <template>
-  <div v-if="server && server.migration" class="flex h-screen overflow-hidden bg-surface-white">
+  <div v-if="server && server.migration" class="flex h-screen overflow-hidden bg-surface-elevation-1">
     <!-- Left: details -->
     <section class="flex w-[42rem] shrink-0 flex-col overflow-y-auto border-r border-outline-gray-1">
       <div class="p-6">
@@ -7,7 +7,7 @@
         <div class="flex items-start justify-between gap-4">
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-1.5 text-sm text-ink-gray-5">
-              <span class="size-1.5 shrink-0 rounded-full bg-[var(--ink-amber-3)]" />
+              <span class="size-1.5 shrink-0 rounded-full bg-[var(--ink-amber-7)]" />
               <span class="truncate">{{ server.name }}</span>
             </div>
             <h1 class="mt-1 text-xl font-semibold text-ink-gray-9">
@@ -46,7 +46,7 @@
             <div
               v-if="i < migrationSteps.length - 1"
               class="absolute left-[0.6rem] top-6 bottom-0 w-px"
-              :class="completedSteps > i ? 'bg-[var(--ink-green-3)]' : 'bg-outline-gray-3'"
+              :class="completedSteps > i ? 'bg-[var(--ink-green-7)]' : 'bg-outline-gray-3'"
             />
             <span
               class="relative z-10 grid size-5 shrink-0 place-items-center rounded-full text-xs font-semibold transition-colors duration-300"
@@ -87,11 +87,11 @@
         />
         <!-- Region labels -->
         <div class="absolute bottom-4 left-4 right-4 flex justify-between">
-          <div class="rounded-lg border border-outline-gray-2 bg-surface-white/90 px-3 py-1.5 backdrop-blur-sm">
+          <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1/90 px-3 py-1.5 backdrop-blur-sm">
             <p class="text-xs text-ink-gray-5">From</p>
             <p class="text-sm font-medium text-ink-gray-9">{{ fromRegion?.name }}</p>
           </div>
-          <div class="rounded-lg border border-outline-gray-2 bg-surface-white/90 px-3 py-1.5 backdrop-blur-sm">
+          <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1/90 px-3 py-1.5 backdrop-blur-sm">
             <p class="text-xs text-ink-gray-5">To</p>
             <p class="text-sm font-medium text-ink-gray-9">{{ toRegion?.name }}</p>
           </div>
@@ -101,7 +101,7 @@
   </div>
 
   <!-- Loading / not ready state — shown only briefly before migration seeds -->
-  <div v-else class="flex h-screen items-center justify-center bg-surface-white">
+  <div v-else class="flex h-screen items-center justify-center bg-surface-elevation-1">
     <div class="size-6 animate-spin rounded-full border-2 border-outline-gray-3 border-t-ink-gray-6" />
   </div>
 </template>
@@ -166,7 +166,7 @@ const migrationSteps = computed(() => {
 })
 
 function stepCircleClass(i) {
-  if (completedSteps.value > i) return 'bg-surface-green-2 text-ink-green-3'
+  if (completedSteps.value > i) return 'bg-surface-green-2 text-ink-green-6'
   if (completedSteps.value === i) return 'bg-surface-gray-3 ring-1 ring-outline-gray-3 text-ink-gray-8'
   return 'bg-surface-gray-2 text-ink-gray-4'
 }

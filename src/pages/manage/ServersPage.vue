@@ -18,7 +18,7 @@
             @select="goServer"
             @hover="hoverId = $event"
           />
-          <div class="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white shadow-sm">
+          <div class="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1 shadow-sm">
             <button class="grid size-8 place-items-center text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom in" @click="zoom(0.3)">
               <span class="lucide-zoom-in size-4" />
             </button>
@@ -87,7 +87,7 @@
               <!-- Scheduled: active dot + clickable badge -->
               <template v-else-if="srv.status === 'migration-scheduled'">
                 <span class="inline-flex items-center gap-1.5 text-sm text-ink-gray-7">
-                  <span class="size-1.5 rounded-full bg-[var(--ink-green-3)]" />Active
+                  <span class="size-1.5 rounded-full bg-[var(--ink-green-7)]" />Active
                 </span>
                 <button type="button" class="cursor-pointer" @click="scheduledServer = srv; scheduledModalOpen = true">
                   <Badge label="Scheduled" theme="blue" variant="subtle" size="sm" />
@@ -96,7 +96,7 @@
               <!-- Normal statuses -->
               <template v-else-if="srv.status === 'broken'">
                 <Badge theme="red" variant="subtle" size="sm">
-                  <template #prefix><span class="block size-1.5 rounded-full bg-[var(--ink-red-3)]" /></template>
+                  <template #prefix><span class="block size-1.5 rounded-full bg-[var(--ink-red-7)]" /></template>
                   Broken
                 </Badge>
               </template>
@@ -205,9 +205,9 @@ function zoom(delta) {
 }
 
 function dotClass(srv) {
-  if (srv.status === 'broken') return 'bg-[var(--ink-red-3)]'
-  if (srv.status === 'suspended' || srv.status === 'provisioning') return 'bg-[var(--ink-amber-3)]'
-  return 'bg-[var(--ink-green-3)]'
+  if (srv.status === 'broken') return 'bg-[var(--ink-red-7)]'
+  if (srv.status === 'suspended' || srv.status === 'provisioning') return 'bg-[var(--ink-amber-7)]'
+  return 'bg-[var(--ink-green-7)]'
 }
 function statusLabel(srv) {
   return { active: 'Active', provisioning: 'Setting up…', suspended: 'Suspended', broken: 'Broken', migrating: 'Migrating…', 'migration-scheduled': 'Active' }[srv.status] || srv.status

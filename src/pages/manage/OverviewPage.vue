@@ -74,7 +74,7 @@
               :key="site.id"
               role="button"
               tabindex="0"
-              class="cursor-pointer overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-white transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
+              class="cursor-pointer overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
             >
@@ -106,7 +106,7 @@
           </div>
 
           <!-- List -->
-          <div v-else class="mt-4 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-white">
+          <div v-else class="mt-4 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
             <div
               v-for="site in filteredSites"
               :key="site.id"
@@ -311,9 +311,9 @@ function hasUpdate(site) {
   return site.apps.some((a) => store.appUpdate(a))
 }
 function statusDot(site) {
-  if (site.status === 'suspended') return 'bg-[var(--ink-amber-3)]'
-  if (site.status === 'live') return 'bg-[var(--ink-green-3)]'
-  return 'bg-[var(--ink-amber-3)]'
+  if (site.status === 'suspended') return 'bg-[var(--ink-amber-7)]'
+  if (site.status === 'live') return 'bg-[var(--ink-green-7)]'
+  return 'bg-[var(--ink-amber-7)]'
 }
 function statusLabel(site) {
   return { live: 'Active', creating: 'Setting up…', restoring: 'Restoring…', moving: 'Moving…', suspended: 'Paused' }[site.status] || site.status

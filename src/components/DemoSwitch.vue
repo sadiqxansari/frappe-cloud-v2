@@ -1,7 +1,7 @@
 <template>
   <div class="fixed bottom-4 right-4 z-50">
     <Dropdown :options="options" placement="top-end">
-      <Button variant="outline" size="sm" label="Demo" icon-left="lucide-flask-conical" class="shadow-md bg-surface-white" />
+      <Button variant="outline" size="sm" label="Demo" icon-left="lucide-flask-conical" class="shadow-md bg-surface-elevation-1" />
     </Dropdown>
   </div>
 </template>

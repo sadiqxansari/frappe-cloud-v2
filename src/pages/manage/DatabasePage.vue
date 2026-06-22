@@ -4,14 +4,14 @@
     <p class="mt-1 text-base text-ink-gray-5">Run read-only queries against a replica of {{ server.name }}.</p>
 
     <div class="mt-5 grid gap-4 sm:grid-cols-3">
-      <div v-for="s in dbTiles" :key="s.label" class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div v-for="s in dbTiles" :key="s.label" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="text-sm text-ink-gray-5">{{ s.label }}</div>
         <div class="mt-1 text-lg font-semibold tabular-nums text-ink-gray-9">{{ s.value }}</div>
       </div>
     </div>
 
     <!-- Query editor -->
-    <div class="mt-5 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+    <div class="mt-5 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-semibold text-ink-gray-8">SQL playground</h2>
         <span class="text-xs text-ink-gray-5">Read-only · against a replica</span>
@@ -20,7 +20,7 @@
         v-model="query"
         rows="3"
         spellcheck="false"
-        class="mt-2 w-full rounded-lg border border-outline-gray-2 bg-surface-gray-7 p-3 font-mono text-xs leading-5 text-ink-white focus:outline-none focus:ring-2 focus:ring-outline-gray-4"
+        class="mt-2 w-full rounded-lg border border-outline-gray-2 bg-surface-gray-7 p-3 font-mono text-xs leading-5 text-ink-base focus:outline-none focus:ring-2 focus:ring-outline-gray-4"
       />
       <div class="mt-2 flex items-center justify-end gap-2">
         <Button variant="subtle" size="sm" label="Export results" :disabled="!result || !result.rows.length" icon-left="lucide-download" @click="exportCsv" />
@@ -59,7 +59,7 @@
     </div>
 
     <!-- Active connections -->
-    <div class="mt-5 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+    <div class="mt-5 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
       <h2 class="text-sm font-semibold text-ink-gray-8">Active connections</h2>
       <div class="mt-2 divide-y divide-outline-gray-1">
         <div v-for="q in DB_STATS.processList" :key="q.id" class="flex items-center gap-3 py-2 text-sm">

@@ -20,7 +20,7 @@
       />
     </div>
 
-    <div v-if="shownJobs.length" class="mt-4 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-white">
+    <div v-if="shownJobs.length" class="mt-4 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
       <div v-for="job in shownJobs" :key="job.id">
         <button class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-gray-1" @click="toggle(job.id)">
           <span class="grid size-7 shrink-0 place-items-center rounded-full" :class="tile(job.status)">
@@ -124,17 +124,17 @@ function label(status) {
 }
 function tile(status) {
   return {
-    success: 'bg-surface-green-2 text-ink-green-3',
-    running: 'bg-surface-amber-2 text-ink-amber-3',
-    failed: 'bg-surface-red-2 text-ink-red-3',
+    success: 'bg-surface-green-2 text-ink-green-6',
+    running: 'bg-surface-amber-2 text-ink-amber-8',
+    failed: 'bg-surface-red-2 text-ink-red-8',
     pending: 'bg-surface-gray-2 text-ink-gray-5',
   }[status] || 'bg-surface-gray-2 text-ink-gray-5'
 }
 function stepColor(status) {
   return {
-    success: 'text-ink-green-3',
-    running: 'text-ink-amber-3',
-    failed: 'text-ink-red-3',
+    success: 'text-ink-green-6',
+    running: 'text-ink-amber-8',
+    failed: 'text-ink-red-8',
     pending: 'text-ink-gray-4',
   }[status] || 'text-ink-gray-4'
 }

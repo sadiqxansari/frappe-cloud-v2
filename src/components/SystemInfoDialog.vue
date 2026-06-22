@@ -4,7 +4,7 @@
       <div v-if="server" class="flex max-h-[80vh] flex-col">
         <!-- Header — what this server is, at a glance -->
         <div class="flex items-start gap-3 px-5 pt-5">
-          <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--ink-gray-9)] text-ink-white">
+          <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--ink-gray-9)] text-ink-base">
             <span class="lucide-server size-5" />
           </span>
           <div class="min-w-0 flex-1">
@@ -49,7 +49,7 @@
           <!-- Services — what's running right now -->
           <Section title="Services">
             <div v-for="p in services" :key="p.name" class="flex items-center gap-3 py-2">
-              <span class="size-2 shrink-0 rounded-full" :class="p.status === 'running' ? 'bg-surface-green-3' : 'bg-surface-gray-5'" />
+              <span class="size-2 shrink-0 rounded-full" :class="p.status === 'running' ? 'bg-[var(--ink-green-7)]' : 'bg-surface-gray-5'" />
               <div class="min-w-0 flex-1">
                 <div class="truncate text-sm font-medium text-ink-gray-8">{{ p.desc }}</div>
                 <div class="truncate font-mono text-xs text-ink-gray-5">{{ p.name }}</div>

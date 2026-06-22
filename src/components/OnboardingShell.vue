@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-surface-white">
+  <div class="flex min-h-screen flex-col bg-surface-elevation-1">
     <header class="flex items-center justify-center gap-2 pb-2 pt-10">
       <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 rounded-md" />
       <span class="text-lg font-semibold text-ink-gray-8">Frappe Cloud</span>

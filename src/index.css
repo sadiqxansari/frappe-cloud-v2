@@ -1,3 +1,15 @@
+/* Text selection inverts the foreground: near-black highlight + white text in
+   light mode, white highlight + near-black text in dark — both tokens flip with
+   the theme, so one rule covers both. */
+::selection {
+  background-color: var(--ink-gray-9);
+  color: var(--surface-elevation-1);
+}
+::-moz-selection {
+  background-color: var(--ink-gray-9);
+  color: var(--surface-elevation-1);
+}
+
 /* Gentle reveal used for the structure explainer and new site cards. */
 .reveal-enter-active {
   transition:

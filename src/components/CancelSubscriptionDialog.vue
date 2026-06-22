@@ -26,7 +26,7 @@
 
     <!-- Step 2 — done -->
     <div v-else class="py-2 text-center">
-      <span class="mx-auto grid size-12 place-items-center rounded-full bg-surface-amber-1 text-ink-amber-3">
+      <span class="mx-auto grid size-12 place-items-center rounded-full bg-surface-amber-1 text-ink-amber-8">
         <span class="lucide-pause size-6" />
       </span>
       <p class="mx-auto mt-3 max-w-sm text-sm text-ink-gray-6">

@@ -7,13 +7,13 @@
     <!-- ── Team ──────────────────────────────────────────────── -->
     <div v-if="tab === 'team'" class="mt-5">
       <!-- Team identity card -->
-      <div class="flex items-center gap-4 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div class="flex items-center gap-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="relative shrink-0" :class="isAdminOrOwner ? 'cursor-pointer' : ''" @click="isAdminOrOwner && avatarInput && avatarInput.click()">
           <img v-if="store.team.avatar" :src="store.team.avatar" class="size-12 rounded-full object-cover" />
           <div v-else class="grid size-12 place-items-center rounded-full bg-surface-gray-3 text-lg font-semibold text-ink-gray-7">
             {{ teamInitial }}
           </div>
-          <div v-if="isAdminOrOwner" class="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-surface-white ring-1 ring-outline-gray-2">
+          <div v-if="isAdminOrOwner" class="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-surface-elevation-1 ring-1 ring-outline-gray-2">
             <span class="lucide-camera size-3 text-ink-gray-5" />
           </div>
         </div>
@@ -30,7 +30,7 @@
             <input
               ref="teamNameInput"
               v-model="teamNameDraft"
-              class="rounded-md border border-outline-gray-3 bg-surface-white px-2 py-1 text-lg font-medium text-ink-gray-9 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+              class="rounded-md border border-outline-gray-3 bg-surface-elevation-1 px-2 py-1 text-lg font-medium text-ink-gray-9 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
               @keydown.enter="saveTeamName"
               @keydown.escape="cancelEditTeamName"
             />
@@ -115,7 +115,7 @@
       </div>
 
       <!-- Frappe Partner -->
-      <div class="mt-4 rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div class="mt-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-base font-semibold text-ink-gray-8">Frappe Partner</h2>
@@ -161,7 +161,7 @@
             :class="(r.id === 'role-owner' || r.id === 'role-admin') ? 'bg-surface-amber-2' : 'bg-surface-gray-2'"
           >
             <Tooltip v-if="r.id === 'role-owner' || r.id === 'role-admin'" text="This role has access to all servers and permissions.">
-              <span class="lucide-shield size-4" :class="(r.id === 'role-owner' || r.id === 'role-admin') ? 'text-ink-amber-3' : 'text-ink-gray-6'" />
+              <span class="lucide-shield size-4" :class="(r.id === 'role-owner' || r.id === 'role-admin') ? 'text-ink-amber-8' : 'text-ink-gray-6'" />
             </Tooltip>
             <span v-else class="lucide-user size-4 text-ink-gray-6" />
           </span>
@@ -175,11 +175,11 @@
           <!-- Stacked assignee avatars -->
           <div v-if="store.membersForRole(r.id).length" class="flex -space-x-1.5">
             <Tooltip v-for="m in store.membersForRole(r.id).slice(0, 4)" :key="m.id" :text="m.name">
-              <Avatar :label="m.name" size="sm" class="ring-2 ring-white" />
+              <Avatar :label="m.name" size="sm" class="ring-2 ring-[var(--surface-elevation-1)]" />
             </Tooltip>
             <span
               v-if="store.membersForRole(r.id).length > 4"
-              class="inline-flex size-7 items-center justify-center rounded-full bg-surface-gray-3 text-xs font-medium text-ink-gray-7 ring-2 ring-white"
+              class="inline-flex size-7 items-center justify-center rounded-full bg-surface-gray-3 text-xs font-medium text-ink-gray-7 ring-2 ring-[var(--surface-elevation-1)]"
             >
               +{{ store.membersForRole(r.id).length - 4 }}
             </span>
@@ -289,7 +289,7 @@
           >
             <div>
               <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">Important</div>
-              <div class="flex items-center justify-between rounded-lg border border-outline-gray-2 bg-surface-white px-3 py-2.5">
+              <div class="flex items-center justify-between rounded-lg border border-outline-gray-2 bg-surface-elevation-1 px-3 py-2.5">
                 <div>
                   <div class="text-sm text-ink-gray-8">Administrator</div>
                   <div class="text-xs text-ink-gray-4">Full access to all resources and settings</div>
@@ -301,7 +301,7 @@
             </div>
             <div>
               <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">General</div>
-              <div class="divide-y divide-outline-gray-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white">
+              <div class="divide-y divide-outline-gray-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
                 <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
                   <div>
                     <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
@@ -388,7 +388,7 @@
             <div class="text-xs text-ink-gray-5">{{ row.roleName }}</div>
           </div>
           <div class="flex shrink-0 flex-wrap justify-end gap-1">
-            <span v-if="row.permissions.administrator" class="rounded bg-surface-amber-2 px-1.5 py-0.5 text-[10px] font-medium text-ink-amber-3">Admin</span>
+            <span v-if="row.permissions.administrator" class="rounded bg-surface-amber-2 px-1.5 py-0.5 text-[10px] font-medium text-ink-amber-8">Admin</span>
             <span v-for="p in row.enabledPerms" :key="p.key" class="rounded bg-surface-gray-2 px-1.5 py-0.5 text-[10px] text-ink-gray-6">{{ p.short }}</span>
             <span v-if="!row.permissions.administrator && !row.enabledPerms.length" class="text-xs text-ink-gray-4">View only</span>
           </div>

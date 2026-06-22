@@ -12,7 +12,7 @@
           aria-controls="provider-listbox"
           :aria-expanded="providerOpen"
           :aria-activedescendant="providerOpen ? `provider-opt-${providerActiveIndex}` : undefined"
-          class="flex w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-white px-2.5 py-[7px] text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
+          class="flex w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 py-[7px] text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
           @click="providerOpen ? closeProviderMenu() : openProviderMenu()"
           @keydown="onProviderKeydown"
         >
@@ -30,7 +30,7 @@
           v-if="providerOpen"
           id="provider-listbox"
           role="listbox"
-          class="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white py-1 shadow-md"
+          class="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1 py-1 shadow-md"
         >
           <button
             v-for="(p, index) in PROVIDERS"
@@ -76,7 +76,7 @@
           aria-controls="region-listbox"
           :aria-expanded="regionOpen"
           :aria-activedescendant="regionOpen ? `region-opt-${regionActiveIndex}` : undefined"
-          class="flex w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-white px-2.5 py-[7px] text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
+          class="flex w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 py-[7px] text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
           @click="regionOpen ? closeRegionMenu() : openRegionMenu()"
           @keydown="onRegionKeydown"
         >
@@ -90,7 +90,7 @@
           v-if="regionOpen"
           id="region-listbox"
           role="listbox"
-          class="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-outline-gray-2 bg-surface-white py-1 shadow-md"
+          class="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-outline-gray-2 bg-surface-elevation-1 py-1 shadow-md"
         >
           <button
             v-for="(r, index) in regionOptions"

@@ -13,10 +13,10 @@
     </div>
 
     <div class="mt-5 grid gap-4 sm:grid-cols-3">
-      <div v-for="m in metrics" :key="m.label" class="rounded-xl border border-outline-gray-2 bg-surface-white p-4">
+      <div v-for="m in metrics" :key="m.label" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="text-sm text-ink-gray-5">{{ m.label }}</div>
         <div class="mt-1 text-2xl font-semibold text-ink-gray-9">{{ m.value }}</div>
-        <svg viewBox="0 0 200 40" class="mt-3 w-full text-ink-blue-3">
+        <svg viewBox="0 0 200 40" class="mt-3 w-full text-ink-blue-8">
           <polyline :points="m.spark" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
         <div class="mt-1 text-xs text-ink-gray-5">over the {{ rangeLabel }}</div>

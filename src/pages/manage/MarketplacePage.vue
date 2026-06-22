@@ -32,7 +32,7 @@
       <div
         v-for="app in filteredApps"
         :key="app.key"
-        class="flex flex-col gap-3 rounded-lg border border-outline-gray-2 bg-surface-white p-4"
+        class="flex flex-col gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4"
       >
         <div class="flex items-start gap-3">
           <AppIcon :app-key="app.key" size="md" />

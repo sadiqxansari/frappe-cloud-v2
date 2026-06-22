@@ -2,9 +2,7 @@
   <OnboardingShell :step="3" back="/setup/app">
     <h1 class="text-xl font-semibold text-ink-gray-9">Host {{ appName }} on a server</h1>
     <p class="mt-1.5 text-p-base text-ink-gray-6">
-      {{ appName }} runs on a server that's yours — your data, full control, and room to grow.
-      We've started you on the smallest plan; resize anytime as you grow.
-    </p>
+      {{ appName }} runs on a server that's yours. We recommend starting with the {{ inr(400) }}/mo server, you can resize anytime. </p>
 
     <div class="mt-6 rounded-xl border border-outline-gray-2 p-5">
       <div class="flex items-center justify-between">
@@ -17,7 +15,7 @@
         <span class="text-2xl font-semibold text-ink-gray-9">{{ inr(price) }}</span>
         <span class="text-sm text-ink-gray-5">/month · ≈{{ inr(Math.round(price / 30)) }}/day</span>
       </div>
-      <div class="mt-2 flex items-center gap-1.5 text-sm font-medium text-ink-green-3">
+      <div class="mt-2 flex items-center gap-1.5 text-sm font-medium text-ink-green-6">
         <span class="lucide-gift size-4" />
         Free on your $25 credit
       </div>
@@ -30,7 +28,7 @@
 
       <ul class="mt-4 space-y-2">
         <li v-for="f in plan.features" :key="f" class="flex items-start gap-2 text-sm text-ink-gray-7">
-          <span class="lucide-check mt-0.5 size-4 shrink-0 text-ink-green-3" />
+          <span class="lucide-check mt-0.5 size-4 shrink-0 text-ink-green-6" />
           {{ f }}
         </li>
       </ul>
@@ -55,7 +53,7 @@
       Resize anytime — start small and grow when you need to.
     </p>
 
-    <Button variant="solid" size="lg" label="Set up my server" class="mt-5 w-full" @click="confirm" />
+    <Button variant="solid" size="md" label="Set up my server" class="mt-5 w-full" @click="confirm" />
 
     <template #below>
       <Button variant="ghost" size="sm" label="Compare plans & regions" icon-left="lucide-sliders-horizontal" @click="compareOpen = true" />
@@ -92,7 +90,7 @@
         <p class="mt-2 text-p-sm text-ink-gray-6">{{ p.blurb }}</p>
         <ul class="mt-3 flex-1 space-y-1.5">
           <li v-for="f in p.features" :key="f" class="flex items-start gap-1.5 text-sm text-ink-gray-7">
-            <span class="lucide-check mt-0.5 size-3.5 shrink-0 text-ink-green-3" />
+            <span class="lucide-check mt-0.5 size-3.5 shrink-0 text-ink-green-6" />
             {{ f }}
           </li>
         </ul>

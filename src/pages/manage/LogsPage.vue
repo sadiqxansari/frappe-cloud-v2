@@ -3,7 +3,7 @@
     <h1 class="text-xl font-semibold text-ink-gray-9">Logs</h1>
     <p class="mt-1 text-base text-ink-gray-5">Output from {{ server.name }}'s services. Pick a file to tail.</p>
 
-    <div class="mt-5 flex h-[68vh] overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-white">
+    <div class="mt-5 flex h-[68vh] overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
       <!-- File list -->
       <div class="w-56 shrink-0 overflow-y-auto border-r border-outline-gray-2">
         <button
@@ -15,7 +15,7 @@
         >
           <span class="flex w-full items-center gap-1.5">
             <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ f.file }}</span>
-            <span v-if="f.kind === 'error' && f.lines" class="size-1.5 shrink-0 rounded-full bg-[var(--ink-red-3)]" />
+            <span v-if="f.kind === 'error' && f.lines" class="size-1.5 shrink-0 rounded-full bg-[var(--ink-red-7)]" />
           </span>
           <span class="text-xs tabular-nums text-ink-gray-5">{{ f.size }}</span>
         </button>
@@ -37,11 +37,11 @@
         </div>
 
         <pre v-if="placeholder" class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-gray-5">{{ placeholder }}</pre>
-        <pre v-else class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-white">{{ shownLines.join('\n') }}</pre>
+        <pre v-else class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-xs leading-5 text-ink-base">{{ shownLines.join('\n') }}</pre>
 
         <div class="flex items-center gap-2 border-t border-outline-gray-1 px-3 py-1.5 text-xs text-ink-gray-5">
-          <span v-if="tailing" class="flex items-center gap-1.5 text-ink-green-3">
-            <span class="size-1.5 animate-pulse rounded-full bg-[var(--ink-green-3)]" /> Live
+          <span v-if="tailing" class="flex items-center gap-1.5 text-ink-green-7">
+            <span class="size-1.5 animate-pulse rounded-full bg-[var(--ink-green-7)]" /> Live
           </span>
           <span>{{ shownLines.length }} lines<span v-if="truncated" class="text-ink-gray-4"> · showing the last {{ limit }} of {{ filteredLines.length }}</span></span>
         </div>

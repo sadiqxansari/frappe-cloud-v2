@@ -11,7 +11,7 @@
 
       <ul class="mt-6 w-full space-y-3 text-left">
         <li v-for="(s, i) in steps" :key="s" class="flex items-center gap-2.5 text-sm">
-          <span v-if="i < stepIndex" class="lucide-circle-check size-5 text-ink-green-3" />
+          <span v-if="i < stepIndex" class="lucide-circle-check size-5 text-ink-green-6" />
           <Spinner v-else-if="i === stepIndex" class="size-5 text-ink-gray-5" />
           <span v-else class="grid size-5 place-items-center">
             <span class="size-1.5 rounded-full bg-surface-gray-4" />
