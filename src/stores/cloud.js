@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { toast } from 'frappe-ui'
 import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, planById, regionById, versionById } from '../data/catalog'
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
@@ -645,10 +646,12 @@ export const useCloudStore = defineStore('cloud', {
       ]
     },
 
-    createSite(serverId, subdomain, appKey) {
+    // A site can start with one or more apps (#35). `appKeys` is an array.
+    createSite(serverId, subdomain, appKeys) {
       const srv = this.findServer(serverId)
       if (!srv) return null
-      const site = makeSite(subdomain, [appKey], 'creating')
+      const keys = (Array.isArray(appKeys) ? appKeys : [appKeys]).filter(Boolean)
+      const site = makeSite(subdomain, keys, 'creating')
       srv.sites.push(site)
       // The signature moment: the second site gently reveals the structure.
       if (srv.sites.length === 2) {
@@ -661,7 +664,9 @@ export const useCloudStore = defineStore('cloud', {
         // captured above wouldn't trigger a re-render.
         const live = srv.sites.find((st) => st.id === site.id)
         if (live) live.status = 'live'
+        // The activity entry is the in-app notification; a toast confirms it too. (#35)
         this.flipActivity(actId, { title: `Created ${site.name}` })
+        toast.success(`${site.name} is live`)
       }, 3500)
       return site
     },
