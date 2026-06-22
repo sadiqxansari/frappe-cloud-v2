@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { toast } from 'frappe-ui'
 import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, planById, regionById, versionById } from '../data/catalog'
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
@@ -46,6 +47,21 @@ const DAY = 24 * HOUR
 function makeApp(key) {
   const meta = appByKey(key)
   return { id: uid('app'), key, name: meta.name, version: meta.version }
+}
+
+// The DNS records a user must add at their provider to point a custom domain at
+// us: an A record to our inbound IP, plus a TXT challenge we verify ownership
+// with. Host is the subdomain label ('@' for an apex domain).
+function dnsRecordsFor(name, inboundIp) {
+  const host = name.split('.').slice(0, -2).join('.') || '@'
+  const challengeHost = host === '@' ? '_frappe-challenge' : `_frappe-challenge.${host}`
+  // Deterministic pseudo-token (djb2) so the same domain always shows the same
+  // challenge — no Math.random, which would change on every render.
+  const token = [...name].reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 5381).toString(16)
+  return [
+    { type: 'A', host, value: inboundIp },
+    { type: 'TXT', host: challengeHost, value: `fc-verify=${token}` },
+  ]
 }
 
 // A site is identified by its subdomain — there is no separate friendly name.
@@ -630,10 +646,12 @@ export const useCloudStore = defineStore('cloud', {
       ]
     },
 
-    createSite(serverId, subdomain, appKey) {
+    // A site can start with one or more apps (#35). `appKeys` is an array.
+    createSite(serverId, subdomain, appKeys) {
       const srv = this.findServer(serverId)
       if (!srv) return null
-      const site = makeSite(subdomain, [appKey], 'creating')
+      const keys = (Array.isArray(appKeys) ? appKeys : [appKeys]).filter(Boolean)
+      const site = makeSite(subdomain, keys, 'creating')
       srv.sites.push(site)
       // The signature moment: the second site gently reveals the structure.
       if (srv.sites.length === 2) {
@@ -646,7 +664,9 @@ export const useCloudStore = defineStore('cloud', {
         // captured above wouldn't trigger a re-render.
         const live = srv.sites.find((st) => st.id === site.id)
         if (live) live.status = 'live'
+        // The activity entry is the in-app notification; a toast confirms it too. (#35)
         this.flipActivity(actId, { title: `Created ${site.name}` })
+        toast.success(`${site.name} is live`)
       }, 3500)
       return site
     },
@@ -779,34 +799,27 @@ export const useCloudStore = defineStore('cloud', {
       this.logActivity(`Turned ${site.config[key] ? 'on' : 'off'} ${labels[key]} on ${site.name}`, { tag: 'config' })
     },
 
+    // Adding a domain does NOT auto-verify — we hand back the DNS records the
+    // user must add at their provider and wait for them to verify. (#22)
     addDomain(siteId, name) {
       const site = this.findSite(siteId)
       if (!site) return null
-      const domain = { id: uid('dom'), name, status: 'verifying', ssl: false }
+      const inboundIp = this.serverOfSite(siteId)?.inboundIp || '13.200.157.65'
+      const domain = { id: uid('dom'), name, status: 'pending', ssl: false, dnsRecords: dnsRecordsFor(name, inboundIp) }
       site.domains.push(domain)
-      const actId = this.logActivity(`Checking DNS for ${name}`, { tag: 'domain', status: 'running' })
-      setTimeout(() => {
-        const live = this.findSite(siteId)?.domains.find((d) => d.id === domain.id)
-        if (live) {
-          live.status = 'active'
-          live.ssl = true
-        }
-        this.flipActivity(actId, {
-          title: `Connected ${name}`,
-          detail: 'DNS verified and an SSL certificate was issued automatically.',
-        })
-      }, 4000)
+      this.logActivity(`Added ${name} — awaiting DNS verification`, { tag: 'domain' })
       return domain
     },
 
-    // Re-run DNS verification for a custom domain. In Edge mode it keeps
-    // failing (the records still don't resolve); otherwise it connects.
-    retryDomainVerification(siteId, domainId) {
+    // Run DNS verification for a custom domain — used both for the first
+    // "Verify" and for a "Retry" after a failure. In Edge mode it keeps failing
+    // (the records still don't resolve); otherwise it connects and issues SSL.
+    verifyDomain(siteId, domainId) {
       const d = this.findSite(siteId)?.domains.find((x) => x.id === domainId)
       if (!d) return
       d.status = 'verifying'
       const edge = this.edgeMode
-      const actId = this.logActivity(`Re-checking DNS for ${d.name}`, { tag: 'domain', status: 'running' })
+      const actId = this.logActivity(`Checking DNS for ${d.name}`, { tag: 'domain', status: 'running' })
       setTimeout(() => {
         const live = this.findSite(siteId)?.domains.find((x) => x.id === domainId)
         if (!live) return

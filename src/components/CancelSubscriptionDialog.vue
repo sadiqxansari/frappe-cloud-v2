@@ -33,7 +33,7 @@
         {{ result.suspended.length }} server{{ result.suspended.length === 1 ? '' : 's' }} and their sites were suspended. You won't be charged while they're stopped.
       </p>
       <p class="mx-auto mt-2 max-w-sm text-p-sm text-ink-gray-5">
-        Resume them anytime from Billing — your data and backups are untouched.
+        Resume anytime from Billing — backups are kept for up to 30 days.
       </p>
     </div>
 
@@ -63,7 +63,8 @@ const result = reactive({ suspended: [] })
 const whatHappens = [
   { icon: 'lucide-power', text: 'Your sites go offline immediately and show a maintenance page.' },
   { icon: 'lucide-receipt', text: 'Usage up to today is billed in your next invoice.' },
-  { icon: 'lucide-rotate-ccw', text: 'Resume anytime to bring everything back exactly as it was — nothing is deleted.' },
+  { icon: 'lucide-rotate-ccw', text: 'Resume anytime — everything comes back exactly as it was.' },
+  { icon: 'lucide-clock', text: 'Backups are kept for up to 30 days — resume before then to keep them.' },
 ]
 
 const stepTitle = computed(() => (step.value === 1 ? 'Stop billing' : 'Billing stopped'))

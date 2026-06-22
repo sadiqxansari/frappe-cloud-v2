@@ -76,6 +76,68 @@ export const DB_STATS = {
   ],
 }
 
+// Background jobs (the "Tasks" dev-tools page). Mirrors Frappe Cloud's agent
+// job history: each run has a type, an outcome, when it ran, how long it took,
+// and the ordered steps it went through. Real-sounding job names on purpose —
+// this area is for technical users.
+export const BACKGROUND_JOBS = [
+  {
+    id: 'job-5821', name: 'Backup Site', site: 'mycompany.frappe.cloud', status: 'success',
+    startedMinsAgo: 7, duration: '48s',
+    steps: [
+      { name: 'Enqueue backup', status: 'success', duration: '0.2s' },
+      { name: 'Dump database', status: 'success', duration: '31s' },
+      { name: 'Archive files', status: 'success', duration: '14s' },
+      { name: 'Upload to offsite storage', status: 'success', duration: '2.6s' },
+    ],
+  },
+  {
+    id: 'job-5820', name: 'Update Site Configuration', site: 'mycompany.frappe.cloud', status: 'running',
+    startedMinsAgo: 1, duration: null,
+    steps: [
+      { name: 'Validate configuration', status: 'success', duration: '0.4s' },
+      { name: 'Apply to site', status: 'running', duration: null },
+      { name: 'Reload services', status: 'pending', duration: null },
+    ],
+  },
+  {
+    id: 'job-5817', name: 'Install App', site: 'shop.frappe.cloud', status: 'failed',
+    startedMinsAgo: 34, duration: '1m 12s',
+    steps: [
+      { name: 'Resolve app dependencies', status: 'success', duration: '3s' },
+      { name: 'Build assets', status: 'success', duration: '58s' },
+      { name: 'Run migrations', status: 'failed', duration: '11s' },
+    ],
+  },
+  {
+    id: 'job-5810', name: 'Deploy Bench', site: null, status: 'success',
+    startedMinsAgo: 96, duration: '4m 31s',
+    steps: [
+      { name: 'Clone repositories', status: 'success', duration: '22s' },
+      { name: 'Build image', status: 'success', duration: '3m 40s' },
+      { name: 'Roll out', status: 'success', duration: '29s' },
+    ],
+  },
+  {
+    id: 'job-5804', name: 'Restore Site', site: 'mycompany.frappe.cloud', status: 'success',
+    startedMinsAgo: 220, duration: '2m 03s',
+    steps: [
+      { name: 'Download backup', status: 'success', duration: '18s' },
+      { name: 'Restore database', status: 'success', duration: '1m 33s' },
+      { name: 'Restore files', status: 'success', duration: '12s' },
+    ],
+  },
+  {
+    id: 'job-5799', name: 'Migrate Site', site: 'shop.frappe.cloud', status: 'success',
+    startedMinsAgo: 410, duration: '1m 47s',
+    steps: [
+      { name: 'Take pre-migration backup', status: 'success', duration: '41s' },
+      { name: 'Run patches', status: 'success', duration: '58s' },
+      { name: 'Clear cache', status: 'success', duration: '8s' },
+    ],
+  },
+]
+
 export const SYSTEM_INFO = [
   { label: 'Process manager', value: 'systemd' },
   { label: 'HTTP port', value: '8000' },

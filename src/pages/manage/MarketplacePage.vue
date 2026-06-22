@@ -5,6 +5,18 @@
       Apps built by developers worldwide, ready to install on {{ server.name }}'s sites.
     </p>
 
+    <!-- Current Frappe version + change action — apps below are gated on this,
+         so surface it upfront rather than only in tooltips. (#38) -->
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-4 py-3">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="lucide-box size-4 shrink-0 text-ink-gray-5" />
+        <span class="text-sm text-ink-gray-6">
+          This server runs <span class="font-medium text-ink-gray-9">{{ versionLabel }}</span> — apps must support it to install.
+        </span>
+      </div>
+      <Button variant="outline" size="sm" label="Change version" icon-left="lucide-arrow-up-down" class="shrink-0" @click="versionOpen = true" />
+    </div>
+
     <div v-if="preselectedSite" class="mt-3 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-2">
       <AppIcon :app-key="preselectedSite.apps[0]?.key || 'erpnext'" size="sm" />
       <span class="text-sm text-ink-gray-7">Installing onto <span class="font-medium text-ink-gray-9">{{ preselectedSite.name }}</span></span>
@@ -137,6 +149,9 @@
         </div>
       </template>
     </Dialog>
+
+    <!-- Change the server's Frappe version (#38) -->
+    <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
   </ServerShell>
 </template>
 
@@ -145,6 +160,7 @@ import { computed, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, Dialog, FormControl, Tooltip, toast } from 'frappe-ui'
 import AppIcon from '../../components/AppIcon.vue'
+import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import { APP_CATALOG, versionById } from '../../data/catalog'
@@ -175,6 +191,7 @@ function chooseSite(site) {
   siteSelectOpen.value = false
 }
 
+const versionOpen = ref(false)
 const search = ref('')
 const ghOpen = ref(false)
 const ghRepo = ref('')

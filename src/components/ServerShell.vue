@@ -194,6 +194,7 @@ const devItems = computed(() => {
   return [
     { label: 'Logs', icon: 'lucide-scroll-text', to: `${b}/developer/logs`, active: route.path.startsWith(`${b}/developer/logs`) },
     { label: 'Database', icon: 'lucide-database', to: `${b}/developer/database`, active: route.path.startsWith(`${b}/developer/database`) },
+    { label: 'Tasks', icon: 'lucide-list-checks', to: `${b}/developer/tasks`, active: route.path.startsWith(`${b}/developer/tasks`) },
   ]
 })
 const devActive = computed(() => route.path.startsWith(`${base.value}/developer`))
