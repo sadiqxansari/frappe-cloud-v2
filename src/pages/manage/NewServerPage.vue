@@ -35,16 +35,6 @@
         <h1 class="text-xl font-semibold text-ink-gray-9">Add a new server</h1>
         <p class="mt-1 text-p-sm text-ink-gray-5">Pick where it lives and how big it is. You can resize anytime.</p>
 
-        <Alert v-if="deployError" theme="red" class="mt-4" :title="`Couldn't deploy in ${regionName}`" :dismissible="false">
-          <template #description>{{ deployError }}</template>
-          <template #footer>
-            <div class="flex gap-2">
-              <Button variant="solid" size="sm" label="Try again" :loading="deploying" @click="deploy" />
-              <Button variant="outline" size="sm" label="Pick another region" @click="deployError = ''" />
-            </div>
-          </template>
-        </Alert>
-
         <!-- Stepped form -->
         <div class="mt-6">
           <!-- Step: provider -->
@@ -56,16 +46,19 @@
             <div class="min-w-0 flex-1 pb-6">
               <div class="text-sm font-medium text-ink-gray-7">Select a provider</div>
               <div class="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                <button
-                  v-for="p in PROVIDERS"
-                  :key="p.id"
-                  class="flex flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-colors"
-                  :class="p.id === providerId ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
-                  @click="selectProvider(p.id)"
-                >
-                  <span class="grid size-8 place-items-center rounded-md text-[11px] font-semibold" :class="p.tile">{{ p.mono }}</span>
-                  <span class="truncate text-xs text-ink-gray-7">{{ p.short }}</span>
-                </button>
+                <Tooltip v-for="p in PROVIDERS" :key="p.id" :text="providerDown(p.id) ? `${p.name} is down right now` : ''">
+                  <button
+                    class="flex w-full flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-colors"
+                    :class="providerDown(p.id)
+                      ? 'cursor-not-allowed border-outline-gray-2 opacity-40'
+                      : p.id === providerId ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+                    :aria-disabled="providerDown(p.id)"
+                    @click="selectProvider(p.id)"
+                  >
+                    <span class="grid size-8 place-items-center rounded-md text-[11px] font-semibold" :class="p.tile">{{ p.mono }}</span>
+                    <span class="truncate text-xs text-ink-gray-7">{{ p.short }}</span>
+                  </button>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -79,17 +72,20 @@
             <div class="min-w-0 flex-1 pb-6">
               <div class="text-sm font-medium text-ink-gray-7">Select a region</div>
               <div class="mt-2 flex flex-wrap gap-2">
-                <button
-                  v-for="r in regions"
-                  :key="r.id"
-                  class="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors"
-                  :class="r.id === regionId ? 'border-outline-gray-4 bg-surface-gray-2 text-ink-gray-9' : 'border-outline-gray-2 text-ink-gray-7 hover:bg-surface-gray-1'"
-                  @click="selectRegion(r.id)"
-                >
-                  <span>{{ r.flag }}</span>
-                  {{ r.name }}
-                  <Badge v-if="r.beta" theme="gray" variant="subtle" label="Beta" />
-                </button>
+                <Tooltip v-for="r in regions" :key="r.id" :text="regionDown(r.id) ? `${r.name} is at capacity right now` : ''">
+                  <button
+                    class="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors"
+                    :class="regionDown(r.id)
+                      ? 'cursor-not-allowed border-outline-gray-2 text-ink-gray-7 opacity-40'
+                      : r.id === regionId ? 'border-outline-gray-4 bg-surface-gray-2 text-ink-gray-9' : 'border-outline-gray-2 text-ink-gray-7 hover:bg-surface-gray-1'"
+                    :aria-disabled="regionDown(r.id)"
+                    @click="selectRegion(r.id)"
+                  >
+                    <span>{{ r.flag }}</span>
+                    {{ r.name }}
+                    <Badge v-if="r.beta" theme="gray" variant="subtle" label="Beta" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -155,7 +151,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Alert, Badge, Button, FormControl, toast } from 'frappe-ui'
+import { Badge, Button, FormControl, Tooltip, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import { PLANS, PROVIDERS, VERSIONS, priceFor, regionById, regionsOf } from '../../data/catalog'
@@ -179,6 +175,17 @@ function zoom(delta) {
 
 const regions = computed(() => regionsOf(providerId.value))
 const regionName = computed(() => regionById(regionId.value).name)
+
+// In Edge mode some providers/regions are "down" — shown disabled with a hover
+// note instead of letting you pick them and fail at deploy. Empty otherwise.
+const downProviders = computed(() => (store.edgeMode ? new Set(['oracle']) : new Set()))
+const downRegions = computed(() => (store.edgeMode ? new Set(['aws-singapore', 'aws-jakarta']) : new Set()))
+function providerDown(id) {
+  return downProviders.value.has(id)
+}
+function regionDown(id) {
+  return downRegions.value.has(id)
+}
 const price = computed(() => priceFor(planId.value, regionId.value))
 const versionOptions = computed(() => VERSIONS.map((v) => ({ label: `${v.label} — ${v.note}`, value: v.id })))
 
@@ -191,30 +198,22 @@ const pins = computed(() => regions.value.map((r) => ({ id: r.id, lat: r.lat, ln
 watch(focus, () => (mapScale.value = 1))
 
 function selectProvider(id) {
+  if (providerDown(id)) return
   providerId.value = id
-  regionId.value = regionsOf(id)[0].id
+  // Land on the first region that's actually available.
+  const list = regionsOf(id)
+  regionId.value = (list.find((r) => !regionDown(r.id)) || list[0]).id
 }
 
 function selectRegion(id) {
+  if (regionDown(id)) return
   const r = regionById(id)
+  if (providerDown(r.providerId)) return
   providerId.value = r.providerId
   regionId.value = id
 }
 
-const deploying = ref(false)
-const deployError = ref('')
 function deploy() {
-  // In Edge mode the provider rejects the request, so the wizard surfaces a
-  // retryable error rather than silently creating a server.
-  if (store.edgeMode) {
-    deploying.value = true
-    deployError.value = ''
-    setTimeout(() => {
-      deploying.value = false
-      deployError.value = `${regionName.value} is at capacity right now. Try again in a few minutes, or pick another region.`
-    }, 1200)
-    return
-  }
   const srv = store.addServer({ planId: planId.value, regionId: regionId.value, version: version.value })
   toast.success(`${srv.name} is being set up in ${regionName.value}`)
   router.push(`/manage/${srv.id}`)
