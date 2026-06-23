@@ -234,6 +234,9 @@ function grownState() {
     planHistory: [
       { id: uid('ph'), date: '10 Jun 2026', from: 'Starter', to: 'Business', direction: 'upgrade' },
       { id: uid('ph'), date: '2 Mar 2026', from: 'Standard', to: 'Starter', direction: 'downgrade' },
+      { id: uid('ph'), date: '14 Jan 2026', from: 'Growth', to: 'Standard', direction: 'downgrade' },
+      { id: uid('ph'), date: '20 Nov 2025', from: 'Standard', to: 'Growth', direction: 'upgrade' },
+      { id: uid('ph'), date: '3 Sep 2025', from: 'Starter', to: 'Standard', direction: 'upgrade' },
     ],
   })
   const euServer = makeServer({

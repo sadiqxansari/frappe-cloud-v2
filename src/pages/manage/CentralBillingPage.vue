@@ -126,7 +126,7 @@
                   <div class="min-w-0 flex-1">
                     <div class="truncate text-sm font-medium text-ink-gray-9">{{ pm.label }}</div>
                     <div class="text-p-sm">
-                      <span :class="pm.status === 'declined' ? 'text-ink-red-4' : 'text-ink-gray-5'">{{ pm.detail }}<template v-if="pm.status === 'declined'"> · declined</template></span><template v-if="pm.expiry && pm.status !== 'declined'"><span class="text-ink-gray-5"> · </span><span :class="expiryClass(pm)">{{ expiryLabel(pm) }}</span></template>
+                      <span :class="pm.status === 'declined' ? 'text-ink-red-8' : 'text-ink-gray-5'">{{ pm.detail }}<template v-if="pm.status === 'declined'"> · declined</template></span><template v-if="pm.expiry && pm.status !== 'declined'"><span class="text-ink-gray-5"> · </span><span :class="expiryClass(pm)">{{ expiryLabel(pm) }}</span></template>
                     </div>
                   </div>
                   <Badge v-if="pm.primary" theme="green" variant="subtle" label="Primary" />
@@ -152,10 +152,10 @@
                   <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
                 </div>
                 <dl class="mt-2 space-y-1.5 text-p-sm">
-                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-4' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-8' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
                 </dl>
-                <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-4" @click="openContact">
+                <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-8" @click="openContact">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
                   Invoices are bouncing back — update your billing email.
                 </button>
@@ -271,7 +271,7 @@
             >
               <div class="min-w-0">
                 <div class="font-medium text-ink-gray-8">{{ inv.period }}</div>
-                <div class="truncate text-p-sm" :class="inv.overdue ? 'text-ink-red-4' : 'text-ink-gray-5'">
+                <div class="truncate text-p-sm" :class="inv.overdue ? 'text-ink-red-8' : 'text-ink-gray-5'">
                   {{ inv.number }} · {{ inv.overdue ? `Due ${inv.dueDate}` : `Issued ${inv.issued}` }}
                 </div>
               </div>
@@ -315,7 +315,7 @@
               </div>
               <div v-if="openPanel.data.overdue" class="flex items-center justify-between text-sm">
                 <span class="text-ink-gray-5">Due</span>
-                <span class="text-ink-red-4">{{ openPanel.data.dueDate }} (overdue)</span>
+                <span class="text-ink-red-8">{{ openPanel.data.dueDate }} (overdue)</span>
               </div>
               <div class="flex items-center justify-between text-sm">
                 <span class="text-ink-gray-5">Billed to</span>
@@ -443,7 +443,7 @@
         <p class="text-p-sm text-ink-gray-6">These go on every invoice — we'll need them before adding a payment method.</p>
         <div>
           <FormControl v-model="pmForm.email" type="text" label="Billing email" placeholder="billing@company.com" />
-          <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-p-xs text-ink-red-4">{{ pmContactEmailError }}</p>
+          <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ pmContactEmailError }}</p>
         </div>
         <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
       </div>
@@ -535,7 +535,7 @@
         <FormControl v-model="taxForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
         <div>
           <FormControl v-model="taxForm.taxValue" type="text" :label="taxFormRegion.idLabel" :placeholder="taxFormRegion.placeholder" />
-          <p v-if="taxForm.taxValue && taxFormError" class="mt-1 text-p-xs text-ink-red-4">{{ taxFormError }}</p>
+          <p v-if="taxForm.taxValue && taxFormError" class="mt-1 text-p-xs text-ink-red-8">{{ taxFormError }}</p>
         </div>
       </div>
       <template #actions>
@@ -552,7 +552,7 @@
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
-          <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-p-xs text-ink-red-4">{{ billingEmailError }}</p>
+          <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ billingEmailError }}</p>
         </div>
         <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
       </div>
@@ -570,7 +570,7 @@
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.invoiceRecipient" type="text" label="Invoice email recipient" placeholder="accounts@company.com" />
-          <p v-if="details.invoiceRecipient && recipientError" class="mt-1 text-p-xs text-ink-red-4">{{ recipientError }}</p>
+          <p v-if="details.invoiceRecipient && recipientError" class="mt-1 text-p-xs text-ink-red-8">{{ recipientError }}</p>
         </div>
         <FormControl v-model="details.invoiceLanguage" type="select" label="Invoice language" :options="LANGUAGES" />
       </div>
@@ -703,7 +703,7 @@ function expiryLabel(pm) {
 }
 function expiryClass(pm) {
   const s = expiryState(pm)
-  if (s === 'expired') return 'text-ink-red-4'
+  if (s === 'expired') return 'text-ink-red-8'
   if (s === 'soon') return 'text-ink-amber-8'
   return 'text-ink-gray-5'
 }

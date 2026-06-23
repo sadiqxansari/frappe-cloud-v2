@@ -36,8 +36,8 @@
           </button>
         </div>
 
-        <pre v-if="placeholder" class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-p-xs text-ink-gray-5">{{ placeholder }}</pre>
-        <pre v-else class="flex-1 overflow-auto bg-surface-gray-7 p-4 font-mono text-p-xs text-ink-base">{{ shownLines.join('\n') }}</pre>
+        <pre v-if="placeholder" class="flex-1 overflow-auto bg-surface-gray-10 p-4 font-mono text-p-xs text-ink-gray-5">{{ placeholder }}</pre>
+        <pre v-else class="flex-1 overflow-auto bg-surface-gray-10 p-4 font-mono text-p-xs text-ink-base">{{ shownLines.join('\n') }}</pre>
 
         <div class="flex items-center gap-2 border-t border-outline-gray-1 px-3 py-1.5 text-xs text-ink-gray-5">
           <span v-if="tailing" class="flex items-center gap-1.5 text-ink-green-7">

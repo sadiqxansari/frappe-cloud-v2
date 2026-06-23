@@ -20,7 +20,7 @@
         v-model="query"
         rows="3"
         spellcheck="false"
-        class="mt-2 w-full rounded-lg border border-outline-gray-2 bg-surface-gray-7 p-3 font-mono text-p-xs text-ink-base focus:outline-none focus:ring-2 focus:ring-outline-gray-4"
+        class="mt-2 w-full rounded-lg border border-outline-gray-2 bg-surface-gray-10 p-3 font-mono text-p-xs text-ink-base focus:outline-none focus:ring-2 focus:ring-outline-gray-4"
       />
       <div class="mt-2 flex items-center justify-end gap-2">
         <Button variant="subtle" size="sm" label="Export results" :disabled="!result || !result.rows.length" icon-left="lucide-download" @click="exportCsv" />
@@ -29,10 +29,10 @@
 
       <!-- Query failed -->
       <div v-if="queryError" class="mt-3 rounded-lg border border-outline-red-1 bg-surface-red-1 p-3">
-        <div class="flex items-center gap-1.5 text-sm font-medium text-ink-red-4">
+        <div class="flex items-center gap-1.5 text-sm font-medium text-ink-red-8">
           <span class="lucide-circle-x size-4 shrink-0" /> Query failed
         </div>
-        <pre class="mt-1.5 whitespace-pre-wrap font-mono text-xs text-ink-red-4">{{ queryError }}</pre>
+        <pre class="mt-1.5 whitespace-pre-wrap font-mono text-xs text-ink-red-8">{{ queryError }}</pre>
       </div>
 
       <!-- Result -->
