@@ -170,7 +170,7 @@
                   <Badge v-else-if="d.status === 'pending'" theme="orange" variant="subtle" label="DNS setup needed" />
                 </div>
                 <div v-if="d.ssl" class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-6"><span class="lucide-lock size-3" /> SSL active</div>
-                <div v-else-if="d.status === 'failed'" class="mt-0.5 text-sm text-ink-red-4">We couldn't find these records yet — double-check them and retry.</div>
+                <div v-else-if="d.status === 'failed'" class="mt-0.5 text-sm text-ink-red-8">We couldn't find these records yet — double-check them and retry.</div>
                 <div v-else-if="d.status === 'pending'" class="mt-0.5 text-sm text-ink-gray-5">Add these records at your DNS provider, then verify.</div>
                 <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
               </div>

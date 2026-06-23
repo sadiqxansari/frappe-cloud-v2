@@ -36,18 +36,14 @@ const options = computed(() => [
     options: [
       {
         label: 'Credit expired',
-        switch: true,
-        switchValue: store.creditExpired,
-        onClick: (v) => store.setCreditExpired(v),
+        icon: store.creditExpired ? 'lucide-check' : 'lucide-minus',
+        onClick: () => store.setCreditExpired(!store.creditExpired),
       },
       {
         label: 'Edge mode (errors everywhere)',
-        switch: true,
-        switchValue: store.edgeMode,
-        onClick: (v) => {
-          store.setEdgeMode(v)
-          if (v) router.push('/billing')
-        },
+        icon: store.edgeMode ? 'lucide-check' : 'lucide-minus',
+        // Toggle in place — don't yank the user to Billing; turn edge on wherever they are.
+        onClick: () => store.setEdgeMode(!store.edgeMode),
       },
     ],
   },

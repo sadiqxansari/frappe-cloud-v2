@@ -1,9 +1,10 @@
 <template>
-  <Dialog v-model:open="open" :options="{ size: '4xl' }" bare>
+  <Dialog v-model:open="open" :options="{ size: '3xl' }" bare>
     <template #default>
-      <!-- Height hugs content (no dead space on short tabs) with a comfortable
-           floor; long tabs cap at 85vh and the right pane scrolls. -->
-      <div v-if="server" class="flex max-h-[85vh] min-h-[26rem]">
+      <!-- Fixed height across all tabs (averaged between the short General tab
+           and the long Developer tab) so switching tabs doesn't jump; the right
+           pane scrolls when content exceeds it. Caps at 85vh on short screens. -->
+      <div v-if="server" class="flex h-[39rem] max-h-[85vh]">
         <!-- Left nav — settings categories, frappe-ui idiom -->
         <nav class="flex w-52 shrink-0 flex-col gap-0.5 border-r border-outline-gray-2 bg-surface-gray-1 p-3">
           <div class="p-2 text-base font-semibold text-ink-gray-9">Settings</div>
@@ -22,28 +23,30 @@
         <!-- Right pane — scrolls; leave room for the Dialog's close button -->
         <div class="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">
           <!-- General -->
-          <div v-if="tab === 'general'" class="space-y-3">
+          <div v-if="tab === 'general'">
             <h2 class="text-lg font-semibold text-ink-gray-9">General</h2>
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 p-4">
-              <div>
-                <div class="text-sm font-medium text-ink-gray-9">Server name</div>
-                <div class="mt-0.5 text-sm text-ink-gray-5">Currently <span class="font-medium text-ink-gray-7">{{ server.name }}</span>.</div>
+            <div class="space-y-3 pt-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-medium text-ink-gray-9">Server name</div>
+                  <div class="mt-0.5 text-p-sm text-ink-gray-5">Currently <span class="font-medium text-ink-gray-7">{{ server.name }}</span>.</div>
+                </div>
+                <Button class="shrink-0" variant="subtle" size="sm" label="Rename" @click="openRename" />
               </div>
-              <Button variant="subtle" size="sm" label="Rename" @click="openRename" />
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 p-4">
-              <div>
-                <div class="text-sm font-medium text-ink-gray-9">Frappe version</div>
-                <div class="mt-0.5 text-sm text-ink-gray-5">Currently <span class="font-medium text-ink-gray-7">{{ versionLabel }}</span>. Changing it migrates every site on this server.</div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-medium text-ink-gray-9">Frappe version</div>
+                  <div class="mt-0.5 text-p-sm text-ink-gray-5">Currently <span class="font-medium text-ink-gray-7">{{ versionLabel }}</span>. Changing it migrates every site on this server.</div>
+                </div>
+                <Button class="shrink-0" variant="subtle" size="sm" label="Change version" @click="versionOpen = true" />
               </div>
-              <Button variant="subtle" size="sm" label="Change version" @click="versionOpen = true" />
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-gray-2 p-4">
-              <div>
-                <div class="text-sm font-medium text-ink-gray-9">Restart server</div>
-                <div class="mt-0.5 text-sm text-ink-gray-5">Reboots the machine. Sites are briefly unavailable while it comes back.</div>
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-medium text-ink-gray-9">Restart server</div>
+                  <div class="mt-0.5 text-p-sm text-ink-gray-5">Reboots the machine. Sites are briefly unavailable while it comes back.</div>
+                </div>
+                <Button class="shrink-0" variant="subtle" size="sm" label="Restart" icon-left="lucide-rotate-cw" @click="restart" />
               </div>
-              <Button variant="subtle" size="sm" label="Restart" icon-left="lucide-rotate-cw" @click="restart" />
             </div>
           </div>
 
@@ -115,7 +118,7 @@
                     <Button v-if="w.status === 'failing'" variant="subtle" size="sm" label="Send test" @click="testHook(w)" />
                     <Button variant="ghost" size="sm" icon="lucide-trash-2" aria-label="Remove webhook" @click="store.removeWebhook(w.id)" />
                   </div>
-                  <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-p-xs text-ink-red-4">
+                  <p v-if="w.status === 'failing' && w.lastError" class="mt-1.5 flex items-center gap-1 pl-7 text-p-xs text-ink-red-8">
                     <span class="lucide-triangle-alert size-3 shrink-0" /> {{ w.lastError }} — check the endpoint, then send a test.
                   </p>
                 </div>
@@ -138,7 +141,7 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <FormControl v-model="rule.port" type="text" label="Port" placeholder="8080" />
-          <p v-if="rule.port && portError" class="mt-1 text-p-xs text-ink-red-4">{{ portError }}</p>
+          <p v-if="rule.port && portError" class="mt-1 text-p-xs text-ink-red-8">{{ portError }}</p>
         </div>
         <FormControl v-model="rule.action" type="select" label="Action" :options="['Allow', 'Deny']" />
       </div>
@@ -184,7 +187,7 @@
   <Dialog v-model:open="hookOpen" size="sm">
     <template #title><span class="text-xl font-semibold text-ink-gray-9">Add webhook</span></template>
     <FormControl v-model="hookUrl" type="text" label="Endpoint URL" placeholder="https://example.com/hooks/fc" />
-    <p v-if="hookUrl && hookError" class="mt-1 text-p-xs text-ink-red-4">{{ hookError }}</p>
+    <p v-if="hookUrl && hookError" class="mt-1 text-p-xs text-ink-red-8">{{ hookError }}</p>
     <template #actions>
       <div class="flex justify-end gap-2"><Button label="Cancel" @click="hookOpen = false" /><Button variant="solid" label="Add webhook" :disabled="!!hookError" @click="addHook" /></div>
     </template>
