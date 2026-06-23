@@ -98,7 +98,7 @@
                 <span class="lucide-info size-5 shrink-0 text-ink-gray-5" />
                 <div class="text-base font-medium text-ink-gray-9">How tier upgrades work</div>
               </div>
-              <ul class="flex list-disc flex-col gap-1.5 pl-5 text-sm text-ink-gray-7">
+              <ul class="flex list-disc flex-col gap-1.5 pl-5 text-p-sm text-ink-gray-7">
                 <li>Tiers control the maximum amount your team can spend in a billing cycle.</li>
                 <li>
                   You are automatically upgraded to a higher tier when your last paid

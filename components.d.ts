@@ -28,6 +28,7 @@ declare module 'vue' {
     MoveSiteDialog: typeof import('./src/components/MoveSiteDialog.vue')['default']
     NewSiteDialog: typeof import('./src/components/NewSiteDialog.vue')['default']
     OnboardingShell: typeof import('./src/components/OnboardingShell.vue')['default']
+    OtpInput: typeof import('./src/components/OtpInput.vue')['default']
     ProfileDialog: typeof import('./src/components/ProfileDialog.vue')['default']
     ProviderRegionPicker: typeof import('./src/components/ProviderRegionPicker.vue')['default']
     RailAccordion: typeof import('./src/components/RailAccordion.vue')['default']
@@ -39,6 +40,7 @@ declare module 'vue' {
     ServerShell: typeof import('./src/components/ServerShell.vue')['default']
     SiteCard: typeof import('./src/components/SiteCard.vue')['default']
     SystemInfoDialog: typeof import('./src/components/SystemInfoDialog.vue')['default']
+    UpdateServerDialog: typeof import('./src/components/UpdateServerDialog.vue')['default']
     WorldMap: typeof import('./src/components/WorldMap.vue')['default']
   }
 }

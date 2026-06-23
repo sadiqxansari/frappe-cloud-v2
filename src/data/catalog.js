@@ -132,6 +132,19 @@ export const VERSIONS = [
   { id: 'nightly', label: 'Nightly', note: 'Develop branch — for testing only' },
 ]
 
+// The newest patch build available within each major. A server below this has a
+// server-level "update" (a patch within the same version, distinct from a
+// cross-version "change"). See issue #24.
+export const LATEST_BUILDS = {
+  v15: '15.78.4',
+  v16: '16.0.0-beta.3',
+  v14: '14.92.6',
+  nightly: 'develop',
+}
+export function latestBuildFor(version) {
+  return LATEST_BUILDS[version] || '—'
+}
+
 // `version` is what a fresh install gets; `latestVersion` (when ahead) drives
 // the calm "Update available" affordance on a site's Apps tab. `compat` lists
 // the server versions an app runs on — mismatches surface in the marketplace

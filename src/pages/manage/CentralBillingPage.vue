@@ -79,25 +79,32 @@
               <!-- Wallet — the title and chevron open the history panel (no longer
                    a whole-tile button, so the "Add" inside isn't a nested control). -->
               <div
-                class="rounded-xl border bg-surface-elevation-1 p-5 transition-colors"
+                class="flex flex-col rounded-xl border bg-surface-elevation-1 p-5 transition-colors"
                 :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
               >
                 <div class="flex items-center justify-between">
-                  <button class="text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-7" @click="openPanel = { type: 'wallet' }">Wallet</button>
+                  <div class="flex items-center gap-1">
+                    <button class="text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-7" @click="openPanel = { type: 'wallet' }">Wallet</button>
+                    <Tooltip text="Applied to your invoice first, before any card is charged.">
+                      <span class="lucide-info size-3.5 text-ink-gray-4" />
+                    </Tooltip>
+                  </div>
                   <button class="grid size-6 place-items-center rounded text-ink-gray-4 hover:bg-surface-gray-2 hover:text-ink-gray-6" aria-label="Open wallet history" @click="openPanel = { type: 'wallet' }">
                     <span class="lucide-chevron-right size-4" />
                   </button>
                 </div>
                 <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</div>
-                <div class="mt-1.5 flex items-center justify-between gap-2">
-                  <span class="text-xs text-ink-gray-5">Applied to your invoice first</span>
+                <!-- Auto-recharge status sits next to Add at the bottom; full
+                     controls live in the panel. -->
+                <div class="mt-auto flex items-end justify-between gap-2 pt-3">
+                  <button class="flex min-w-0 items-center gap-1.5 text-xs transition-colors hover:text-ink-gray-8" :class="store.autoRecharge ? 'text-ink-gray-6' : 'text-ink-gray-5'" @click="openPanel = { type: 'wallet' }">
+                    <span class="lucide-zap size-3 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
+                    <span class="truncate">{{ store.autoRecharge ? 'Auto-recharge on' : 'Auto-recharge off' }}</span>
+                  </button>
                   <Button variant="subtle" size="sm" label="Add" icon-left="lucide-plus" @click="creditOpen = true" />
                 </div>
-                <!-- Auto-recharge state surfaced here; full controls live in the panel. -->
-                <button class="mt-2 flex items-center gap-1.5 text-xs transition-colors hover:text-ink-gray-8" :class="store.autoRecharge ? 'text-ink-gray-6' : 'text-ink-gray-5'" @click="openPanel = { type: 'wallet' }">
-                  <span class="lucide-zap size-3 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
-                  <span v-if="store.autoRecharge">Auto-recharge on · below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}</span>
-                  <span v-else>Auto-recharge off</span>
+                <button v-if="store.autoRecharge" class="mt-1 text-left text-xs text-ink-gray-5 transition-colors hover:text-ink-gray-8" @click="openPanel = { type: 'wallet' }">
+                  Below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}
                 </button>
                 <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-p-xs text-ink-amber-8">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
@@ -167,8 +174,8 @@
               <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
               <div class="mt-2 divide-y divide-outline-gray-1">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
-                  <button class="group flex min-w-0 items-center gap-2.5 text-left" @click="goServer(srv.id)">
-                    <span class="lucide-server size-4 shrink-0 text-ink-gray-5" />
+                  <button class="group flex min-w-0 items-start gap-2.5 text-left" @click="goServer(srv.id)">
+                    <span class="lucide-server mt-1 size-4 shrink-0 text-ink-gray-5" />
                     <div class="min-w-0">
                       <div class="flex items-center gap-2">
                         <span class="truncate text-base font-medium text-ink-gray-9 transition-colors group-hover:text-ink-gray-7">{{ srv.name }}</span>
@@ -187,25 +194,41 @@
               </div>
             </section>
 
-            <!-- Marketplace payouts — only relevant to app publishers, so it's
-                 hidden unless there are earnings or a payout account set up. -->
-            <section v-if="store.payoutBalance > 0 || store.payoutAccount" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <!-- Marketplace payouts — always shown for discoverability (issue
+                 #19). Before you publish anything it's an invitation; once you're
+                 a developer it shows your withdrawable earnings. -->
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <div class="flex items-center gap-2">
                 <h2 class="text-base font-semibold text-ink-gray-8">Marketplace payouts</h2>
                 <Badge theme="gray" variant="subtle" label="Paid in USD" />
               </div>
-              <div class="mt-3 flex items-center justify-between gap-3">
-                <div class="flex items-baseline gap-2">
-                  <span class="text-xl font-semibold text-ink-gray-9">{{ usd(store.payoutBalance) }}</span>
-                  <span class="text-sm text-ink-gray-5">available to withdraw</span>
+
+              <!-- Not a developer yet — a discoverable way in, not a buried feature. -->
+              <template v-if="!isMarketplaceDeveloper">
+                <p class="mt-2 text-p-sm text-ink-gray-5">
+                  Publish an app on the Frappe Marketplace and earn a share of every subscription. Earnings show up here, withdrawable in USD.
+                </p>
+                <Button class="mt-3" variant="subtle" size="sm" label="Become a marketplace developer" icon-left="lucide-store" @click="becomeDeveloper" />
+              </template>
+
+              <!-- Developer — the real payout controls. -->
+              <template v-else>
+                <div class="mt-3 flex items-center justify-between gap-3">
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-xl font-semibold text-ink-gray-9">{{ usd(store.payoutBalance) }}</span>
+                    <span class="text-sm text-ink-gray-5">available to withdraw</span>
+                  </div>
+                  <Button v-if="store.payoutBalance > 0 && !store.payoutAccount" variant="solid" size="sm" label="Add payout account" @click="payoutOpen = true" />
+                  <Button v-else variant="subtle" size="sm" label="Request payout" :disabled="store.payoutBalance <= 0 || !store.payoutAccount" @click="requestPayout" />
                 </div>
-                <Button v-if="store.payoutBalance > 0 && !store.payoutAccount" variant="solid" size="sm" label="Add payout account" @click="payoutOpen = true" />
-                <Button v-else variant="subtle" size="sm" label="Request payout" :disabled="store.payoutBalance <= 0 || !store.payoutAccount" @click="requestPayout" />
-              </div>
-              <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-p-xs text-ink-amber-8">
-                <span class="lucide-triangle-alert size-3 shrink-0" />
-                Add a bank account to withdraw your earnings.
-              </p>
+                <p v-if="store.payoutBalance > 0 && !store.payoutAccount" class="mt-2 flex items-center gap-1 text-p-xs text-ink-amber-8">
+                  <span class="lucide-triangle-alert size-3 shrink-0" />
+                  Add a bank account to withdraw your earnings.
+                </p>
+                <p v-else-if="store.payoutBalance <= 0" class="mt-2 text-p-xs text-ink-gray-4">
+                  No earnings yet — they'll appear here once your published apps start earning.
+                </p>
+              </template>
             </section>
 
             <!-- Tax & compliance -->
@@ -261,9 +284,31 @@
             </button>
           </div>
 
-          <div v-if="store.invoices.length" class="mt-5 divide-y divide-outline-gray-1">
+          <!-- Search + status filter, side by side (issue #12) -->
+          <div v-if="store.invoices.length" class="mt-5 flex items-center gap-2">
+            <div class="min-w-0 flex-1">
+              <FormControl
+                v-model="invoiceQuery"
+                type="text"
+                size="sm"
+                placeholder="Search by period or invoice number…"
+              >
+                <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
+              </FormControl>
+            </div>
+            <div class="w-36 shrink-0">
+              <FormControl
+                v-model="invoiceStatusFilter"
+                type="select"
+                size="sm"
+                :options="invoiceStatusOptions"
+              />
+            </div>
+          </div>
+
+          <div v-if="store.invoices.length" class="mt-3 divide-y divide-outline-gray-1">
             <button
-              v-for="inv in store.invoices"
+              v-for="inv in filteredInvoices"
               :key="inv.number"
               class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
               :class="openPanel?.type === 'invoice' && openPanel.data.number === inv.number ? 'bg-surface-gray-2' : 'hover:bg-surface-gray-1'"
@@ -281,6 +326,9 @@
                 <span class="lucide-chevron-right size-4 text-ink-gray-4" />
               </div>
             </button>
+            <p v-if="!filteredInvoices.length" class="px-3 py-8 text-center text-p-sm text-ink-gray-4">
+              No invoices match your search.
+            </p>
           </div>
           <EmptyState
             v-else
@@ -685,6 +733,22 @@ function statusTheme(status) {
   return 'gray'
 }
 
+// — Invoice search + status filter (issue #12)
+const invoiceQuery = ref('')
+const invoiceStatusFilter = ref('all')
+const invoiceStatusOptions = computed(() => {
+  const statuses = [...new Set(store.invoices.map((inv) => inv.status))]
+  return [{ label: 'All statuses', value: 'all' }, ...statuses.map((s) => ({ label: s, value: s }))]
+})
+const filteredInvoices = computed(() => {
+  const q = invoiceQuery.value.trim().toLowerCase()
+  return store.invoices.filter((inv) => {
+    if (invoiceStatusFilter.value !== 'all' && inv.status !== invoiceStatusFilter.value) return false
+    if (!q) return true
+    return `${inv.period} ${inv.number}`.toLowerCase().includes(q)
+  })
+})
+
 // — Card expiry (cards only). 'expired' | 'soon' (< 60 days) | 'ok'.
 function expiryState(pm) {
   if (pm.kind !== 'card' || !pm.expiry) return null
@@ -904,6 +968,15 @@ function payInvoice(inv) {
 
 // — Marketplace payouts
 const payoutOpen = ref(false)
+// Treat anyone with existing earnings or a payout account as a developer too,
+// so seeded data keeps showing the payout controls (issue #19).
+const isMarketplaceDeveloper = computed(
+  () => store.marketplaceDeveloper || store.payoutBalance > 0 || store.payoutAccount,
+)
+function becomeDeveloper() {
+  store.becomeMarketplaceDeveloper()
+  toast.success("You're a marketplace developer — publish an app to start earning")
+}
 function savePayoutAccount() {
   store.setPayoutAccount(true)
   toast.success('Payout account connected')

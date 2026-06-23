@@ -1,10 +1,15 @@
 <template>
   <OnboardingShell :step="4">
     <div class="flex flex-col items-center py-2 text-center">
-      <div class="grid size-14 animate-pulse place-items-center rounded-xl bg-surface-gray-2">
-        <span class="lucide-server size-7 text-ink-gray-7" />
+      <!-- Animated server badge — a soft pulsing ring while it provisions -->
+      <div class="relative grid size-16 place-items-center">
+        <span class="absolute inset-0 animate-ping rounded-2xl bg-surface-gray-3 opacity-60" />
+        <span class="relative grid size-16 place-items-center rounded-2xl bg-surface-gray-2 ring-1 ring-outline-gray-2">
+          <span class="lucide-server size-7 text-ink-gray-7" />
+        </span>
       </div>
-      <h1 class="mt-5 text-xl font-semibold text-ink-gray-9">Setting up your server</h1>
+
+      <h1 class="mt-6 text-xl font-semibold text-ink-gray-9">Setting up your server</h1>
       <p class="mt-1.5 text-p-base text-ink-gray-6">This usually takes about 2 minutes.</p>
 
       <Progress :value="progress" size="md" class="mt-6 w-full" />
@@ -20,7 +25,13 @@
         </li>
       </ul>
 
-      <Button variant="ghost" size="sm" label="Skip the wait (demo)" class="mt-8" @click="finish" />
+      <!-- Reassure: they don't have to wait here -->
+      <p class="mt-7 flex items-center justify-center gap-1.5 text-p-sm text-ink-gray-5">
+        <span class="lucide-mail size-3.5 shrink-0" />
+        You can leave this — we'll email {{ store.user.email || 'you' }} when it's ready.
+      </p>
+
+      <Button variant="ghost" size="sm" label="Skip the wait (demo)" class="mt-3" @click="finish" />
     </div>
   </OnboardingShell>
 </template>

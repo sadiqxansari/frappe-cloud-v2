@@ -33,6 +33,21 @@
                 </div>
                 <Button class="shrink-0" variant="subtle" size="sm" label="Rename" @click="openRename" />
               </div>
+              <!-- Patch update within the current major (issue #24) -->
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <div class="text-sm font-medium text-ink-gray-9">Frappe updates</div>
+                    <Badge v-if="updateAvailable" theme="green" variant="subtle" label="Update available" />
+                  </div>
+                  <div class="mt-0.5 text-p-sm text-ink-gray-5">
+                    Running <span class="font-medium tabular-nums text-ink-gray-7">{{ server.build }}</span>.
+                    <template v-if="updateAvailable"> Latest is <span class="font-medium tabular-nums text-ink-gray-7">{{ latestBuild }}</span>.</template>
+                    <template v-else> You're on the latest patch.</template>
+                  </div>
+                </div>
+                <Button v-if="updateAvailable" class="shrink-0" variant="subtle" size="sm" label="Update" icon-left="lucide-arrow-up" @click="updateOpen = true" />
+              </div>
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
                   <div class="text-sm font-medium text-ink-gray-9">Frappe version</div>
@@ -175,6 +190,7 @@
   />
 
   <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
+  <UpdateServerDialog v-model:open="updateOpen" :server="server" />
 
   <Dialog v-model:open="keyOpen" size="sm">
     <template #title><span class="text-xl font-semibold text-ink-gray-9">Add SSH key</span></template>
@@ -207,9 +223,10 @@
 import { computed, reactive, ref } from 'vue'
 import { Badge, Button, Dialog, FormControl, Switch, toast } from 'frappe-ui'
 import ChangeVersionDialog from './ChangeVersionDialog.vue'
+import UpdateServerDialog from './UpdateServerDialog.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import EmptyState from './EmptyState.vue'
-import { versionById } from '../data/catalog'
+import { latestBuildFor, versionById } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
 import { validatePort, validateUrl } from '../utils/validate'
 
@@ -228,6 +245,8 @@ const tabs = [
 const tab = ref('general')
 
 const versionLabel = computed(() => versionById(props.server?.version)?.label || '—')
+const latestBuild = computed(() => latestBuildFor(props.server?.version))
+const updateAvailable = computed(() => !!props.server && props.server.build !== latestBuild.value)
 
 // — Firewall
 const ruleOpen = ref(false)
@@ -267,6 +286,7 @@ function confirmLockout() {
 
 // — General
 const versionOpen = ref(false)
+const updateOpen = ref(false)
 const renameOpen = ref(false)
 const newName = ref('')
 function openRename() {

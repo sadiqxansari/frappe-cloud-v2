@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { toast } from 'frappe-ui'
-import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, planById, regionById, versionById } from '../data/catalog'
+import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planById, regionById, versionById } from '../data/catalog'
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
@@ -10,6 +10,17 @@ import { fmtDateTime, slugify } from '../utils/format'
 let n = 1000
 const uid = (prefix) => `${prefix}-${n++}`
 
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// Human label for a custom backup schedule (issue #40).
+export function backupCustomLabel(custom) {
+  if (!custom) return 'Custom'
+  const time = `${String(custom.hour ?? 2).padStart(2, '0')}:00`
+  if (custom.frequency === 'daily') return `Daily, ${time}`
+  if (custom.frequency === 'monthly') return `Monthly, ${time}`
+  return `Weekly, ${WEEKDAYS[custom.day ?? 0]} ${time}`
+}
+
 // Migration progress is simulated on a wall-clock: each of the 3 steps takes
 // MIGRATION_STEP_MS, and completedSteps is derived from elapsed time rather
 // than a chain of setTimeouts. This survives background-tab throttling and a
@@ -18,10 +29,11 @@ const MIGRATION_STEP_MS = 8000
 const MIGRATION_TOTAL_STEPS = 3
 
 // Sidebar collapse is one account-wide preference, remembered across pages and
-// reloads (issue #3) — never derived per-page. Defaults to expanded when unset.
+// reloads (issue #3) — never derived per-page. Defaults to collapsed when unset.
 function sidebarPref() {
-  if (typeof localStorage === 'undefined') return false
-  return localStorage.getItem('fc.sidebarCollapsed') === 'true'
+  if (typeof localStorage === 'undefined') return true
+  const v = localStorage.getItem('fc.sidebarCollapsed')
+  return v === null ? true : v === 'true'
 }
 
 // Colour theme is the other account-wide preference. 'system' follows the OS;
@@ -94,11 +106,13 @@ function makeBackup(agoMs, size, kind = 'auto') {
 }
 
 function makeServer(opts = {}) {
+  const version = opts.version || 'v15'
   return {
     id: uid('srv'),
     name: 'My Server',
     regionId: 'aws-mumbai',
-    version: 'v15', // a server runs one Frappe version; sites inherit it
+    version, // a server runs one Frappe version; sites inherit it
+    build: latestBuildFor(version), // installed patch build; behind latest ⇒ update available (#24)
     planId: 'business',
     status: 'active', // 'provisioning' | 'active'
     creditBalance: 25,
@@ -176,6 +190,7 @@ function baseState() {
     // automatic fallbacks. No user-facing gateway choice (auto by currency).
     paymentMethods: [],
     invoices: [], // { number, period, issued, status, items:[{label,plan,days,perDay,amount}] }
+    marketplaceDeveloper: false, // enrolled as a marketplace app publisher (issue #19)
     payoutBalance: 0, // marketplace earnings available to withdraw (USD)
     payoutAccount: false, // a bank/recipient must be set up before a payout
     lastCycleTotal: 0, // previous cycle's charge, for the "vs last month" stat
@@ -231,6 +246,7 @@ function grownState() {
     name: 'atlas-web-01',
     creditBalance: 18,
     sites: [company, shop],
+    build: '15.78.1', // a patch behind latest — shows the "update available" flow (#24)
     planHistory: [
       { id: uid('ph'), date: '10 Jun 2026', from: 'Starter', to: 'Business', direction: 'upgrade' },
       { id: uid('ph'), date: '2 Mar 2026', from: 'Standard', to: 'Starter', direction: 'downgrade' },
@@ -801,12 +817,20 @@ export const useCloudStore = defineStore('cloud', {
       })
     },
 
-    setBackupSchedule(siteId, schedule) {
+    // `custom` (issue #40) is { frequency, day, hour } — stored on the site and
+    // used to build a human label. Presets ignore it.
+    setBackupSchedule(siteId, schedule, custom = null) {
       const site = this.findSite(siteId)
-      if (!site || site.backupSchedule === schedule) return
+      if (!site) return
+      if (schedule === 'custom') {
+        site.backupCustom = custom
+      } else if (site.backupSchedule === schedule) {
+        return
+      }
       site.backupSchedule = schedule
       return this._work(() => {
-        const label = { daily: 'daily at 2 AM', weekly: 'weekly on Sundays', monthly: 'monthly' }[schedule]
+        const presets = { daily: 'daily at 2 AM', weekly: 'weekly on Sundays', monthly: 'monthly' }
+        const label = schedule === 'custom' ? backupCustomLabel(custom) : presets[schedule]
         this.logActivity(`Set ${site.name} to back up ${label}`, { tag: 'backup' })
       }, 600)
     },
@@ -1073,6 +1097,30 @@ export const useCloudStore = defineStore('cloud', {
       }, 1500)
     },
 
+    // Server-level patch update — apply the latest build *within* the current
+    // major (e.g. 15.78.1 → 15.78.4). Unlike a version change this doesn't move
+    // anyone across majors; a backup is taken and sites blip briefly. (#24)
+    updateServer(serverId) {
+      const srv = this.findServer(serverId)
+      if (!srv) return null
+      const to = latestBuildFor(srv.version)
+      if (srv.build === to) return null
+      const from = srv.build
+      const actId = this.logActivity(`Updating ${srv.name} to Frappe ${to}`, {
+        tag: 'server',
+        status: 'running',
+      })
+      return this._work(() => {
+        const live = this.findServer(serverId)
+        if (live) live.build = to
+        this.flipActivity(actId, {
+          title: `Updated ${srv.name} to Frappe ${to}`,
+          detail: `${from} → ${to} across ${srv.sites.length} site${srv.sites.length === 1 ? '' : 's'}. A backup was taken first.`,
+          status: 'success',
+        })
+      }, 1800)
+    },
+
     // A whole-server Frappe version change (up or down). Every site on the
     // server migrates to the new version — same transient as a site move.
     changeServerVersion(serverId, version) {
@@ -1238,6 +1286,11 @@ export const useCloudStore = defineStore('cloud', {
       this.payoutAccount = on
       if (on) this.logActivity('Connected a payout bank account', { tag: 'billing' })
     },
+    // Enrol as a marketplace developer so payouts become relevant (issue #19).
+    becomeMarketplaceDeveloper() {
+      this.marketplaceDeveloper = true
+      this.logActivity('Became a marketplace developer', { tag: 'billing' })
+    },
 
     // Net amount still owed on an invoice (subtotal + 18% GST − credits already
     // applied). Shared by the panel preview and payInvoice so they never drift.
@@ -1395,6 +1448,7 @@ export const useCloudStore = defineStore('cloud', {
       })
 
       // — Marketplace earnings, but no payout account to send them to.
+      this.marketplaceDeveloper = true
       this.payoutBalance = 480
       this.payoutAccount = false
 
@@ -1440,15 +1494,16 @@ export const useCloudStore = defineStore('cloud', {
     },
     // Assign an existing team member to a role directly — no invite (issue #7).
     // Owner replaces all other roles and demotes the previous owner.
-    addMemberToRole(roleId, memberId) {
+    addMemberToRole(roleId, memberId, resourceId = null) {
       const m = this.members.find((x) => x.id === memberId)
       if (!m) return
-      if (m.roles?.some((r) => r.roleId === roleId && !r.resourceId)) return
+      // Already holds this role for this exact scope — nothing to add.
+      if (m.roles?.some((r) => r.roleId === roleId && (r.resourceId || null) === (resourceId || null))) return
       if (roleId === 'role-owner') {
         m.roles = [{ roleId: 'role-owner', resourceId: null }]
         this._demoteOtherOwners(memberId)
       } else {
-        m.roles = [...(m.roles || []), { roleId, resourceId: null }]
+        m.roles = [...(m.roles || []), { roleId, resourceId: resourceId || null }]
       }
     },
     // Strip Owner from everyone but `keepId`, leaving them Admin so they keep

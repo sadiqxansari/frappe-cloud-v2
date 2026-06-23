@@ -4,8 +4,8 @@
       <Button variant="solid" size="sm" label="New server" icon-left="lucide-plus" @click="$router.push('/servers/new')" />
     </template>
 
-    <div class="flex h-full lg:flex-row-reverse">
-      <!-- Map (right) -->
+    <div class="flex h-full lg:flex-row">
+      <!-- Map (left) -->
       <section class="hidden min-w-0 flex-1 p-4 lg:block">
         <div class="relative h-full w-full overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-gray-1">
           <WorldMap
@@ -30,7 +30,7 @@
       </section>
 
       <!-- List (left) -->
-      <section class="flex h-full w-full flex-col lg:w-[40rem] lg:shrink-0 lg:border-r lg:border-outline-gray-1">
+      <section class="flex h-full w-full flex-col lg:w-[40rem] lg:shrink-0 lg:border-l lg:border-outline-gray-1">
         <div class="shrink-0 px-6 pb-3 pt-6">
           <h2 class="text-lg font-semibold text-ink-gray-9">Your servers</h2>
           <div class="mt-3 flex items-center gap-2">

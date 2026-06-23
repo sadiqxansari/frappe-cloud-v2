@@ -1,20 +1,23 @@
 <template>
   <div class="flex min-h-screen flex-col bg-surface-elevation-1">
-    <header class="flex items-center justify-center gap-2 pb-2 pt-10">
-      <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 rounded-md" />
-      <span class="text-lg font-semibold text-ink-gray-8">Frappe Cloud</span>
-    </header>
-
-    <main class="flex flex-1 items-start justify-center px-4 pb-20 pt-6">
+    <main class="flex flex-1 items-start justify-center px-4 pb-20 pt-16">
       <div class="w-full max-w-sm">
-        <button
-          v-if="back"
-          class="mb-4 inline-flex items-center gap-1 text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-8"
-          @click="$router.push(back)"
-        >
-          <span class="lucide-arrow-left size-4" />
-          Back
-        </button>
+        <!-- Brand centered over the stepper; Back is absolute so it never
+             shifts the layout when it appears (only on later steps). -->
+        <div class="relative mb-6 flex h-7 items-center justify-center">
+          <button
+            v-if="back"
+            class="absolute left-0 inline-flex items-center gap-1 text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-8"
+            @click="$router.push(back)"
+          >
+            <span class="lucide-arrow-left size-4" />
+            Back
+          </button>
+          <div class="flex items-center gap-2">
+            <img :src="cloudLogo" alt="Frappe Cloud" class="size-6 rounded-md" />
+            <span class="text-base font-semibold text-ink-gray-8">Frappe Cloud</span>
+          </div>
+        </div>
 
         <div class="mb-5 flex gap-1.5">
           <div

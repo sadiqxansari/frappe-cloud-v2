@@ -254,6 +254,23 @@
     <MoveSiteDialog v-model:open="moveOpen" :site="site" :server="server" :required-version="moveVersion" @moved="onMoved" />
     <AddDomainDialog v-model:open="addDomainOpen" :site="site" />
     <DropSiteDialog v-model:open="dropOpen" :site="site" @confirm="dropSite" />
+
+    <!-- Custom backup schedule (issue #40) -->
+    <Dialog v-model:open="customOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Custom backup schedule</span></template>
+      <div class="space-y-4">
+        <FormControl v-model="custom.frequency" type="select" label="Frequency" :options="frequencyOptions" />
+        <FormControl v-if="custom.frequency === 'weekly'" v-model="custom.day" type="select" label="Day of week" :options="dayOptions" />
+        <FormControl v-model="custom.hour" type="select" label="Time" :options="hourOptions" />
+        <p class="text-p-xs text-ink-gray-5">Backups are kept for 30 days. Times are in your account timezone.</p>
+      </div>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="customOpen = false" />
+          <Button variant="solid" label="Save schedule" @click="saveCustomSchedule" />
+        </div>
+      </template>
+    </Dialog>
     <ConfirmDialog
       v-model:open="uninstallOpen"
       theme="red"
@@ -314,7 +331,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watchEffect } from 'vue'
+import { computed, reactive, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast } from 'frappe-ui'
 import AddDomainDialog from '../../components/AddDomainDialog.vue'
@@ -326,7 +343,7 @@ import WorldMap from '../../components/WorldMap.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
 import MoveSiteDialog from '../../components/MoveSiteDialog.vue'
 import { versionById } from '../../data/catalog'
-import { useCloudStore } from '../../stores/cloud'
+import { backupCustomLabel, useCloudStore } from '../../stores/cloud'
 import { fmtDateTime } from '../../utils/format'
 
 const store = useCloudStore()
@@ -422,13 +439,53 @@ function uninstall() {
 }
 
 // — Backups
-const scheduleOptions = [
+const scheduleOptions = computed(() => [
   { label: 'Daily, 2 AM', value: 'daily' },
   { label: 'Weekly, Sunday', value: 'weekly' },
   { label: 'Monthly', value: 'monthly' },
-]
+  {
+    label: site.value?.backupSchedule === 'custom' ? backupCustomLabel(site.value.backupCustom) : 'Custom…',
+    value: 'custom',
+  },
+])
 function setSchedule(v) {
+  // 'Custom' opens a dialog rather than saving a preset straight away (issue #40).
+  if (v === 'custom') {
+    custom.frequency = site.value?.backupCustom?.frequency || 'weekly'
+    custom.day = site.value?.backupCustom?.day ?? 0
+    custom.hour = site.value?.backupCustom?.hour ?? 2
+    customOpen.value = true
+    return
+  }
   const p = store.setBackupSchedule(site.value.id, v)
+  if (p) toast.promise(p, { loading: 'Saving…', success: 'Backup schedule updated', error: 'Could not save' })
+}
+
+// Custom backup schedule dialog (issue #40)
+const customOpen = ref(false)
+const custom = reactive({ frequency: 'weekly', day: 0, hour: 2 })
+const frequencyOptions = [
+  { label: 'Daily', value: 'daily' },
+  { label: 'Weekly', value: 'weekly' },
+  { label: 'Monthly', value: 'monthly' },
+]
+const dayOptions = [
+  { label: 'Sunday', value: 0 }, { label: 'Monday', value: 1 }, { label: 'Tuesday', value: 2 },
+  { label: 'Wednesday', value: 3 }, { label: 'Thursday', value: 4 }, { label: 'Friday', value: 5 },
+  { label: 'Saturday', value: 6 },
+]
+const hourOptions = Array.from({ length: 24 }, (_, h) => ({
+  label: `${String(h).padStart(2, '0')}:00`,
+  value: h,
+}))
+function saveCustomSchedule() {
+  const payload = {
+    frequency: custom.frequency,
+    day: custom.frequency === 'weekly' ? Number(custom.day) : null,
+    hour: Number(custom.hour),
+  }
+  const p = store.setBackupSchedule(site.value.id, 'custom', payload)
+  customOpen.value = false
   if (p) toast.promise(p, { loading: 'Saving…', success: 'Backup schedule updated', error: 'Could not save' })
 }
 function backupNow() {

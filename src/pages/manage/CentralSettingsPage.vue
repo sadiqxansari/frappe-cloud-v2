@@ -42,10 +42,22 @@
         <Button variant="subtle" size="sm" label="Invite" icon-left="lucide-plus" @click="openInvite" />
       </div>
 
+      <!-- Search across name / email / role (issue #12) -->
+      <FormControl
+        v-if="store.members.length > 4"
+        v-model="memberQuery"
+        class="mt-4"
+        type="text"
+        size="sm"
+        placeholder="Search members by name, email or role…"
+      >
+        <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
+      </FormControl>
+
       <!-- Member list — full row is clickable -->
       <div class="mt-3 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
         <div
-          v-for="m in store.members"
+          v-for="m in filteredMembers"
           :key="m.id"
           class="flex cursor-pointer items-center gap-3 p-3 hover:bg-surface-gray-1"
           @click="openMemberDialog(m)"
@@ -112,6 +124,9 @@
           </Dropdown>
           <div v-else class="size-7 shrink-0" />
         </div>
+        <p v-if="!filteredMembers.length" class="p-6 text-center text-p-sm text-ink-gray-4">
+          No members match “{{ memberQuery }}”.
+        </p>
       </div>
 
       <!-- Frappe Partner -->
@@ -148,9 +163,21 @@
         <Button variant="subtle" size="sm" label="New role" icon-left="lucide-plus" @click="openRole" />
       </div>
 
+      <!-- Search roles (issue #12) -->
+      <FormControl
+        v-if="store.roles.length > 4"
+        v-model="roleQuery"
+        class="mt-4"
+        type="text"
+        size="sm"
+        placeholder="Search roles…"
+      >
+        <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
+      </FormControl>
+
       <div class="mt-3 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
         <div
-          v-for="r in store.roles"
+          v-for="r in filteredRoles"
           :key="r.id"
           class="flex cursor-pointer items-center gap-3 p-3.5 hover:bg-surface-gray-1"
           @click="openRoleDialog(r)"
@@ -195,6 +222,9 @@
             @click.stop="promptDeleteRole(r)"
           />
         </div>
+        <p v-if="!filteredRoles.length" class="p-6 text-center text-p-sm text-ink-gray-4">
+          No roles match “{{ roleQuery }}”.
+        </p>
       </div>
     </div>
 
@@ -335,16 +365,33 @@
             <p v-else class="py-6 text-center text-p-sm text-ink-gray-4">No one has this role yet.</p>
 
             <!-- Add an existing team member directly — no invite (issue #7).
+                 Pick the member and which resource the role applies to (issue #16).
                  Assigning the Owner role transfers ownership, so it's owner-only. -->
             <div v-if="isAdminOrOwner && (roleDialogRole.id !== 'role-owner' || loggedInIsOwner)" class="mt-3 border-t border-outline-gray-1 pt-3">
-              <FormControl
-                v-if="addableMemberOptions(roleDialogRole.id).length"
-                type="select"
-                placeholder="Add a team member…"
-                :modelValue="''"
-                :options="addableMemberOptions(roleDialogRole.id)"
-                @update:modelValue="onAddMemberToRole"
-              />
+              <template v-if="addableMemberOptions(roleDialogRole.id).length">
+                <div class="flex items-end gap-2">
+                  <div class="min-w-0 flex-1">
+                    <FormControl
+                      type="select"
+                      label="Team member"
+                      placeholder="Choose…"
+                      :modelValue="addMember.memberId"
+                      :options="addableMemberOptions(roleDialogRole.id)"
+                      @update:modelValue="(v) => (addMember.memberId = v)"
+                    />
+                  </div>
+                  <div v-if="roleDialogRole.id !== 'role-owner'" class="min-w-0 flex-1">
+                    <FormControl
+                      type="select"
+                      label="Access to"
+                      :modelValue="addMember.resourceId"
+                      :options="serverSelectOptions"
+                      @update:modelValue="(v) => (addMember.resourceId = v)"
+                    />
+                  </div>
+                  <Button class="shrink-0" variant="subtle" label="Add" :disabled="!addMember.memberId" @click="confirmAddMemberToRole" />
+                </div>
+              </template>
               <p v-else class="text-center text-p-xs text-ink-gray-4">Everyone on the team already has this role.</p>
               <p v-if="roleDialogRole.id === 'role-owner'" class="mt-1.5 text-p-xs text-ink-gray-4">
                 There's only one Owner — adding someone transfers ownership to them.
@@ -523,6 +570,33 @@ const tabs = [
   { label: 'Roles', value: 'roles' },
 ]
 const tab = ref('team')
+
+// ── Search (issue #12) ───────────────────────────────────────
+const memberQuery = ref('')
+const roleQuery = ref('')
+
+const filteredMembers = computed(() => {
+  const q = memberQuery.value.trim().toLowerCase()
+  if (!q) return store.members
+  return store.members.filter((m) => {
+    const roleNames = (m.roles || [])
+      .map((r) => store.roles.find((x) => x.id === r.roleId)?.name || '')
+      .join(' ')
+    return `${m.name} ${m.email} ${roleNames}`.toLowerCase().includes(q)
+  })
+})
+
+const filteredRoles = computed(() => {
+  const q = roleQuery.value.trim().toLowerCase()
+  if (!q) return store.roles
+  return store.roles.filter((r) => `${r.name} ${r.desc || ''}`.toLowerCase().includes(q))
+})
+
+// Clear the query when switching tabs so results don't carry over.
+watch(tab, () => {
+  memberQuery.value = ''
+  roleQuery.value = ''
+})
 
 const GENERAL_PERMISSIONS = [
   { key: 'createSites', label: 'Create Sites', short: 'Sites' },
@@ -863,6 +937,8 @@ watch(roleDialogOpen, (open) => {
     Object.assign(roleDialogPerms, { ...roleDialogRole.value.permissions })
     roleDialogDirty.value = false
     roleDialogTab.value = 'permissions'
+    addMember.memberId = ''
+    addMember.resourceId = ''
   }
 })
 
@@ -877,11 +953,19 @@ function addableMemberOptions(roleId) {
     .filter((m) => !m.roles?.some((r) => r.roleId === roleId))
     .map((m) => ({ label: m.name, value: m.id, description: m.email }))
 }
-function onAddMemberToRole(memberId) {
-  if (!memberId || !roleDialogRole.value) return
-  store.addMemberToRole(roleDialogRole.value.id, memberId)
-  const m = store.members.find((x) => x.id === memberId)
-  toast.success(`Added ${m?.name || 'member'} to ${roleDialogRole.value.name}`)
+// Member + resource picker for the role dialog (issue #16). Owner is always
+// all-resources, so its resourceId stays empty.
+const addMember = reactive({ memberId: '', resourceId: '' })
+function confirmAddMemberToRole() {
+  if (!addMember.memberId || !roleDialogRole.value) return
+  const isOwner = roleDialogRole.value.id === 'role-owner'
+  const resourceId = isOwner ? null : addMember.resourceId || null
+  store.addMemberToRole(roleDialogRole.value.id, addMember.memberId, resourceId)
+  const m = store.members.find((x) => x.id === addMember.memberId)
+  const scope = resourceId ? store.servers.find((s) => s.id === resourceId)?.name : 'all servers'
+  toast.success(`Added ${m?.name || 'member'} to ${roleDialogRole.value.name} on ${scope}`)
+  addMember.memberId = ''
+  addMember.resourceId = ''
 }
 
 function handleRoleDialogPermChange(key, value) {

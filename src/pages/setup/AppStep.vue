@@ -1,54 +1,78 @@
 <template>
   <OnboardingShell :step="2" back="/setup/account">
-    <h1 class="text-xl font-semibold text-ink-gray-9">What are you setting up?</h1>
-    <p class="mt-1.5 text-p-base text-ink-gray-6">
-      You followed an ERPNext link, so we've picked it for you.
-    </p>
-
-    <div class="mt-6 flex items-center gap-3 rounded-xl border border-outline-gray-2 bg-surface-gray-1 p-3">
-      <AppIcon app-key="erpnext" size="md" />
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2">
-          <span class="font-semibold text-ink-gray-9">ERPNext</span>
-          <Badge theme="green" variant="subtle" size="sm" label="Ready to set up" />
-        </div>
-        <p class="text-p-sm text-ink-gray-6">Accounting, inventory and orders for your business</p>
+    <!-- Title with the "what we're setting up" context pinned far right -->
+    <div class="flex items-center justify-between gap-3">
+      <h1 class="text-xl font-semibold text-ink-gray-9">Name your site</h1>
+      <div class="inline-flex shrink-0 items-center gap-2 rounded-full border border-outline-gray-2 bg-surface-gray-1 py-1 pl-1 pr-2.5">
+        <AppIcon app-key="erpnext" size="sm" />
+        <span class="text-xs font-medium text-ink-gray-7">Setting up ERPNext</span>
       </div>
     </div>
+    <p class="mt-1.5 text-p-base text-ink-gray-6">
+      This is the web address you'll use to reach it. You can connect a custom domain later.
+    </p>
 
+    <!-- The one decision on this screen — give it room -->
     <FormControl
+      ref="addressEl"
       v-model="subdomainInput"
       type="text"
       size="md"
-      label="Choose your site address"
+      label="Site address"
       placeholder="yourcompany"
       class="site-address mt-6"
+      @keydown.enter="go"
     >
       <template #suffix>
         <span class="text-base text-ink-gray-4">.frappe.cloud</span>
       </template>
     </FormControl>
 
-    <Button variant="solid" size="md" label="Continue" class="mt-6 w-full" @click="go" />
+    <!-- Live preview of the full URL + availability -->
+    <div class="mt-2 flex min-h-5 items-center gap-1.5 text-p-sm">
+      <template v-if="slug">
+        <span class="lucide-check size-4 shrink-0 text-ink-green-6" />
+        <span class="text-ink-gray-6">
+          <span class="font-medium text-ink-gray-8">{{ slug }}.frappe.cloud</span> is available
+        </span>
+      </template>
+      <span v-else class="text-ink-gray-4">Lowercase letters, numbers and hyphens.</span>
+    </div>
+
+    <Button variant="solid" size="md" label="Continue" class="mt-6 w-full" :disabled="!slug" @click="go" />
   </OnboardingShell>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, FormControl } from 'frappe-ui'
+import { Button, FormControl } from 'frappe-ui'
 import AppIcon from '../../components/AppIcon.vue'
 import OnboardingShell from '../../components/OnboardingShell.vue'
 import { useCloudStore } from '../../stores/cloud'
-import { slugify } from '../../utils/format'
 
 const store = useCloudStore()
 const router = useRouter()
 
 const subdomainInput = ref(store.onboarding.subdomain)
+const addressEl = ref(null)
+
+// Subdomains allow hyphens (just not leading/trailing). Empty ⇒ '' so the
+// availability hint and Continue button stay off until something's typed.
+const slug = computed(() =>
+  subdomainInput.value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 30),
+)
+
+onMounted(() => nextTick(() => addressEl.value?.$el?.querySelector('input')?.focus()))
 
 function go() {
-  store.onboarding.subdomain = slugify(subdomainInput.value) || 'mysite'
+  if (!slug.value) return
+  store.onboarding.subdomain = slug.value
   router.push('/setup/server')
 }
 </script>

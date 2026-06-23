@@ -108,6 +108,7 @@
       <ProfileDialog v-model:open="profileOpen" />
       <SystemInfoDialog v-model:open="systemInfoOpen" :server="server" />
       <ServerSettingsDialog v-model:open="settingsOpen" :server="server" />
+      <UpdateServerDialog v-model:open="updateOpen" :server="server" />
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col">
@@ -119,6 +120,10 @@
         <Breadcrumbs v-if="crumbs?.length" :items="crumbs" class="min-w-0" />
         <div v-else />
         <div class="flex shrink-0 items-center gap-2">
+          <!-- Server patch update — a quiet button in the navbar (issue #24) -->
+          <Tooltip v-if="updateAvailable" :text="`Frappe ${latestBuild} available`">
+            <Button variant="outline" size="sm" label="Update" icon-left="lucide-arrow-up-circle" @click="updateOpen = true" />
+          </Tooltip>
           <button
             v-if="showCredit"
             class="hidden items-center gap-1.5 rounded-full border px-3 py-1 text-sm sm:flex"
@@ -151,6 +156,8 @@ import cloudLogo from '../assets/apps/cloud.png'
 import ProfileDialog from './ProfileDialog.vue'
 import SystemInfoDialog from './SystemInfoDialog.vue'
 import ServerSettingsDialog from './ServerSettingsDialog.vue'
+import UpdateServerDialog from './UpdateServerDialog.vue'
+import { latestBuildFor } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -183,6 +190,11 @@ watch(
 )
 
 const showCredit = computed(() => store.isTrial || store.creditExpired)
+
+// Patch update available within the server's current major (issue #24).
+const updateOpen = ref(false)
+const latestBuild = computed(() => latestBuildFor(server.value?.version))
+const updateAvailable = computed(() => !!server.value && server.value.build !== latestBuild.value)
 
 const base = computed(() => `/manage/${server.value?.id}`)
 const items = computed(() => {

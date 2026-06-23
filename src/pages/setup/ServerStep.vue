@@ -1,15 +1,15 @@
 <template>
   <OnboardingShell :step="3" back="/setup/app">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Host {{ appName }} on a server</h1>
+    <h1 class="text-xl font-semibold text-ink-gray-9">Host {{ appName }} on your server</h1>
     <p class="mt-1.5 text-p-base text-ink-gray-6">
-      {{ appName }} runs on a server that's yours. We recommend starting with the {{ inr(400) }}/mo server, you can resize anytime. </p>
+      {{ appName }} runs on a server that's yours. We recommend this one — you can resize anytime.
+    </p>
 
     <div class="mt-6 rounded-xl border border-outline-gray-2 p-5">
       <div class="flex items-center justify-between">
         <div class="text-lg font-semibold text-ink-gray-9">{{ plan.name }}</div>
         <Badge v-if="plan.id === store.recommendedPlanId" theme="blue" variant="subtle" label="Recommended" />
       </div>
-      <p class="mt-1 text-p-sm text-ink-gray-6">{{ plan.blurb }}</p>
 
       <div class="mt-4 flex items-baseline gap-2">
         <span class="text-2xl font-semibold text-ink-gray-9">{{ inr(price) }}</span>
@@ -87,7 +87,6 @@
           <span class="text-xs text-ink-gray-5">/month</span>
         </div>
         <div class="text-xs text-ink-gray-5">≈{{ inr(Math.round(priceFor(p.id, regionId) / 30)) }}/day</div>
-        <p class="mt-2 text-p-sm text-ink-gray-6">{{ p.blurb }}</p>
         <ul class="mt-3 flex-1 space-y-1.5">
           <li v-for="f in p.features" :key="f" class="flex items-start gap-1.5 text-sm text-ink-gray-7">
             <span class="lucide-check mt-0.5 size-3.5 shrink-0 text-ink-green-6" />
