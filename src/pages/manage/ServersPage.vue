@@ -4,7 +4,21 @@
       <Button variant="solid" size="sm" label="New server" icon-left="lucide-plus" @click="$router.push('/servers/new')" />
     </template>
 
-    <div class="flex h-full lg:flex-row">
+    <div class="flex h-full flex-col">
+      <!-- Graduation note (decision 9): a calm, one-time greeting the first time
+           Central becomes home, right after a 2nd server is created. -->
+      <Alert
+        v-if="store.graduationNotice"
+        theme="blue"
+        title="You've got two servers now"
+        :dismissible="false"
+        class="m-4 mb-0"
+      >
+        <template #description>This is your home for managing them. Your bill now combines both servers into one — nothing else changed.</template>
+        <template #footer><Button variant="solid" size="sm" label="Got it" @click="store.dismissGraduationNotice()" /></template>
+      </Alert>
+
+      <div class="flex min-h-0 flex-1 lg:flex-row">
       <!-- Map (left) -->
       <section class="hidden min-w-0 flex-1 p-4 lg:block">
         <div class="relative h-full w-full overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-gray-1">
@@ -123,6 +137,7 @@
           </EmptyState>
         </div>
       </section>
+      </div>
     </div>
   </CentralShell>
 </template>
@@ -130,7 +145,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Dropdown, FormControl, Spinner, toast } from 'frappe-ui'
+import { Alert, Badge, Button, Dropdown, FormControl, Spinner, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import MigrationScheduledModal from '../../components/MigrationScheduledModal.vue'

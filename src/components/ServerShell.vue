@@ -254,8 +254,10 @@ const serverMenu = computed(() => [
     //   // Widen the menu to at least the sidebar width (issue: dropdown felt cramped).
     //   label: () => h('span', { class: 'block min-w-[12rem]' }, 'Central'),
     // },
-    // Central is its own workspace — open it in a new tab.
-    onClick: () => window.open('/servers', '_blank', 'noopener'),
+    // Same-window nav so any return context survives (Desk → Server → Central
+    // all keep the "← Back" bar). New tabs have no "back" — that stranded
+    // single-server owners in the console we were sparing them.
+    onClick: () => router.push('/servers'),
   },
   {
     label: 'Settings',

@@ -9,6 +9,8 @@ const routes = [
   { path: '/setup/server', component: () => import('./pages/setup/ServerStep.vue') },
   { path: '/setup/provisioning', component: () => import('./pages/setup/ProvisioningStep.vue') },
   { path: '/app', component: () => import('./pages/app/AppShell.vue') },
+  // Mock payment gateway — the Pay round-trip's destination (returns to origin).
+  { path: '/pay', name: 'pay', component: () => import('./pages/GatewayPage.vue') },
   // Central (account-level) — Servers / Billing / Users. No Marketplace here (D1).
   { path: '/servers', name: 'servers', component: () => import('./pages/manage/ServersPage.vue') },
   { path: '/servers/new', name: 'new-server', component: () => import('./pages/manage/NewServerPage.vue') },
@@ -47,12 +49,16 @@ router.beforeEach((to) => {
 
   if (to.path === '/') {
     if (!store.server) return '/setup/account'
-    return '/servers'
+    // The landing fork (decisions 1 & 9): a single-server owner lives in the
+    // Desk; a fleet operator — or anyone who's ever graduated to a 2nd server
+    // (sticky `centralUnlocked`) — lands in Central, their home for the fleet.
+    if (store.centralUnlocked || store.serverCount >= 2) return '/servers'
+    return '/app'
   }
 
   // Screens that need at least one server to exist.
   const central = ['/servers', '/settings', '/users', '/account']
-  const needsServer = to.path === '/app' || to.path.startsWith('/manage') || to.path.startsWith('/billing') || central.includes(to.path)
+  const needsServer = to.path === '/app' || to.path === '/pay' || to.path.startsWith('/manage') || to.path.startsWith('/billing') || central.includes(to.path)
   if (needsServer && !store.allServers.length) return '/'
 })
 

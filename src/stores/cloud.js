@@ -5,7 +5,7 @@ import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planBy
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
 import { makeProcesses } from '../data/system'
-import { fmtDateTime, slugify } from '../utils/format'
+import { fmtDateTime, slugify, usdToDisplay } from '../utils/format'
 
 let n = 1000
 const uid = (prefix) => `${prefix}-${n++}`
@@ -216,9 +216,20 @@ function baseState() {
     // (see `setEdgeMode`) seeds worst-case states across surfaces.
     edgeMode: false,
     structureRevealed: false,
+    // Sticky graduation flag (decision 9): flips true the moment a 2nd server
+    // exists and never reverts — even if you later drop back to one. Drives the
+    // Desk-vs-Central landing rule, so the home doesn't yank back and forth.
+    centralUnlocked: false,
+    // One-shot note shown on the next Central landing right after graduation.
+    graduationNotice: false,
     explainerDismissed: false,
     currentSiteId: null,
     currentServerId: null, // last server entered — keeps sidebar context
+    // Round-trip redirects (return-to-origin). The FC modal *launches*; some
+    // actions redirect out (Pay → gateway, Upgrade → Server) and must bring the
+    // user back where they were. This holds { label, path } while away; the
+    // destination renders a ReturnBar, and completeAndReturn() routes back.
+    returnContext: null,
     busy: 0, // in-flight work; drives the top progress bar
     onboarding: { appKey: 'erpnext', teamSize: 'small', planId: CHEAPEST_PLAN_ID, subdomain: '', regionId: 'aws-mumbai' },
   }
@@ -384,7 +395,117 @@ function grownState() {
     makeEvent(12 * DAY, 'Created mycompany.frappe.cloud', { tag: 'site' }),
   ]
   s.structureRevealed = true
+  s.centralUnlocked = true // a fleet operator — Central has long been home
   s.currentSiteId = server.sites[0].id
+  return s
+}
+
+// — Ravi: a solo, non-technical owner. One server, one site, one bill. He lives
+// inside his app's Desk; the FC modal is his whole console (decision 2). Indian
+// (₹ display), a paying customer (no trial badge). His site carries Frappe HR,
+// which is a patch behind — so "App updates" has something to show.
+function soloState() {
+  const s = baseState()
+  s.scenario = 'solo'
+  s.user = { id: 'u-1', name: 'Ravi Kumar', email: 'ravi@ravibakes.in', role: 'individual' }
+
+  const site = makeSite('ravibakes', ['erpnext', 'hr'])
+  site.backups = [makeBackup(9 * HOUR, '128 MB'), makeBackup(33 * HOUR, '126 MB')]
+
+  const server = makeServer({
+    name: 'My Server',
+    planId: 'business',
+    regionId: 'aws-mumbai',
+    creditBalance: 18,
+    creditTotal: 25,
+    sites: [site],
+  })
+  s.servers = [server]
+  // A brand-new solo owner, still on trial credit — he hasn't set up billing
+  // yet. His first "Add credit" runs the one-time billing FTU before any
+  // gateway top-up (decision 5), reusing Central's billing-details + card flow.
+  s.cardOnFile = false
+  s.walletBalance = 0
+  s.walletHistory = []
+  s.paymentMethods = []
+  s.billingProfile = {
+    taxRegion: 'IN', taxValue: '', address: '',
+    billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en',
+  }
+  s.teams = [{ id: 'team-1', name: "Ravi's team", avatar: null }]
+  s.currentTeamId = 'team-1'
+  s.members = [
+    { id: uid('mem'), name: 'Ravi Kumar', email: 'ravi@ravibakes.in', roles: [{ roleId: 'role-owner', resourceId: null }] },
+  ]
+  s.invoices = [] // no billing history yet — still on trial credit
+  s.activity = [
+    makeEvent(9 * HOUR, 'Backed up ravibakes.frappe.cloud', { tag: 'backup', detail: 'Database 118 MB · files 10 MB. Kept for 30 days.' }),
+    makeEvent(6 * DAY, 'Installed Frappe HR on ravibakes.frappe.cloud', { tag: 'app' }),
+    makeEvent(12 * DAY, 'Created ravibakes.frappe.cloud', { tag: 'site' }),
+  ]
+  s.structureRevealed = false
+  s.currentSiteId = site.id
+  return s
+}
+
+// — Meera: a multi-site owner. Still one server, still one bill (decision 1) —
+// so she's also Desk-home, but she switches between her three sites from the
+// modal's Sites list. Anything site-level beyond switching is a Server task.
+function multisiteState() {
+  const s = baseState()
+  s.scenario = 'multisite'
+  s.user = { id: 'u-1', name: 'Meera Nair', email: 'meera@nairandco.in', role: 'individual' }
+
+  const main = makeSite('nairandco', ['erpnext', 'hr'])
+  const shop = makeSite('nairshop', ['erpnext', 'crm'])
+  const books = makeSite('nairbooks', ['erpnext'])
+  main.backups = [makeBackup(8 * HOUR, '340 MB'), makeBackup(32 * HOUR, '337 MB')]
+  shop.backups = [makeBackup(8 * HOUR, '182 MB')]
+  books.backups = [makeBackup(8 * HOUR, '96 MB')]
+
+  const server = makeServer({
+    name: 'My Server',
+    planId: 'growth', // a touch more headroom for three sites
+    regionId: 'aws-mumbai',
+    creditBalance: 16,
+    creditTotal: 25,
+    sites: [main, shop, books],
+  })
+  s.servers = [server]
+  s.cardOnFile = true
+  s.walletBalance = 9000 // prepaid ₹ balance — comfortably covers this cycle
+  s.walletHistory = [
+    { id: uid('wtx'), date: '1 Jun 2026', type: 'charge', label: 'May 2026 invoice', amount: -6150 },
+    { id: uid('wtx'), date: '16 May 2026', type: 'topup', label: 'Added credit', amount: 8000 },
+  ]
+  s.paymentMethods = [
+    { id: uid('pm'), kind: 'card', label: 'Visa', detail: '•••• 1881', expiry: '04/28', primary: true },
+    { id: uid('pm'), kind: 'upi', label: 'UPI', detail: 'meera@okicici', primary: false },
+  ]
+  s.billingProfile = {
+    taxRegion: 'IN', taxValue: '29ABCDE1234F1Z5', address: 'Nair & Co, MG Road, Kochi, KL 682016',
+    billingEmail: 'meera@nairandco.in', invoiceRecipient: 'accounts@nairandco.in', invoiceLanguage: 'en',
+  }
+  s.teams = [{ id: 'team-1', name: "Meera's team", avatar: null }]
+  s.currentTeamId = 'team-1'
+  s.members = [
+    { id: uid('mem'), name: 'Meera Nair', email: 'meera@nairandco.in', roles: [{ roleId: 'role-owner', resourceId: null }] },
+    { id: uid('mem'), name: 'Anil Joseph', email: 'anil@nairandco.in', roles: [{ roleId: 'role-admin', resourceId: null }] },
+  ]
+  s.invoices = [
+    {
+      number: 'INV-2026-0007', period: 'May 2026', issued: '1 Jun 2026', status: 'Paid', credits: 0,
+      items: [{ label: 'My Server', plan: 'Growth', days: 30, perDay: 205, amount: 6150 }],
+    },
+  ]
+  s.activity = [
+    makeEvent(8 * HOUR, 'Backed up nairandco.frappe.cloud', { tag: 'backup', detail: 'Database 320 MB · files 20 MB. Kept for 30 days.' }),
+    makeEvent(2 * DAY, 'Installed Frappe CRM on nairshop.frappe.cloud', { tag: 'app' }),
+    makeEvent(9 * DAY, 'Created nairbooks.frappe.cloud', { tag: 'site' }),
+    makeEvent(20 * DAY, 'Created nairshop.frappe.cloud', { tag: 'site' }),
+  ]
+  s.structureRevealed = true
+  s.currentSiteId = main.id
   return s
 }
 
@@ -399,6 +520,19 @@ export const useCloudStore = defineStore('cloud', {
     server: (s) => s.servers[0] || null,
 
     allServers: (s) => s.servers,
+
+    // How many servers the account has — forks the whole home experience.
+    // 1 server (any number of sites) = Desk-home + FC modal; 2+ = Central-home
+    // (decision 1). Many sites stay one bill, so they stay simple.
+    serverCount: (s) => s.servers.length,
+    isSingleServer: (s) => s.servers.length <= 1,
+
+    // Whether the signed-in person may launch the Frappe Cloud modal from the
+    // Desk. In production the Desk login is a *site* user; only those linked to
+    // an FC member with billing/admin rights see it (decision 10). Mocked true
+    // here — the demo personas are all the account owner. (Cross-site SSO that
+    // resolves Desk session → FC member is the main production unknown.)
+    canManageBilling: () => true,
 
     findServer() {
       return (id) => this.allServers.find((srv) => srv.id === id) || null
@@ -435,6 +569,17 @@ export const useCloudStore = defineStore('cloud', {
 
     accountCreditTotal() {
       return this.servers.reduce((sum, srv) => sum + srv.creditTotal, 0)
+    },
+
+    // One-currency display (decision 8). Indian accounts see ₹ everywhere; the
+    // rest see $. Prices are already stored in ₹; only the $ credit needs
+    // converting, so a single user never sees ₹ next to $.
+    displayCurrency: (s) => (s.billingProfile.taxRegion === 'IN' ? 'INR' : 'USD'),
+
+    // Account credit rendered in the user's display currency (a number; format
+    // with `money(creditDisplay, displayCurrency)`).
+    creditDisplay() {
+      return usdToDisplay(this.accountCredit, this.displayCurrency)
     },
 
     // Trial = no card on file yet. The credit badge only shows for these users.
@@ -510,6 +655,8 @@ export const useCloudStore = defineStore('cloud', {
       const states = {
         fresh: freshState,
         grown: grownState,
+        solo: soloState,
+        multisite: multisiteState,
       }
       this.$state = (states[name] || freshState)()
     },
@@ -623,6 +770,13 @@ export const useCloudStore = defineStore('cloud', {
         status: 'provisioning',
       })
       this.servers.push(srv)
+      // Graduation (decision 9): crossing into a 2nd server makes Central home —
+      // sticky from here on — and queues a one-time note for the next Central
+      // landing. Self-initiated, because server creation is Central-only.
+      if (this.servers.length === 2 && !this.centralUnlocked) {
+        this.centralUnlocked = true
+        this.graduationNotice = true
+      }
       const actId = this.logActivity(
         `Setting up ${srv.name} in ${regionById(srv.regionId).name} (${versionById(srv.version).label}, ₹${this.monthlyPriceOf(srv).toLocaleString('en-IN')}/month)`,
         { tag: 'server', status: 'running' },
@@ -759,6 +913,30 @@ export const useCloudStore = defineStore('cloud', {
 
     openSite(siteId) {
       this.currentSiteId = siteId
+    },
+
+    // — Round-trip redirects (return-to-origin). The router is passed in to
+    // avoid a circular import (router.js already imports this store).
+    // `redirectWithReturn` stamps the origin, then navigates out; the
+    // destination shows a ReturnBar. `completeAndReturn` routes back to the
+    // stored origin, clears the context, and confirms with a toast.
+    redirectWithReturn(router, target, ctx) {
+      this.returnContext = ctx || null
+      router.push(target)
+    },
+    completeAndReturn(router, message) {
+      const ctx = this.returnContext
+      this.returnContext = null
+      router.push(ctx?.path || '/')
+      if (message) toast.success(message)
+    },
+    clearReturnContext() {
+      this.returnContext = null
+    },
+
+    // Acknowledge the one-time "you now have two servers" note (decision 9).
+    dismissGraduationNotice() {
+      this.graduationNotice = false
     },
 
     dropSite(serverId, siteId) {
