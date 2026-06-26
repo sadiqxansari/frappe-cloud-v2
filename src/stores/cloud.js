@@ -113,6 +113,7 @@ function makeServer(opts = {}) {
     regionId: 'aws-mumbai',
     version, // a server runs one Frappe version; sites inherit it
     build: latestBuildFor(version), // installed patch build; behind latest ⇒ update available (#24)
+    scheduledUpdate: null, // { at, skipFailing } once the owner schedules updates (#42)
     planId: 'business',
     status: 'active', // 'provisioning' | 'active'
     creditBalance: 25,
@@ -448,67 +449,6 @@ function soloState() {
   return s
 }
 
-// — Meera: a multi-site owner. Still one server, still one bill (decision 1) —
-// so she's also Desk-home, but she switches between her three sites from the
-// modal's Sites list. Anything site-level beyond switching is a Server task.
-function multisiteState() {
-  const s = baseState()
-  s.scenario = 'multisite'
-  s.user = { id: 'u-1', name: 'Meera Nair', email: 'meera@nairandco.in', role: 'individual' }
-
-  const main = makeSite('nairandco', ['erpnext', 'hr'])
-  const shop = makeSite('nairshop', ['erpnext', 'crm'])
-  const books = makeSite('nairbooks', ['erpnext'])
-  main.backups = [makeBackup(8 * HOUR, '340 MB'), makeBackup(32 * HOUR, '337 MB')]
-  shop.backups = [makeBackup(8 * HOUR, '182 MB')]
-  books.backups = [makeBackup(8 * HOUR, '96 MB')]
-
-  const server = makeServer({
-    name: 'My Server',
-    planId: 'growth', // a touch more headroom for three sites
-    regionId: 'aws-mumbai',
-    creditBalance: 16,
-    creditTotal: 25,
-    sites: [main, shop, books],
-  })
-  s.servers = [server]
-  s.cardOnFile = true
-  s.walletBalance = 9000 // prepaid ₹ balance — comfortably covers this cycle
-  s.walletHistory = [
-    { id: uid('wtx'), date: '1 Jun 2026', type: 'charge', label: 'May 2026 invoice', amount: -6150 },
-    { id: uid('wtx'), date: '16 May 2026', type: 'topup', label: 'Added credit', amount: 8000 },
-  ]
-  s.paymentMethods = [
-    { id: uid('pm'), kind: 'card', label: 'Visa', detail: '•••• 1881', expiry: '04/28', primary: true },
-    { id: uid('pm'), kind: 'upi', label: 'UPI', detail: 'meera@okicici', primary: false },
-  ]
-  s.billingProfile = {
-    taxRegion: 'IN', taxValue: '29ABCDE1234F1Z5', address: 'Nair & Co, MG Road, Kochi, KL 682016',
-    billingEmail: 'meera@nairandco.in', invoiceRecipient: 'accounts@nairandco.in', invoiceLanguage: 'en',
-  }
-  s.teams = [{ id: 'team-1', name: "Meera's team", avatar: null }]
-  s.currentTeamId = 'team-1'
-  s.members = [
-    { id: uid('mem'), name: 'Meera Nair', email: 'meera@nairandco.in', roles: [{ roleId: 'role-owner', resourceId: null }] },
-    { id: uid('mem'), name: 'Anil Joseph', email: 'anil@nairandco.in', roles: [{ roleId: 'role-admin', resourceId: null }] },
-  ]
-  s.invoices = [
-    {
-      number: 'INV-2026-0007', period: 'May 2026', issued: '1 Jun 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'My Server', plan: 'Growth', days: 30, perDay: 205, amount: 6150 }],
-    },
-  ]
-  s.activity = [
-    makeEvent(8 * HOUR, 'Backed up nairandco.frappe.cloud', { tag: 'backup', detail: 'Database 320 MB · files 20 MB. Kept for 30 days.' }),
-    makeEvent(2 * DAY, 'Installed Frappe CRM on nairshop.frappe.cloud', { tag: 'app' }),
-    makeEvent(9 * DAY, 'Created nairbooks.frappe.cloud', { tag: 'site' }),
-    makeEvent(20 * DAY, 'Created nairshop.frappe.cloud', { tag: 'site' }),
-  ]
-  s.structureRevealed = true
-  s.currentSiteId = main.id
-  return s
-}
-
 export const useCloudStore = defineStore('cloud', {
   state: freshState,
 
@@ -575,6 +515,9 @@ export const useCloudStore = defineStore('cloud', {
     // rest see $. Prices are already stored in ₹; only the $ credit needs
     // converting, so a single user never sees ₹ next to $.
     displayCurrency: (s) => (s.billingProfile.taxRegion === 'IN' ? 'INR' : 'USD'),
+
+    // India sees Card + UPI (Stripe/Razorpay); elsewhere Card only (Stripe/PayPal).
+    isIndia: (s) => s.billingProfile.taxRegion === 'IN',
 
     // Account credit rendered in the user's display currency (a number; format
     // with `money(creditDisplay, displayCurrency)`).
@@ -656,7 +599,6 @@ export const useCloudStore = defineStore('cloud', {
         fresh: freshState,
         grown: grownState,
         solo: soloState,
-        multisite: multisiteState,
       }
       this.$state = (states[name] || freshState)()
     },
@@ -1299,6 +1241,42 @@ export const useCloudStore = defineStore('cloud', {
       }, 1800)
     },
 
+    // Update a chosen set of app updates across the server's sites, together in
+    // one run (issue #42). `refs` is [{ siteId, appKey }].
+    updateApps(serverId, refs = [], { skipFailing = false } = {}) {
+      const srv = this.findServer(serverId)
+      if (!srv || !refs.length) return null
+      const n = refs.length
+      const actId = this.logActivity(`Updating ${n} app${n === 1 ? '' : 's'} on ${srv.name}`, { tag: 'app', status: 'running' })
+      return this._work(() => {
+        const live = this.findServer(serverId)
+        if (live) live.scheduledUpdate = null // applying clears any pending schedule
+        for (const j of refs) {
+          const app = this.findSite(j.siteId)?.apps.find((a) => a.key === j.appKey)
+          const latest = app && this.appUpdate(app)
+          if (app && latest) app.version = latest
+        }
+        this.flipActivity(actId, {
+          title: `Updated ${n} app${n === 1 ? '' : 's'} on ${srv.name}`,
+          detail: `${skipFailing ? 'Failing patches skipped. ' : ''}A backup was taken first.`,
+          status: 'success',
+        })
+      }, 2000)
+    },
+    // Schedule app updates for later (issue #42).
+    scheduleServerUpdate(serverId, { at, skipFailing = false }) {
+      const srv = this.findServer(serverId)
+      if (!srv || !at) return
+      srv.scheduledUpdate = { at, skipFailing }
+      this.logActivity(`Scheduled app updates for ${srv.name}`, { tag: 'app', detail: `Runs ${at}${skipFailing ? ' · skips failing patches' : ''}.` })
+    },
+    cancelScheduledUpdate(serverId) {
+      const srv = this.findServer(serverId)
+      if (!srv || !srv.scheduledUpdate) return
+      srv.scheduledUpdate = null
+      this.logActivity(`Cancelled scheduled updates for ${srv.name}`, { tag: 'server' })
+    },
+
     // A whole-server Frappe version change (up or down). Every site on the
     // server migrates to the new version — same transient as a site move.
     changeServerVersion(serverId, version) {
@@ -1523,6 +1501,15 @@ export const useCloudStore = defineStore('cloud', {
       const first = this.paymentMethods.length === 0
       this.paymentMethods.push({ id: uid('pm'), primary: first, ...pm })
       this.logActivity(`Added a payment method (${pm.label || pm.kind})`, { tag: 'billing' })
+    },
+    // A gateway (Stripe/Razorpay/PayPal) collects the real card/UPI — we only
+    // record the kind and which gateway. Shared by the in-page Razorpay checkout
+    // and the redirect gateway page.
+    addPaymentMethodViaGateway({ kind, gateway, editingId = null }) {
+      const label = kind === 'upi' ? 'UPI' : 'Card'
+      const detail = `via ${gateway}`
+      if (editingId) this.updatePaymentMethod(editingId, { kind, label, detail, status: null })
+      else this.addPaymentMethod({ kind, label, detail, gateway })
     },
     updatePaymentMethod(id, patch) {
       const pm = this.paymentMethods.find((p) => p.id === id)

@@ -2,10 +2,10 @@
   <!-- No branded header inside the Desk — the owner already knows they're in
        Frappe Cloud. Bare dialog → content runs edge-to-edge with no outer
        padding; we own the close button. Each panel carries its own title. -->
-  <Dialog v-model:open="open" size="4xl" bare>
+  <Dialog v-model:open="open" size="5xl" bare>
     <!-- A settings-style modal: a left rail of areas, content on the right.
          No Overview — you land on a real task; the rail flags what needs you. -->
-    <div class="relative flex h-[34rem] overflow-hidden">
+    <div class="relative flex h-[40rem] overflow-hidden">
       <button
         class="absolute right-3 top-3 z-20 grid size-7 place-items-center rounded-md text-ink-gray-6 hover:bg-surface-gray-3"
         aria-label="Close"
@@ -13,7 +13,9 @@
       >
         <span class="lucide-x size-4" />
       </button>
-      <nav class="w-44 shrink-0 space-y-0.5 overflow-y-auto border-r border-outline-gray-2 bg-surface-gray-1 p-3">
+      <nav class="w-48 shrink-0 space-y-0.5 overflow-y-auto border-r border-outline-gray-2 bg-surface-gray-1 p-4">
+        <!-- The modal's name — a calm heading, not a tab. -->
+        <div class="mb-3 px-2.5 pt-1 text-sm font-semibold text-ink-gray-9">Cloud settings</div>
         <button
           v-for="t in tabs"
           :key="t.label"
@@ -24,33 +26,36 @@
           <span class="size-4 shrink-0 text-ink-gray-6" :class="t.icon" />
           <span class="min-w-0 flex-1 truncate">{{ t.label }}</span>
           <span v-if="t.badge" class="grid h-4 min-w-4 place-items-center rounded-full bg-surface-gray-3 px-1 text-[10px] font-semibold tabular-nums text-ink-gray-7">{{ t.badge }}</span>
-          <span v-else-if="t.dot" class="size-1.5 shrink-0 rounded-full bg-surface-amber-3" />
+          <span v-else-if="t.dot" class="size-1.5 shrink-0 rounded-full bg-[var(--ink-amber-7)]" />
         </button>
       </nav>
 
-      <div class="min-w-0 flex-1 overflow-y-auto p-6">
-        <!-- Every panel carries its own title; Apps gets a bulk action beside it. -->
-        <header class="mb-4 flex items-start justify-between gap-3 pr-8">
-          <div class="min-w-0">
-            <h2 class="text-lg font-semibold text-ink-gray-9">{{ active }}</h2>
-            <p class="text-p-sm text-ink-gray-5">{{ panelMeta[active] }}</p>
-          </div>
-          <Button
-            v-if="active === 'Apps' && siteUpdates.length"
-            size="sm"
-            variant="solid"
-            :loading="updatingAll"
-            :label="`Update all (${siteUpdates.length})`"
-            class="shrink-0"
-            @click="updateAll"
-          />
-        </header>
+      <div class="min-w-0 flex-1 overflow-y-auto">
+        <!-- Title (and the Apps search) stay pinned while the panel scrolls. -->
+        <div class="sticky top-0 z-10 space-y-3 bg-surface-elevation-1 px-10 pb-4 pt-8">
+          <header class="flex items-start justify-between gap-3 pr-8">
+            <div class="min-w-0">
+              <h2 class="text-lg font-semibold text-ink-gray-9">{{ active }}</h2>
+              <p class="text-p-sm text-ink-gray-5">{{ panelMeta[active] }}</p>
+            </div>
+            <Button
+              v-if="active === 'Apps' && siteUpdates.length"
+              size="sm"
+              variant="solid"
+              :loading="updatingAll"
+              :label="`Update all (${siteUpdates.length})`"
+              class="shrink-0"
+              @click="updateAll"
+            />
+          </header>
+          <FormControl v-if="active === 'Apps'" v-model="appSearch" type="text" placeholder="Search apps" autocomplete="off" />
+        </div>
 
-        <!-- Apps — one grid that both installs and updates (the app-store model):
-             an installed app with a newer version shows "Update" in place. -->
-        <section v-if="active === 'Apps'" class="space-y-3">
-          <FormControl v-model="appSearch" type="text" placeholder="Search apps" autocomplete="off" />
-          <div class="grid gap-2 sm:grid-cols-2">
+        <div class="px-10 pb-8 pt-6">
+          <!-- Apps — one grid that both installs and updates (the app-store model):
+               an installed app with a newer version shows "Update" in place. -->
+          <section v-if="active === 'Apps'" class="space-y-3">
+            <div class="grid gap-2 sm:grid-cols-2">
             <div
               v-for="app in marketApps"
               :key="app.key"
@@ -109,7 +114,7 @@
                 />
                 <span v-else-if="d.status === 'active'" class="lucide-circle-check size-5 shrink-0 text-ink-green-6" />
               </div>
-              <div v-if="d.status !== 'active'" class="space-y-2 border-t border-outline-gray-1 bg-surface-gray-1 p-3">
+              <div v-if="d.status !== 'active'" class="space-y-2 border-t border-outline-gray-2 bg-surface-gray-1 p-3">
                 <div class="text-p-xs text-ink-gray-5">Add these at your DNS provider, then verify:</div>
                 <div
                   v-for="r in d.dnsRecords"
@@ -132,15 +137,23 @@
           <p v-else class="text-p-sm text-ink-gray-5">No custom domains yet. Add one above and we'll handle SSL once DNS checks out.</p>
         </section>
 
-        <!-- Billing — the single home for plan cost, balance and payment method. -->
+        <!-- Billing — plan, cost, balance, payment method; full management in Central. -->
         <section v-else-if="active === 'Billing'" class="space-y-4">
+          <!-- Plan + change. "Change plan" opens the server's plan options. -->
+          <div class="flex items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
+            <div class="min-w-0">
+              <div class="text-p-xs text-ink-gray-5">Plan</div>
+              <div class="truncate font-medium text-ink-gray-8">{{ planName }}</div>
+            </div>
+            <Button variant="subtle" size="sm" label="Change plan" @click="upgrade" />
+          </div>
           <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg border border-outline-gray-1 bg-surface-gray-1 p-3">
+            <div class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
               <div class="text-p-xs text-ink-gray-5">This month</div>
               <div class="mt-0.5 font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
               <div class="mt-0.5 text-p-xs text-ink-gray-5">Covers every site on your server</div>
             </div>
-            <div class="rounded-lg border border-outline-gray-1 bg-surface-gray-1 p-3">
+            <div class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
               <div class="text-p-xs text-ink-gray-5">{{ balanceLabel }}</div>
               <div class="mt-0.5 font-semibold tabular-nums text-ink-gray-9">{{ money(balanceValue) }}</div>
               <div class="mt-0.5 text-p-xs" :class="covers ? 'text-ink-gray-5' : 'text-ink-amber-8'">{{ coverNote }}</div>
@@ -164,6 +177,15 @@
             <Button variant="solid" label="Add credit" icon-left="lucide-plus" @click="addCredit" />
             <p class="mt-2 text-p-xs text-ink-gray-5">{{ primaryMethodLabel }} · opens a secure checkout, then brings you back here.</p>
           </div>
+
+          <!-- A minimal door to the full billing page (payment methods, invoices, email). -->
+          <button
+            class="flex w-full items-center justify-between gap-3 border-t border-outline-gray-2 pt-3 text-left text-p-xs text-ink-gray-5 transition-colors hover:text-ink-gray-7"
+            @click="openAccount"
+          >
+            <span>Payment methods, invoices &amp; billing email</span>
+            <span class="lucide-arrow-up-right size-3.5 shrink-0" />
+          </button>
         </section>
 
         <!-- Advanced — server facts, the escape hatch, and usage only if it's tight. -->
@@ -187,7 +209,7 @@
             </div>
           </div>
 
-          <div class="space-y-1.5 rounded-lg border border-outline-gray-1 bg-surface-gray-1 p-3 text-p-sm">
+          <div class="space-y-1.5 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3 text-p-sm">
             <div class="flex items-center justify-between gap-3"><span class="text-ink-gray-5">Server</span><span class="truncate text-ink-gray-8">{{ server?.name }}</span></div>
             <div class="flex items-center justify-between gap-3"><span class="text-ink-gray-5">Plan</span><span class="truncate text-ink-gray-8">{{ planName }}</span></div>
             <div class="flex items-center justify-between gap-3"><span class="text-ink-gray-5">Region</span><span class="truncate text-ink-gray-8">{{ regionLabel }}</span></div>
@@ -209,6 +231,7 @@
             <span class="lucide-arrow-up-right size-4 text-ink-gray-5" />
           </button>
         </section>
+        </div>
       </div>
     </div>
   </Dialog>

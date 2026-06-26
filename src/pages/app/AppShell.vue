@@ -19,17 +19,16 @@
         </button>
 
         <div class="flex shrink-0 items-center gap-1.5">
-          <!-- The Frappe Cloud launcher — a findable front door to billing,
-               usage, app updates and site switching, without leaving the Desk.
-               Gated to FC billing-permitted members (decision 10). -->
-          <button
+          <!-- Frappe Cloud — a settings-gear front door to billing, apps and
+               domains, without leaving the Desk. Gated to billing-permitted
+               members (decision 10). -->
+          <Button
             v-if="store.canManageBilling"
-            class="flex h-9 items-center gap-2 rounded-lg border border-outline-gray-2 px-2.5 text-sm font-medium text-ink-gray-8 hover:bg-surface-gray-1"
+            variant="ghost"
+            icon="lucide-settings"
+            label="Frappe Cloud"
             @click="openManage('Apps')"
-          >
-            <img :src="cloudLogo" alt="" class="size-5 shrink-0 rounded" />
-            <span class="hidden sm:inline">Frappe Cloud</span>
-          </button>
+          />
           <Button variant="ghost" icon="lucide-bell" label="Notifications" @click="mock('Notifications')" />
           <Dropdown :options="userOptions" placement="bottom-end">
             <button class="ml-1 rounded-full outline-none ring-outline-gray-3 focus-visible:ring-2">
@@ -79,7 +78,6 @@ import { Alert, Avatar, Button, Dropdown, toast } from 'frappe-ui'
 import AppIcon from '../../components/AppIcon.vue'
 import FcManageModal from '../../components/FcManageModal.vue'
 import SitePausedPage from './SitePausedPage.vue'
-import cloudLogo from '../../assets/apps/cloud.png'
 import { LOW_CREDIT_THRESHOLD, useCloudStore } from '../../stores/cloud'
 
 const store = useCloudStore()
@@ -122,7 +120,6 @@ function openManage(tab = 'Apps') {
 // avatar menu keeps the deliberate escape hatches to the Server / Central
 // shells, return-aware so the user always lands back here (decision 3).
 const userOptions = computed(() => [
-  { label: 'Manage server', icon: 'lucide-cloud', onClick: goManage },
   { label: 'Account settings', icon: 'lucide-settings', onClick: goAccount },
   {
     label: 'Sign out',
@@ -134,9 +131,6 @@ const userOptions = computed(() => [
   },
 ])
 
-function goManage() {
-  store.redirectWithReturn(router, `/manage/${ownServer.value.id}`, origin())
-}
 function goAccount() {
   store.redirectWithReturn(router, '/settings', origin())
 }

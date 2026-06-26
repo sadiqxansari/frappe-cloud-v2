@@ -34,6 +34,7 @@ declare module 'vue' {
     ProfileDialog: typeof import('./src/components/ProfileDialog.vue')['default']
     ProviderRegionPicker: typeof import('./src/components/ProviderRegionPicker.vue')['default']
     RailAccordion: typeof import('./src/components/RailAccordion.vue')['default']
+    RazorpayCheckout: typeof import('./src/components/RazorpayCheckout.vue')['default']
     ReturnBar: typeof import('./src/components/ReturnBar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

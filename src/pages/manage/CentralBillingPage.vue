@@ -152,19 +152,25 @@
                 <Button variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="openPm" />
               </EmptyState>
 
-              <!-- Billing contact — email & address live with payment methods (#14) -->
+              <!-- Billing contact & tax — email, address and tax details, together (#14) -->
               <div class="mt-4 border-t border-outline-gray-1 pt-4">
                 <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-medium text-ink-gray-7">Billing contact</h3>
-                  <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
+                  <h3 class="text-sm font-medium text-ink-gray-7">Billing contact &amp; tax</h3>
+                  <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact and tax" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
                 </div>
                 <dl class="mt-2 space-y-1.5 text-p-sm">
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-8' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8">{{ taxRegion.country }}</dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">{{ taxRegion.idLabel }}</dt><dd :class="taxMissing ? 'text-ink-amber-8' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
                 </dl>
                 <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-8" @click="openContact">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
                   Invoices are bouncing back — update your billing email.
+                </button>
+                <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openContact">
+                  <span class="lucide-triangle-alert size-3 shrink-0" />
+                  Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
                 </button>
               </div>
             </section>
@@ -229,22 +235,6 @@
                   No earnings yet — they'll appear here once your published apps start earning.
                 </p>
               </template>
-            </section>
-
-            <!-- Tax & compliance -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
-              <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-ink-gray-8">Tax &amp; compliance</h2>
-                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit tax & compliance" @click="openTax"><span class="lucide-pencil size-3.5" /></button>
-              </div>
-              <dl class="mt-3 space-y-1.5 text-p-sm">
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-8' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
-              </dl>
-              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openTax">
-                <span class="lucide-triangle-alert size-3 shrink-0" />
-                Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
-              </button>
             </section>
 
             <!-- Stop / resume billing — the single global switch. Suspends every
@@ -484,38 +474,25 @@
          Desk's Frappe Cloud modal). Two steps when billing details are missing. -->
     <PaymentSetupDialog v-model:open="pmOpen" :editing-pm="editingPm" />
 
-    <!-- Tax & compliance -->
-    <Dialog v-model:open="taxOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Tax &amp; compliance</span></template>
-      <div class="space-y-3">
-        <FormControl v-model="taxForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
-        <div>
-          <FormControl v-model="taxForm.taxValue" type="text" :label="taxFormRegion.idLabel" :placeholder="taxFormRegion.placeholder" />
-          <p v-if="taxForm.taxValue && taxFormError" class="mt-1 text-p-xs text-ink-red-8">{{ taxFormError }}</p>
-        </div>
-      </div>
-      <template #actions>
-        <div class="flex justify-end gap-2">
-          <Button label="Cancel" @click="taxOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!!taxFormError" @click="saveTax" />
-        </div>
-      </template>
-    </Dialog>
-
-    <!-- Billing contact — email & address (paired with payment methods) -->
+    <!-- Billing contact & tax — email, address and tax details in one place -->
     <Dialog v-model:open="contactOpen" size="md">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Billing contact</span></template>
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Billing contact &amp; tax</span></template>
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
           <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ billingEmailError }}</p>
         </div>
         <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
+        <FormControl v-model="details.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
+        <div>
+          <FormControl v-model="details.taxValue" type="text" :label="detailsTaxRegion.idLabel" :placeholder="detailsTaxRegion.placeholder" />
+          <p v-if="details.taxValue && detailsTaxError" class="mt-1 text-p-xs text-ink-red-8">{{ detailsTaxError }}</p>
+        </div>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="contactOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!!billingEmailError" @click="saveDetails(() => (contactOpen = false))" />
+          <Button variant="solid" label="Save" :disabled="!!billingEmailError || !!detailsTaxError" @click="saveDetails(() => (contactOpen = false))" />
         </div>
       </template>
     </Dialog>
@@ -828,35 +805,22 @@ function requestPayout() {
   toast.success('Payout requested')
 }
 
-// — Tax & compliance
+// — Tax region label (shown with the billing contact; edited in that dialog).
 const taxRegion = computed(() => taxRegionByCode(store.billingProfile.taxRegion))
-const taxOpen = ref(false)
-const taxForm = reactive({ taxRegion: 'IN', taxValue: '' })
-const taxFormRegion = computed(() => taxRegionByCode(taxForm.taxRegion))
-const taxFormError = computed(() => validateTaxId(taxForm.taxRegion, taxForm.taxValue, { required: taxForm.taxRegion !== 'US' }))
-function openTax() {
-  taxForm.taxRegion = store.billingProfile.taxRegion || 'IN'
-  taxForm.taxValue = store.billingProfile.taxValue || ''
-  taxOpen.value = true
-}
-function saveTax() {
-  if (taxFormError.value) return
-  store.setBillingProfile({ taxRegion: taxForm.taxRegion, taxValue: taxForm.taxValue })
-  toast.success('Tax details saved')
-  taxOpen.value = false
-}
 
 // — Billing contact & invoice settings. Split into two dialogs (#14) — email &
 // address sit with payment methods; recipient & language sit with invoices — but
 // both edit the same billing profile, so they share one form object.
 const contactOpen = ref(false)
 const invoiceSettingsOpen = ref(false)
-const details = reactive({ address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en' })
+const details = reactive({ address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en', taxRegion: 'IN', taxValue: '' })
 function loadDetails() {
   details.address = store.billingProfile.address
   details.billingEmail = store.billingProfile.billingEmail
   details.invoiceRecipient = store.billingProfile.invoiceRecipient
   details.invoiceLanguage = store.billingProfile.invoiceLanguage
+  details.taxRegion = store.billingProfile.taxRegion || 'IN'
+  details.taxValue = store.billingProfile.taxValue || ''
 }
 function openContact() {
   loadDetails()
@@ -868,8 +832,10 @@ function openInvoiceSettings() {
 }
 const billingEmailError = computed(() => validateEmail(details.billingEmail, { required: true }))
 const recipientError = computed(() => validateEmail(details.invoiceRecipient))
+const detailsTaxRegion = computed(() => taxRegionByCode(details.taxRegion))
+const detailsTaxError = computed(() => validateTaxId(details.taxRegion, details.taxValue, { required: details.taxRegion !== 'US' }))
 function saveDetails(done) {
-  if (billingEmailError.value || recipientError.value) return
+  if (billingEmailError.value || recipientError.value || detailsTaxError.value) return
   store.setBillingProfile({ ...details, emailBounced: false })
   toast.success('Billing details saved')
   done?.()

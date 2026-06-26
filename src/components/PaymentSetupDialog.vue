@@ -1,8 +1,8 @@
 <template>
   <!-- The billing first-time-setup, in two steps: billing details (only when we
-       don't have them yet), then the payment method. Shared by the Central
-       billing page and the Desk's Frappe Cloud modal so there's one FTU, not
-       two. `editingPm` switches it to "update an existing method". -->
+       don't have them yet), then choosing how to pay. We never collect the card
+       or UPI ourselves — a gateway does. Shared by the Central billing page and
+       the Desk's Frappe Cloud modal so there's one FTU, not two. -->
   <Dialog v-model:open="open" size="md">
     <template #title>
       <span class="text-xl font-semibold text-ink-gray-9">{{ pmStep === 1 ? 'Add billing details' : editingPm ? 'Update payment method' : 'Add payment method' }}</span>
@@ -16,71 +16,63 @@
         <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ pmContactEmailError }}</p>
       </div>
       <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
+      <div class="grid grid-cols-2 gap-3">
+        <FormControl v-model="pmForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
+        <div>
+          <FormControl v-model="pmForm.taxNumber" type="text" :label="pmTaxRegion.idLabel" :placeholder="pmTaxRegion.placeholder" />
+          <p v-if="pmForm.taxNumber && pmTaxError" class="mt-1 text-p-xs text-ink-red-8">{{ pmTaxError }}</p>
+        </div>
+      </div>
     </div>
 
-    <!-- Step 2: the payment method -->
+    <!-- Step 2: how to pay, then which gateway collects it -->
     <div v-else class="space-y-4">
-      <div v-if="!editingPm" class="grid grid-cols-2 gap-3">
-        <button
-          v-for="opt in methodTypes"
-          :key="opt.value"
-          type="button"
-          class="flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors"
-          :class="pmForm.kind === opt.value ? 'border-outline-gray-4 bg-surface-gray-1 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
-          @click="pmForm.kind = opt.value"
-        >
-          <span class="mt-0.5 size-4 shrink-0 text-ink-gray-6" :class="opt.icon" />
-          <span class="min-w-0">
-            <span class="block text-sm font-medium text-ink-gray-9">{{ opt.label }}</span>
-            <span class="block text-p-xs text-ink-gray-5">{{ opt.detail }}</span>
-          </span>
-        </button>
-      </div>
-
-      <!-- Card details -->
-      <div v-if="pmForm.kind === 'card'" class="space-y-3">
-        <FormControl
-          :modelValue="pmForm.number"
-          type="text"
-          label="Card number"
-          placeholder="1234 1234 1234 1234"
-          inputmode="numeric"
-          autocomplete="cc-number"
-          @update:modelValue="(v) => (pmForm.number = formatCardNumber(v))"
-        >
-          <template v-if="pmCardBrand" #suffix><span class="text-xs font-medium text-ink-gray-5">{{ pmCardBrand }}</span></template>
-        </FormControl>
+      <!-- Payment type — Card everywhere; UPI only in India. -->
+      <div v-if="kinds.length > 1">
+        <div class="mb-1.5 text-p-sm font-medium text-ink-gray-7">How do you want to pay?</div>
         <div class="grid grid-cols-2 gap-3">
-          <FormControl
-            :modelValue="pmForm.expiry"
-            type="text"
-            label="Expiry"
-            placeholder="MM / YY"
-            inputmode="numeric"
-            autocomplete="cc-exp"
-            @update:modelValue="(v) => (pmForm.expiry = formatExpiry(v))"
-          />
-          <FormControl
-            :modelValue="pmForm.cvc"
-            type="text"
-            label="CVC"
-            placeholder="123"
-            inputmode="numeric"
-            autocomplete="cc-csc"
-            @update:modelValue="(v) => (pmForm.cvc = v.replace(/\D/g, '').slice(0, 4))"
-          />
+          <button
+            v-for="opt in kinds"
+            :key="opt.value"
+            type="button"
+            class="flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors"
+            :class="pmForm.kind === opt.value ? 'border-outline-gray-4 bg-surface-gray-1 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+            @click="pmForm.kind = opt.value"
+          >
+            <span class="mt-0.5 size-4 shrink-0 text-ink-gray-6" :class="opt.icon" />
+            <span class="min-w-0">
+              <span class="block text-sm font-medium text-ink-gray-9">{{ opt.label }}</span>
+              <span class="block text-p-xs text-ink-gray-5">{{ opt.detail }}</span>
+            </span>
+          </button>
         </div>
       </div>
 
-      <!-- UPI details -->
-      <div v-else>
-        <FormControl v-model="pmForm.upi" type="text" label="UPI ID" placeholder="yourname@okhdfc" autocomplete="off" />
-        <p class="mt-1.5 text-p-xs text-ink-gray-5">We'll send a collect request to approve in your UPI app.</p>
+      <!-- Gateway — options depend on the type and region. -->
+      <div>
+        <div class="mb-1.5 text-p-sm font-medium text-ink-gray-7">Pay through</div>
+        <div class="space-y-2">
+          <button
+            v-for="g in gateways"
+            :key="g.id"
+            type="button"
+            class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors"
+            :class="pmForm.gateway === g.id ? 'border-outline-gray-4 bg-surface-gray-1 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+            @click="pmForm.gateway = g.id"
+          >
+            <span class="grid size-7 shrink-0 place-items-center rounded-md text-xs font-bold text-white" :style="{ backgroundColor: g.color }">{{ g.mark }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-medium text-ink-gray-9">{{ g.label }}</span>
+              <span class="block text-p-xs text-ink-gray-5">{{ g.note }}</span>
+            </span>
+            <span v-if="pmForm.gateway === g.id" class="lucide-check size-4 shrink-0 text-ink-gray-7" />
+          </button>
+        </div>
       </div>
 
       <p class="flex items-center gap-1.5 text-p-xs text-ink-gray-5">
         <span class="lucide-lock size-3 shrink-0" />
-        Details are encrypted and handled by our payments partner — we never store your full {{ pmForm.kind === 'upi' ? 'UPI ID' : 'card number' }}.
+        {{ currentGateway?.label || 'The gateway' }} collects your {{ pmForm.kind === 'upi' ? 'UPI details' : 'card' }} securely — Frappe Cloud never sees them.
       </p>
     </div>
 
@@ -92,18 +84,24 @@
         </template>
         <template v-else>
           <Button :label="pmNeedsContact ? 'Back' : 'Cancel'" @click="pmNeedsContact ? (pmStep = 1) : (open = false)" />
-          <Button variant="solid" :label="editingPm ? 'Save' : 'Add payment method'" :disabled="!pmMethodValid" @click="submit" />
+          <Button variant="solid" :label="continueLabel" :disabled="!currentGateway" @click="launch" />
         </template>
       </div>
     </template>
   </Dialog>
+
+  <!-- Razorpay opens its checkout right here (no redirect). -->
+  <RazorpayCheckout v-model:open="razorpayOpen" :kind="pmForm.kind" @done="onRazorpayDone" />
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button, Dialog, FormControl, toast } from 'frappe-ui'
+import RazorpayCheckout from './RazorpayCheckout.vue'
 import { useCloudStore } from '../stores/cloud'
-import { validateEmail } from '../utils/validate'
+import { TAX_REGION_OPTIONS, taxRegionByCode } from '../data/tax'
+import { validateEmail, validateTaxId } from '../utils/validate'
 
 const open = defineModel('open', { type: Boolean, default: false })
 const props = defineProps({
@@ -113,26 +111,54 @@ const props = defineProps({
 const emit = defineEmits(['added'])
 
 const store = useCloudStore()
+const router = useRouter()
 
-const methodTypes = [
-  { value: 'card', label: 'Card', detail: 'Visa, Mastercard, RuPay, Amex', icon: 'lucide-credit-card' },
-  { value: 'upi', label: 'UPI', detail: 'Pay from any UPI app', icon: 'lucide-smartphone' },
-]
+// Gateway catalog (mock). `mode` decides the experience: Razorpay opens a modal
+// on the page; Stripe/PayPal redirect to the partner and come back.
+const GATEWAYS = {
+  stripe: { id: 'stripe', label: 'Stripe', note: 'Secure redirect', mode: 'redirect', mark: 'S', color: '#635bff' },
+  razorpay: { id: 'razorpay', label: 'Razorpay', note: 'Opens here', mode: 'modal', mark: 'R', color: '#3395ff' },
+  paypal: { id: 'paypal', label: 'PayPal', note: 'Secure redirect', mode: 'redirect', mark: 'P', color: '#003087' },
+}
 
-const pmForm = reactive({ kind: 'card', number: '', expiry: '', cvc: '', upi: '', email: '', address: '' })
-// We can't issue invoices without billing details, so when they're missing the
-// dialog opens on a first step that collects them before the payment method.
+const pmForm = reactive({ kind: 'card', gateway: 'stripe', email: '', address: '', taxRegion: 'IN', taxNumber: '' })
 const pmNeedsContact = ref(false)
-const pmStep = ref(1) // 1 = billing details, 2 = payment method
+const pmStep = ref(1) // 1 = billing details, 2 = how to pay
+const razorpayOpen = ref(false)
 
+// India drives the payment options — derived from the form so step 2 reflects
+// the tax region picked in step 1, before it's saved to the profile.
+const formIndia = computed(() => pmForm.taxRegion === 'IN')
+
+// Card always; UPI only in India.
+const kinds = computed(() => {
+  const card = { value: 'card', label: 'Card', detail: 'Visa, Mastercard, RuPay, Amex', icon: 'lucide-credit-card' }
+  const upi = { value: 'upi', label: 'UPI', detail: 'Pay from any UPI app', icon: 'lucide-smartphone' }
+  return formIndia.value ? [card, upi] : [card]
+})
+
+// Gateways for the chosen type + region.
+const gateways = computed(() => {
+  const ids = formIndia.value
+    ? pmForm.kind === 'upi'
+      ? ['razorpay']
+      : ['stripe', 'razorpay']
+    : ['stripe', 'paypal'] // non-India: card only
+  return ids.map((id) => GATEWAYS[id])
+})
+const currentGateway = computed(() => gateways.value.find((g) => g.id === pmForm.gateway) || null)
+const continueLabel = computed(() => (currentGateway.value ? `Continue with ${currentGateway.value.label}` : 'Continue'))
+
+function defaultGateway() {
+  return gateways.value[0]?.id || 'stripe'
+}
 function resetForm() {
   pmForm.kind = props.editingPm?.kind || 'card'
-  pmForm.number = ''
-  pmForm.expiry = ''
-  pmForm.cvc = ''
-  pmForm.upi = ''
   pmForm.email = store.billingProfile.billingEmail || ''
   pmForm.address = store.billingProfile.address || ''
+  pmForm.taxRegion = store.billingProfile.taxRegion || 'IN'
+  pmForm.taxNumber = store.billingProfile.taxValue || ''
+  pmForm.gateway = defaultGateway()
 }
 
 // Set up the right starting step whenever the dialog opens.
@@ -148,50 +174,63 @@ watch(
   { immediate: true },
 )
 
-// Card formatting & brand — light, realistic touches.
-function formatCardNumber(v) {
-  return v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
-}
-function formatExpiry(v) {
-  const d = v.replace(/\D/g, '').slice(0, 4)
-  return d.length >= 3 ? `${d.slice(0, 2)}/${d.slice(2)}` : d
-}
-const pmCardDigits = computed(() => pmForm.number.replace(/\D/g, ''))
-const pmCardBrand = computed(() => {
-  const n = pmCardDigits.value
-  if (/^4/.test(n)) return 'Visa'
-  if (/^(5[1-5]|2[2-7])/.test(n)) return 'Mastercard'
-  if (/^3[47]/.test(n)) return 'Amex'
-  if (/^(60|65|81|82|508)/.test(n)) return 'RuPay'
-  return ''
-})
+// Switching region can remove UPI (non-India) — keep the type valid.
+watch(
+  () => pmForm.taxRegion,
+  () => {
+    if (!kinds.value.some((k) => k.value === pmForm.kind)) pmForm.kind = 'card'
+  },
+)
+// Keep the selected gateway valid for the current type + region.
+watch(
+  () => [pmForm.kind, pmForm.taxRegion],
+  () => {
+    if (!gateways.value.some((g) => g.id === pmForm.gateway)) pmForm.gateway = defaultGateway()
+  },
+)
 
-// Validity — enough to feel real without faking a real gateway.
 const pmContactEmailError = computed(() => validateEmail(pmForm.email, { required: true }))
-const pmContactValid = computed(() => !pmNeedsContact.value || (!pmContactEmailError.value && !!pmForm.address.trim()))
-const pmMethodValid = computed(() => {
-  if (pmForm.kind === 'upi') return /^[\w.-]+@[a-z]{2,}$/i.test(pmForm.upi.trim())
-  const expOk = /^\d{2}\/\d{2}$/.test(pmForm.expiry) && Number(pmForm.expiry.slice(0, 2)) >= 1 && Number(pmForm.expiry.slice(0, 2)) <= 12
-  return pmCardDigits.value.length >= 13 && expOk && pmForm.cvc.length >= 3
-})
-const pmValid = computed(() => pmMethodValid.value && pmContactValid.value)
+const pmTaxRegion = computed(() => taxRegionByCode(pmForm.taxRegion))
+const pmTaxError = computed(() => validateTaxId(pmForm.taxRegion, pmForm.taxNumber, { required: pmForm.taxRegion !== 'US' }))
+const pmContactValid = computed(
+  () => !pmNeedsContact.value || (!pmContactEmailError.value && !!pmForm.address.trim() && !pmTaxError.value),
+)
 
-function submit() {
-  if (!pmValid.value) return
-  // Save any newly-collected billing details alongside the method.
+function saveContactIfNeeded() {
   if (pmNeedsContact.value) {
-    store.setBillingProfile({ billingEmail: pmForm.email.trim(), address: pmForm.address.trim(), emailBounced: false })
+    store.setBillingProfile({
+      billingEmail: pmForm.email.trim(),
+      address: pmForm.address.trim(),
+      taxRegion: pmForm.taxRegion,
+      taxValue: pmForm.taxNumber.trim(),
+      emailBounced: false,
+    })
   }
-  const isUpi = pmForm.kind === 'upi'
-  const detail = isUpi ? pmForm.upi.trim() : `•••• ${pmCardDigits.value.slice(-4)}`
-  if (props.editingPm) {
-    store.updatePaymentMethod(props.editingPm.id, { detail, status: null, ...(isUpi ? {} : { expiry: pmForm.expiry }) })
-    toast.success('Payment method updated')
-  } else {
-    const label = isUpi ? 'UPI' : pmCardBrand.value || 'Card'
-    store.addPaymentMethod({ kind: pmForm.kind, label, detail, ...(isUpi ? {} : { expiry: pmForm.expiry }) })
-    toast.success('Payment method added')
+}
+
+function launch() {
+  const gw = currentGateway.value
+  if (!gw) return
+  saveContactIfNeeded()
+  if (gw.mode === 'modal') {
+    razorpayOpen.value = true // Razorpay opens on the page
+    return
   }
+  // Stripe/PayPal: a real redirect to the partner, then back to where we are.
+  open.value = false
+  store.redirectWithReturn(router, '/pay', {
+    label: store.currentSite?.subdomain || 'your account',
+    path: router.currentRoute.value.fullPath,
+    intent: 'method',
+    gateway: gw.label,
+    kind: pmForm.kind,
+    editingId: props.editingPm?.id || null,
+  })
+}
+
+function onRazorpayDone() {
+  store.addPaymentMethodViaGateway({ kind: pmForm.kind, gateway: 'Razorpay', editingId: props.editingPm?.id || null })
+  toast.success(props.editingPm ? 'Payment method updated' : 'Payment method added')
   open.value = false
   emit('added')
 }

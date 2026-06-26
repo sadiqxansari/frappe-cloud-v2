@@ -1,9 +1,5 @@
 <template>
   <ServerShell v-if="site" :server="server" :crumbs="crumbs">
-    <template #actions>
-      <Button v-if="hasUpdates" variant="solid" label="Updates available" icon-left="lucide-circle-arrow-up" @click="updatesOpen = true" />
-    </template>
-
     <!-- Site header — the site name is its URL, so the subheader carries other
          facts; the dotted locator map fills the right and balances it. -->
     <div class="flex items-start justify-between gap-4">
@@ -302,31 +298,6 @@
       @confirm="resetSite"
     />
 
-    <!-- Updates across all apps on this site -->
-    <Dialog v-model:open="updatesOpen">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Updates available</span></template>
-      <div class="space-y-2.5">
-        <div v-for="app in updatableApps" :key="app.id" class="flex items-center gap-3 rounded-lg border border-outline-gray-2 p-3">
-          <AppIcon :app-key="app.key" size="md" />
-          <div class="min-w-0 flex-1">
-            <div class="text-sm font-medium text-ink-gray-9">{{ app.name }}</div>
-            <div class="text-sm text-ink-gray-5">
-              <span class="font-mono">{{ app.version }}</span>
-              <span class="lucide-arrow-right mx-1 inline-block size-3 align-middle" />
-              <span class="font-mono text-ink-green-6">{{ store.appUpdate(app) }}</span>
-            </div>
-          </div>
-          <Button variant="subtle" size="sm" label="Update" @click="updateApp(app)" />
-        </div>
-        <p v-if="!updatableApps.length" class="py-2 text-center text-p-sm text-ink-gray-5">Everything's up to date.</p>
-      </div>
-      <template #actions>
-        <div class="flex justify-end gap-2">
-          <Button label="Close" @click="updatesOpen = false" />
-          <Button variant="solid" label="Update all" :disabled="!updatableApps.length" @click="updateAll" />
-        </div>
-      </template>
-    </Dialog>
   </ServerShell>
 </template>
 
@@ -385,7 +356,6 @@ function copyValue(text) {
 const dropOpen = ref(false)
 const deactivateOpen = ref(false)
 const resetOpen = ref(false)
-const updatesOpen = ref(false)
 
 // Install app → the server Marketplace, with this site preselected (§9).
 function browseMarketplace() {
@@ -409,8 +379,6 @@ function onMoved(target) {
 // — Apps
 const uninstallOpen = ref(false)
 const pendingApp = ref(null)
-const updatableApps = computed(() => site.value.apps.filter((a) => store.appUpdate(a)))
-const hasUpdates = computed(() => updatableApps.value.length > 0)
 function updateApp(app) {
   const to = store.appUpdate(app)
   toast.promise(store.updateApp(site.value.id, app.key), {
@@ -418,12 +386,6 @@ function updateApp(app) {
     success: `${app.name} updated to ${to}`,
     error: 'Update failed',
   })
-}
-function updateAll() {
-  const apps = updatableApps.value.slice()
-  apps.forEach((a) => store.updateApp(site.value.id, a.key).catch(() => {}))
-  toast.success(`Updating ${apps.length} app${apps.length > 1 ? 's' : ''}…`)
-  updatesOpen.value = false
 }
 function askUninstall(app) {
   pendingApp.value = app

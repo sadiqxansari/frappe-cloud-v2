@@ -19,7 +19,7 @@ function switchTo(name) {
   store.loadScenario(name)
   // Single-server personas land in the Desk (their home); the fleet operator
   // lands in Central; a fresh signup starts onboarding.
-  const target = { fresh: '/setup/account', solo: '/app', multisite: '/app', grown: '/servers' }[name]
+  const target = { fresh: '/setup/account', solo: '/app', grown: '/servers' }[name]
   router.push(target)
 }
 
@@ -31,7 +31,6 @@ const options = computed(() => [
     options: [
       { label: 'First-time — fresh signup', icon: check('fresh'), onClick: () => switchTo('fresh') },
       { label: 'Solo — one site (Ravi)', icon: check('solo'), onClick: () => switchTo('solo') },
-      { label: 'Multi-site — one server (Meera)', icon: check('multisite'), onClick: () => switchTo('multisite') },
       { label: 'Operator — a fleet (Arjun)', icon: check('grown'), onClick: () => switchTo('grown') },
     ],
   },
