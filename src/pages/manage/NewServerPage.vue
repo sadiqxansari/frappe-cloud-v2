@@ -216,6 +216,8 @@ function selectRegion(id) {
 function deploy() {
   const srv = store.addServer({ planId: planId.value, regionId: regionId.value, version: version.value })
   toast.success(`${srv.name} is being set up in ${regionName.value}`)
-  router.push(`/manage/${srv.id}`)
+  // Just graduated to a 2nd server? Land in Central — their new home — where a
+  // one-time note explains the change (decision 9). Otherwise go to the server.
+  router.push(store.graduationNotice ? '/servers' : `/manage/${srv.id}`)
 }
 </script>

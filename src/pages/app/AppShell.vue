@@ -1,5 +1,9 @@
 <template>
-  <div v-if="site" class="min-h-screen bg-surface-elevation-1">
+  <!-- A suspended site can't load its Desk — serve the FC paused interceptor on
+       this same URL instead (decision 11). Flips reactively the moment credit
+       runs out or comes back. -->
+  <SitePausedPage v-if="siteSuspended" />
+  <div v-else-if="site" class="min-h-screen bg-surface-elevation-1">
     <!-- Minimal Desk top bar: Frappe mark · search · notifications · account -->
     <header class="sticky top-0 z-10 border-b border-outline-gray-2 bg-surface-elevation-1">
       <div class="flex h-14 items-center gap-3 px-4">
@@ -15,6 +19,16 @@
         </button>
 
         <div class="flex shrink-0 items-center gap-1.5">
+          <!-- Frappe Cloud — a settings-gear front door to billing, apps and
+               domains, without leaving the Desk. Gated to billing-permitted
+               members (decision 10). -->
+          <Button
+            v-if="store.canManageBilling"
+            variant="ghost"
+            icon="lucide-settings"
+            label="Frappe Cloud"
+            @click="openManage('Apps')"
+          />
           <Button variant="ghost" icon="lucide-bell" label="Notifications" @click="mock('Notifications')" />
           <Dropdown :options="userOptions" placement="bottom-end">
             <button class="ml-1 rounded-full outline-none ring-outline-gray-3 focus-visible:ring-2">
@@ -27,6 +41,19 @@
 
     <!-- The launcher: just the installed apps, logo and name, centered -->
     <main class="mx-auto max-w-5xl px-6 py-16">
+      <!-- Fix-now billing problems surface here, in the Desk — not buried in the
+           modal (decision 11). The action opens the Frappe Cloud modal. -->
+      <Alert
+        v-if="deskAlert"
+        :theme="deskAlert.theme"
+        :title="deskAlert.title"
+        :dismissible="false"
+        class="mb-8"
+      >
+        <template #description>{{ deskAlert.description }}</template>
+        <template #footer><Button variant="solid" size="sm" :label="deskAlert.action" @click="openManage(deskAlert.tab)" /></template>
+      </Alert>
+
       <div class="grid grid-cols-3 gap-x-6 gap-y-10 sm:grid-cols-4 md:grid-cols-6">
         <button
           v-for="app in site.apps"
@@ -39,15 +66,19 @@
         </button>
       </div>
     </main>
+
+    <FcManageModal v-model:open="manageOpen" :initial-tab="manageTab" />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Avatar, Button, Dropdown, toast } from 'frappe-ui'
+import { Alert, Avatar, Button, Dropdown, toast } from 'frappe-ui'
 import AppIcon from '../../components/AppIcon.vue'
-import { useCloudStore } from '../../stores/cloud'
+import FcManageModal from '../../components/FcManageModal.vue'
+import SitePausedPage from './SitePausedPage.vue'
+import { LOW_CREDIT_THRESHOLD, useCloudStore } from '../../stores/cloud'
 
 const store = useCloudStore()
 const router = useRouter()
@@ -55,34 +86,56 @@ const router = useRouter()
 const ownServer = computed(() => store.serverOfSite(store.currentSiteId) || store.server)
 const site = computed(() => store.currentSite || ownServer.value?.sites[0])
 
-const userOptions = computed(() => {
-  const opts = []
-  // Switch sites from the account menu when there's more than one.
-  const liveSites = ownServer.value?.sites.filter((s) => s.status === 'live') || []
-  if (liveSites.length > 1) {
-    liveSites.forEach((s) =>
-      opts.push({
-        label: s.subdomain,
-        icon: s.id === site.value?.id ? 'lucide-check' : 'lucide-globe',
-        onClick: () => store.openSite(s.id),
-      }),
-    )
+// When the site is paused, the Desk gives way to the FC interceptor (decision 11).
+const siteSuspended = computed(() => site.value?.status === 'suspended')
+
+// Server resource pressure, surfaced as a proactive nudge — not a status tab.
+const serverHealth = computed(() => store.healthOf(ownServer.value))
+
+// The one fix-now billing problem worth a Desk banner, if any (decision 11).
+const deskAlert = computed(() => {
+  if (store.paymentMethods.some((p) => p.status === 'declined')) {
+    return { theme: 'red', title: "A payment didn't go through", description: 'Update your payment method so your site keeps running.', action: 'Fix payment', tab: 'Billing' }
   }
-  opts.push({ label: 'Manage server', icon: 'lucide-cloud', onClick: goManage })
-  opts.push({ label: 'Account settings', icon: 'lucide-settings', onClick: () => window.open('/settings', '_blank', 'noopener') })
-  opts.push({
+  if (store.isTrial && store.accountCredit <= LOW_CREDIT_THRESHOLD) {
+    return { theme: 'yellow', title: 'Your trial credit is running low', description: "Add a payment method to keep your site running once it's used up.", action: 'Set up billing', tab: 'Billing' }
+  }
+  if (!serverHealth.value.ok) {
+    return { theme: 'yellow', title: 'Your server is filling up', description: "It's close to its plan limits — upgrade to add headroom.", action: 'Review usage', tab: 'Advanced' }
+  }
+  return null
+})
+
+// The Frappe Cloud modal — the launcher's destination. The entry point picks
+// the tab: the launcher opens Apps; a billing/usage banner opens its own tab.
+const manageOpen = ref(false)
+const manageTab = ref('Apps')
+function openManage(tab = 'Apps') {
+  manageTab.value = tab
+  manageOpen.value = true
+}
+
+// Switching sites and billing now live in the FC modal (the top-bar switcher
+// was a prototype artifact — FC doesn't own the Desk chrome in production). The
+// avatar menu keeps the deliberate escape hatches to the Server / Central
+// shells, return-aware so the user always lands back here (decision 3).
+const userOptions = computed(() => [
+  { label: 'Account settings', icon: 'lucide-settings', onClick: goAccount },
+  {
     label: 'Sign out',
     icon: 'lucide-log-out',
     onClick: () => {
       store.loadScenario('fresh')
       router.push('/setup/account')
     },
-  })
-  return opts
-})
+  },
+])
 
-function goManage() {
-  window.open(`/manage/${ownServer.value.id}`, '_blank', 'noopener')
+function goAccount() {
+  store.redirectWithReturn(router, '/settings', origin())
+}
+function origin() {
+  return { label: site.value?.subdomain || 'your site', path: '/app' }
 }
 
 // Opening an app is a visual mock — this Desk view is a preview.

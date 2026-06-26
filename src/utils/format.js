@@ -7,6 +7,21 @@ export function usd(n) {
   return '$' + v
 }
 
+// One currency per user, never mixed (decision 8). The backend keeps prices in
+// ₹ and credit in $, but a given user only ever *sees* one of them: Indian
+// users (the demo personas) see ₹ everywhere, everyone else $. `money` formats
+// in a chosen currency; `usdToDisplay` converts a $ figure into that currency
+// so a screen never shows "₹4,100 due · balance $12". Rate is a demo constant.
+const USD_TO_INR = 83
+
+export function money(amount, currency = 'INR') {
+  return currency === 'USD' ? usd(amount) : inr(Math.round(amount))
+}
+
+export function usdToDisplay(usdAmount, currency = 'INR') {
+  return currency === 'USD' ? usdAmount : Math.round(usdAmount * USD_TO_INR)
+}
+
 export function slugify(s) {
   return (
     s

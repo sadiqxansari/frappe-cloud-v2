@@ -152,19 +152,25 @@
                 <Button variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="openPm" />
               </EmptyState>
 
-              <!-- Billing contact — email & address live with payment methods (#14) -->
+              <!-- Billing contact & tax — email, address and tax details, together (#14) -->
               <div class="mt-4 border-t border-outline-gray-1 pt-4">
                 <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-medium text-ink-gray-7">Billing contact</h3>
-                  <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
+                  <h3 class="text-sm font-medium text-ink-gray-7">Billing contact &amp; tax</h3>
+                  <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact and tax" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
                 </div>
                 <dl class="mt-2 space-y-1.5 text-p-sm">
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-8' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8">{{ taxRegion.country }}</dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">{{ taxRegion.idLabel }}</dt><dd :class="taxMissing ? 'text-ink-amber-8' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
                 </dl>
                 <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-8" @click="openContact">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
                   Invoices are bouncing back — update your billing email.
+                </button>
+                <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openContact">
+                  <span class="lucide-triangle-alert size-3 shrink-0" />
+                  Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
                 </button>
               </div>
             </section>
@@ -229,22 +235,6 @@
                   No earnings yet — they'll appear here once your published apps start earning.
                 </p>
               </template>
-            </section>
-
-            <!-- Tax & compliance -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
-              <div class="flex items-center justify-between">
-                <h2 class="text-base font-semibold text-ink-gray-8">Tax &amp; compliance</h2>
-                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit tax & compliance" @click="openTax"><span class="lucide-pencil size-3.5" /></button>
-              </div>
-              <dl class="mt-3 space-y-1.5 text-p-sm">
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8 text-p-sm">{{ taxRegion.country }}</dd></div>
-                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5 text-p-sm">{{ taxRegion.idLabel }}</dt><dd class="text-p-sm" :class="taxMissing ? 'text-ink-amber-8' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
-              </dl>
-              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openTax">
-                <span class="lucide-triangle-alert size-3 shrink-0" />
-                Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
-              </button>
             </section>
 
             <!-- Stop / resume billing — the single global switch. Suspends every
@@ -480,134 +470,29 @@
       </template>
     </Dialog>
 
-    <!-- Add / update payment method — two steps when billing details are missing -->
-    <Dialog v-model:open="pmOpen" size="md">
-      <template #title>
-        <span class="text-xl font-semibold text-ink-gray-9">{{ pmStep === 1 ? 'Add billing details' : editingPmId ? 'Update payment method' : 'Add payment method' }}</span>
-      </template>
+    <!-- Add / update payment method — the shared billing FTU (also used by the
+         Desk's Frappe Cloud modal). Two steps when billing details are missing. -->
+    <PaymentSetupDialog v-model:open="pmOpen" :editing-pm="editingPm" />
 
-      <!-- Step 1: billing details (only when we don't have them yet) -->
-      <div v-if="pmStep === 1" class="space-y-3">
-        <p class="text-p-sm text-ink-gray-6">These go on every invoice — we'll need them before adding a payment method.</p>
-        <div>
-          <FormControl v-model="pmForm.email" type="text" label="Billing email" placeholder="billing@company.com" />
-          <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ pmContactEmailError }}</p>
-        </div>
-        <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
-      </div>
-
-      <!-- Step 2: the payment method -->
-      <div v-else class="space-y-4">
-        <!-- Type — two selectable cards, not a dropdown. -->
-        <div v-if="!editingPmId" class="grid grid-cols-2 gap-3">
-          <button
-            v-for="opt in [{ value: 'card', label: 'Card', detail: 'Visa, Mastercard, RuPay, Amex', icon: 'lucide-credit-card' }, { value: 'upi', label: 'UPI', detail: 'Pay from any UPI app', icon: 'lucide-smartphone' }]"
-            :key="opt.value"
-            type="button"
-            class="flex items-start gap-2.5 rounded-lg border p-3 text-left transition-colors"
-            :class="pmForm.kind === opt.value ? 'border-outline-gray-4 bg-surface-gray-1 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
-            @click="pmForm.kind = opt.value"
-          >
-            <span class="mt-0.5 size-4 shrink-0 text-ink-gray-6" :class="opt.icon" />
-            <span class="min-w-0">
-              <span class="block text-sm font-medium text-ink-gray-9">{{ opt.label }}</span>
-              <span class="block text-p-xs text-ink-gray-5">{{ opt.detail }}</span>
-            </span>
-          </button>
-        </div>
-
-        <!-- Card details -->
-        <div v-if="pmForm.kind === 'card'" class="space-y-3">
-          <FormControl
-            :modelValue="pmForm.number"
-            type="text"
-            label="Card number"
-            placeholder="1234 1234 1234 1234"
-            inputmode="numeric"
-            autocomplete="cc-number"
-            @update:modelValue="(v) => (pmForm.number = formatCardNumber(v))"
-          >
-            <template v-if="pmCardBrand" #suffix><span class="text-xs font-medium text-ink-gray-5">{{ pmCardBrand }}</span></template>
-          </FormControl>
-          <div class="grid grid-cols-2 gap-3">
-            <FormControl
-              :modelValue="pmForm.expiry"
-              type="text"
-              label="Expiry"
-              placeholder="MM / YY"
-              inputmode="numeric"
-              autocomplete="cc-exp"
-              @update:modelValue="(v) => (pmForm.expiry = formatExpiry(v))"
-            />
-            <FormControl
-              :modelValue="pmForm.cvc"
-              type="text"
-              label="CVC"
-              placeholder="123"
-              inputmode="numeric"
-              autocomplete="cc-csc"
-              @update:modelValue="(v) => (pmForm.cvc = v.replace(/\D/g, '').slice(0, 4))"
-            />
-          </div>
-        </div>
-
-        <!-- UPI details -->
-        <div v-else>
-          <FormControl v-model="pmForm.upi" type="text" label="UPI ID" placeholder="yourname@okhdfc" autocomplete="off" />
-          <p class="mt-1.5 text-p-xs text-ink-gray-5">We'll send a collect request to approve in your UPI app.</p>
-        </div>
-
-        <p class="flex items-center gap-1.5 text-p-xs text-ink-gray-5">
-          <span class="lucide-lock size-3 shrink-0" />
-          Details are encrypted and handled by our payments partner — we never store your full {{ pmForm.kind === 'upi' ? 'UPI ID' : 'card number' }}.
-        </p>
-      </div>
-      <template #actions>
-        <div class="flex justify-end gap-2">
-          <template v-if="pmStep === 1">
-            <Button label="Cancel" @click="pmOpen = false" />
-            <Button variant="solid" label="Next" :disabled="!pmContactValid" @click="pmStep = 2" />
-          </template>
-          <template v-else>
-            <Button :label="pmNeedsContact ? 'Back' : 'Cancel'" @click="pmNeedsContact ? (pmStep = 1) : (pmOpen = false)" />
-            <Button variant="solid" :label="editingPmId ? 'Save' : 'Add payment method'" :disabled="!pmMethodValid" @click="addPm" />
-          </template>
-        </div>
-      </template>
-    </Dialog>
-
-    <!-- Tax & compliance -->
-    <Dialog v-model:open="taxOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Tax &amp; compliance</span></template>
-      <div class="space-y-3">
-        <FormControl v-model="taxForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
-        <div>
-          <FormControl v-model="taxForm.taxValue" type="text" :label="taxFormRegion.idLabel" :placeholder="taxFormRegion.placeholder" />
-          <p v-if="taxForm.taxValue && taxFormError" class="mt-1 text-p-xs text-ink-red-8">{{ taxFormError }}</p>
-        </div>
-      </div>
-      <template #actions>
-        <div class="flex justify-end gap-2">
-          <Button label="Cancel" @click="taxOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!!taxFormError" @click="saveTax" />
-        </div>
-      </template>
-    </Dialog>
-
-    <!-- Billing contact — email & address (paired with payment methods) -->
+    <!-- Billing contact & tax — email, address and tax details in one place -->
     <Dialog v-model:open="contactOpen" size="md">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Billing contact</span></template>
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Billing contact &amp; tax</span></template>
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
           <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ billingEmailError }}</p>
         </div>
         <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
+        <FormControl v-model="details.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
+        <div>
+          <FormControl v-model="details.taxValue" type="text" :label="detailsTaxRegion.idLabel" :placeholder="detailsTaxRegion.placeholder" />
+          <p v-if="details.taxValue && detailsTaxError" class="mt-1 text-p-xs text-ink-red-8">{{ detailsTaxError }}</p>
+        </div>
       </div>
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="contactOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!!billingEmailError" @click="saveDetails(() => (contactOpen = false))" />
+          <Button variant="solid" label="Save" :disabled="!!billingEmailError || !!detailsTaxError" @click="saveDetails(() => (contactOpen = false))" />
         </div>
       </template>
     </Dialog>
@@ -684,6 +569,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
+import PaymentSetupDialog from '../../components/PaymentSetupDialog.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
@@ -844,86 +730,18 @@ function resumeBilling() {
 }
 
 
-// — Payment methods
+// — Payment methods. The add/update flow lives in the shared PaymentSetupDialog
+// (also used by the Desk's FC modal); here we just open it with the right intent.
 const pmOpen = ref(false)
-const pmForm = reactive({ kind: 'card', number: '', expiry: '', cvc: '', upi: '', email: '', address: '' })
-const editingPmId = ref(null) // null = adding; otherwise updating that method
-// We can't issue invoices without billing details, so when they're missing the
-// dialog opens on a first step that collects them before the payment method.
-const pmNeedsContact = ref(false)
-const pmStep = ref(1) // 1 = billing details, 2 = payment method
-
-function resetPmForm() {
-  pmForm.kind = 'card'
-  pmForm.number = ''
-  pmForm.expiry = ''
-  pmForm.cvc = ''
-  pmForm.upi = ''
-  pmForm.email = store.billingProfile.billingEmail || ''
-  pmForm.address = store.billingProfile.address || ''
-}
+const editingPm = ref(null) // the method being updated, or null when adding
 function openPm() {
-  editingPmId.value = null
-  resetPmForm()
-  pmNeedsContact.value = !store.billingProfile.billingEmail || !store.billingProfile.address
-  pmStep.value = pmNeedsContact.value ? 1 : 2
+  editingPm.value = null
   pmOpen.value = true
 }
 // "Update" on a declined/expired method — re-enter details to fix it.
 function updatePm(pm) {
-  editingPmId.value = pm.id
-  resetPmForm()
-  pmForm.kind = pm.kind
-  pmNeedsContact.value = false // editing a method never blocks on contact details
-  pmStep.value = 2
+  editingPm.value = pm
   pmOpen.value = true
-}
-
-// Card formatting & brand — light, realistic touches.
-function formatCardNumber(v) {
-  return v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
-}
-function formatExpiry(v) {
-  const d = v.replace(/\D/g, '').slice(0, 4)
-  return d.length >= 3 ? `${d.slice(0, 2)}/${d.slice(2)}` : d
-}
-const pmCardDigits = computed(() => pmForm.number.replace(/\D/g, ''))
-const pmCardBrand = computed(() => {
-  const n = pmCardDigits.value
-  if (/^4/.test(n)) return 'Visa'
-  if (/^(5[1-5]|2[2-7])/.test(n)) return 'Mastercard'
-  if (/^3[47]/.test(n)) return 'Amex'
-  if (/^(60|65|81|82|508)/.test(n)) return 'RuPay'
-  return ''
-})
-
-// Validity — enough to feel real without faking a real gateway.
-const pmContactEmailError = computed(() => validateEmail(pmForm.email, { required: true }))
-const pmContactValid = computed(() => !pmNeedsContact.value || (!pmContactEmailError.value && !!pmForm.address.trim()))
-const pmMethodValid = computed(() => {
-  if (pmForm.kind === 'upi') return /^[\w.-]+@[a-z]{2,}$/i.test(pmForm.upi.trim())
-  const expOk = /^\d{2}\/\d{2}$/.test(pmForm.expiry) && Number(pmForm.expiry.slice(0, 2)) >= 1 && Number(pmForm.expiry.slice(0, 2)) <= 12
-  return pmCardDigits.value.length >= 13 && expOk && pmForm.cvc.length >= 3
-})
-const pmValid = computed(() => pmMethodValid.value && pmContactValid.value)
-
-function addPm() {
-  if (!pmValid.value) return
-  // Save any newly-collected billing details alongside the method.
-  if (pmNeedsContact.value) {
-    store.setBillingProfile({ billingEmail: pmForm.email.trim(), address: pmForm.address.trim(), emailBounced: false })
-  }
-  const isUpi = pmForm.kind === 'upi'
-  const detail = isUpi ? pmForm.upi.trim() : `•••• ${pmCardDigits.value.slice(-4)}`
-  if (editingPmId.value) {
-    store.updatePaymentMethod(editingPmId.value, { detail, status: null, ...(isUpi ? {} : { expiry: pmForm.expiry }) })
-    toast.success('Payment method updated')
-  } else {
-    const label = isUpi ? 'UPI' : pmCardBrand.value || 'Card'
-    store.addPaymentMethod({ kind: pmForm.kind, label, detail, ...(isUpi ? {} : { expiry: pmForm.expiry }) })
-    toast.success('Payment method added')
-  }
-  pmOpen.value = false
 }
 function pmMenu(pm) {
   const opts = []
@@ -987,35 +805,22 @@ function requestPayout() {
   toast.success('Payout requested')
 }
 
-// — Tax & compliance
+// — Tax region label (shown with the billing contact; edited in that dialog).
 const taxRegion = computed(() => taxRegionByCode(store.billingProfile.taxRegion))
-const taxOpen = ref(false)
-const taxForm = reactive({ taxRegion: 'IN', taxValue: '' })
-const taxFormRegion = computed(() => taxRegionByCode(taxForm.taxRegion))
-const taxFormError = computed(() => validateTaxId(taxForm.taxRegion, taxForm.taxValue, { required: taxForm.taxRegion !== 'US' }))
-function openTax() {
-  taxForm.taxRegion = store.billingProfile.taxRegion || 'IN'
-  taxForm.taxValue = store.billingProfile.taxValue || ''
-  taxOpen.value = true
-}
-function saveTax() {
-  if (taxFormError.value) return
-  store.setBillingProfile({ taxRegion: taxForm.taxRegion, taxValue: taxForm.taxValue })
-  toast.success('Tax details saved')
-  taxOpen.value = false
-}
 
 // — Billing contact & invoice settings. Split into two dialogs (#14) — email &
 // address sit with payment methods; recipient & language sit with invoices — but
 // both edit the same billing profile, so they share one form object.
 const contactOpen = ref(false)
 const invoiceSettingsOpen = ref(false)
-const details = reactive({ address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en' })
+const details = reactive({ address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en', taxRegion: 'IN', taxValue: '' })
 function loadDetails() {
   details.address = store.billingProfile.address
   details.billingEmail = store.billingProfile.billingEmail
   details.invoiceRecipient = store.billingProfile.invoiceRecipient
   details.invoiceLanguage = store.billingProfile.invoiceLanguage
+  details.taxRegion = store.billingProfile.taxRegion || 'IN'
+  details.taxValue = store.billingProfile.taxValue || ''
 }
 function openContact() {
   loadDetails()
@@ -1027,8 +832,10 @@ function openInvoiceSettings() {
 }
 const billingEmailError = computed(() => validateEmail(details.billingEmail, { required: true }))
 const recipientError = computed(() => validateEmail(details.invoiceRecipient))
+const detailsTaxRegion = computed(() => taxRegionByCode(details.taxRegion))
+const detailsTaxError = computed(() => validateTaxId(details.taxRegion, details.taxValue, { required: details.taxRegion !== 'US' }))
 function saveDetails(done) {
-  if (billingEmailError.value || recipientError.value) return
+  if (billingEmailError.value || recipientError.value || detailsTaxError.value) return
   store.setBillingProfile({ ...details, emailBounced: false })
   toast.success('Billing details saved')
   done?.()

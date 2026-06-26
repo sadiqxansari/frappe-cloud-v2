@@ -120,10 +120,16 @@
         <Breadcrumbs v-if="crumbs?.length" :items="crumbs" class="min-w-0" />
         <div v-else />
         <div class="flex shrink-0 items-center gap-2">
-          <!-- Server patch update — a quiet button in the navbar (issue #24) -->
-          <Tooltip v-if="updateAvailable" :text="`Frappe ${latestBuild} available`">
-            <Button variant="outline" size="sm" label="Update" icon-left="lucide-arrow-up-circle" @click="updateOpen = true" />
-          </Tooltip>
+          <!-- One global update button: Frappe build + every site's apps, in one
+               place with two states; primary when there's something to do, quiet
+               on the sites pages where rows show their own cues (issue #42). -->
+          <Button
+            size="sm"
+            :variant="updateVariant"
+            :label="updateLabel"
+            icon-left="lucide-circle-arrow-up"
+            @click="updateOpen = true"
+          />
           <button
             v-if="showCredit"
             class="hidden items-center gap-1.5 rounded-full border px-3 py-1 text-sm sm:flex"
@@ -157,7 +163,6 @@ import ProfileDialog from './ProfileDialog.vue'
 import SystemInfoDialog from './SystemInfoDialog.vue'
 import ServerSettingsDialog from './ServerSettingsDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
-import { latestBuildFor } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -193,8 +198,24 @@ const showCredit = computed(() => store.isTrial || store.creditExpired)
 
 // Patch update available within the server's current major (issue #24).
 const updateOpen = ref(false)
-const latestBuild = computed(() => latestBuildFor(server.value?.version))
-const updateAvailable = computed(() => !!server.value && server.value.build !== latestBuild.value)
+// One global app-updates affordance across every site on the server (#42).
+const appUpdateCount = computed(() => {
+  let n = 0
+  for (const s of server.value?.sites || []) for (const a of s.apps) if (store.appUpdate(a)) n++
+  return n
+})
+const hasUpdates = computed(() => appUpdateCount.value > 0)
+const scheduledUpdate = computed(() => server.value?.scheduledUpdate || null)
+// On the sites pages the global button stays quiet — site rows carry their own cues.
+const siteContext = computed(() => ['server-overview', 'site-detail'].includes(route.name))
+const updateLabel = computed(() =>
+  scheduledUpdate.value ? 'Update scheduled' : hasUpdates.value ? 'Updates available' : 'Check for updates',
+)
+const updateVariant = computed(() => {
+  if (scheduledUpdate.value) return 'subtle'
+  if (hasUpdates.value) return siteContext.value ? 'outline' : 'solid'
+  return 'outline'
+})
 
 const base = computed(() => `/manage/${server.value?.id}`)
 const items = computed(() => {
@@ -254,8 +275,10 @@ const serverMenu = computed(() => [
     //   // Widen the menu to at least the sidebar width (issue: dropdown felt cramped).
     //   label: () => h('span', { class: 'block min-w-[12rem]' }, 'Central'),
     // },
-    // Central is its own workspace — open it in a new tab.
-    onClick: () => window.open('/servers', '_blank', 'noopener'),
+    // Same-window nav so any return context survives (Desk → Server → Central
+    // all keep the "← Back" bar). New tabs have no "back" — that stranded
+    // single-server owners in the console we were sparing them.
+    onClick: () => router.push('/servers'),
   },
   {
     label: 'Settings',
