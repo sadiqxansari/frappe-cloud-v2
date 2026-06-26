@@ -139,11 +139,12 @@
 
         <!-- Billing — plan, cost, balance, payment method; full management in Central. -->
         <section v-else-if="active === 'Billing'" class="space-y-4">
-          <!-- Plan + change. "Change plan" opens the server's plan options. -->
+          <!-- Plan + specs + change. "Change plan" opens the server's plan options. -->
           <div class="flex items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
             <div class="min-w-0">
               <div class="text-p-xs text-ink-gray-5">Plan</div>
               <div class="truncate font-medium text-ink-gray-8">{{ planName }}</div>
+              <div v-if="planSpecs" class="mt-0.5 truncate text-p-xs text-ink-gray-5">{{ planSpecs.compute }} compute · {{ planSpecs.database }} DB · {{ planSpecs.disk }} disk</div>
             </div>
             <Button variant="subtle" size="sm" label="Change plan" @click="upgrade" />
           </div>
@@ -385,6 +386,7 @@ function updateAll() {
 // — Server health: surfaced in Advanced only when it's close to its limits.
 const health = computed(() => store.healthOf(server.value))
 const planName = computed(() => planById(server.value?.planId)?.name || '')
+const planSpecs = computed(() => planById(server.value?.planId)?.specs || null)
 const meters = computed(() => {
   const h = health.value
   return [
