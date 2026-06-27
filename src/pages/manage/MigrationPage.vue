@@ -1,7 +1,7 @@
 <template>
   <div v-if="server && server.migration" class="flex h-screen overflow-hidden bg-surface-elevation-1">
     <!-- Left: details -->
-    <section class="flex w-[42rem] shrink-0 flex-col overflow-y-auto border-r border-outline-gray-1">
+    <section class="flex w-[42rem] shrink-0 flex-col overflow-y-auto border-r border-outline-alpha-gray-1">
       <div class="p-6">
         <!-- Header with inline controls -->
         <div class="flex items-start justify-between gap-4">

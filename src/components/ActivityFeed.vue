@@ -1,5 +1,5 @@
 <template>
-  <div v-if="shown.length" class="divide-y divide-outline-gray-1">
+  <div v-if="shown.length" class="divide-y divide-outline-alpha-gray-1">
     <div v-for="e in shown" :key="e.id" class="py-1">
       <component
         :is="e.detail ? 'button' : 'div'"

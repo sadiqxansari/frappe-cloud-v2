@@ -61,7 +61,7 @@
         </div>
 
         <!-- Footer — say who owns these, and where to actually change them -->
-        <p class="border-t border-outline-gray-1 px-5 py-3 text-p-xs text-ink-gray-5">
+        <p class="border-t border-outline-alpha-gray-1 px-5 py-3 text-p-xs text-ink-gray-5">
           Frappe Cloud keeps these tuned for you, so there's nothing to set here. To move to a newer
           Frappe version, go to <span class="font-medium text-ink-gray-7">Settings → Change version</span>;
           for more disk, change your plan.
@@ -126,7 +126,7 @@ function copy(text) {
 // Local row helpers keep the template scannable. A label/value line, plus a
 // copy button that only appears on hover for the copyable facts.
 const Section = (sectionProps, { slots }) =>
-  h('div', { class: 'border-t border-outline-gray-1 py-2 first:border-t-0' }, [
+  h('div', { class: 'border-t border-outline-alpha-gray-1 py-2 first:border-t-0' }, [
     h('div', { class: 'pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4' }, sectionProps.title),
     slots.default?.(),
   ])

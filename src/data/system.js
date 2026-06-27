@@ -65,16 +65,58 @@ export function logLines(file) {
   return lines
 }
 
-export const DB_STATS = {
-  size: '624 MB',
-  tables: 412,
-  connections: 3,
-  processList: [
-    { id: 4112, query: 'SELECT name FROM tabSales Invoice WHERE…', time: '0.02s' },
-    { id: 4108, query: 'UPDATE tabSingles SET value = …', time: '0.01s' },
-    { id: 4101, query: 'Sleep', time: '4s' },
+// The Database Analyzer is per-site (each site is one database), modelled on
+// Frappe Cloud's DB Analyzer: a size breakup you can act on (reclaim space),
+// plus the diagnostics a developer reaches for — processes, locks, slow
+// queries, indexes. Sizes are in MB unless noted; freeGb is the host's free disk.
+export const DB_ANALYZER = {
+  // The database file is data + index + claimable (allocated-but-unused space
+  // left by deleted/updated rows). Free disk is host-level context.
+  size: { dataMb: 412, indexMb: 96, claimableMb: 64, freeGb: 500 },
+  // Biggest tables — the "View details / Optimize tables" target.
+  tables: [
+    { name: 'tabVersion', rows: 1284530, dataMb: 168, indexMb: 34, claimableMb: 38 },
+    { name: 'tabGL Entry', rows: 842110, dataMb: 96, indexMb: 28, claimableMb: 14 },
+    { name: 'tabError Log', rows: 233901, dataMb: 54, indexMb: 6, claimableMb: 9 },
+    { name: 'tabActivity Log', rows: 190222, dataMb: 38, indexMb: 8, claimableMb: 2 },
+    { name: 'tabSales Invoice', rows: 41233, dataMb: 22, indexMb: 14, claimableMb: 1 },
+  ],
+  // Live process list (MariaDB SHOW PROCESSLIST), the killable connections.
+  processes: [
+    { id: 4112, user: 'frappe', command: 'Query', time: '0.02s', state: 'Sending data', info: 'SELECT name FROM `tabSales Invoice` WHERE docstatus = 1 …' },
+    { id: 4108, user: 'frappe', command: 'Query', time: '0.01s', state: 'updating', info: 'UPDATE `tabSingles` SET value = … WHERE …' },
+    { id: 4101, user: 'frappe', command: 'Sleep', time: '4s', state: '', info: '' },
+    { id: 4088, user: 'frappe', command: 'Query', time: '12s', state: 'Sending data', info: 'SELECT * FROM `tabGL Entry` WHERE account LIKE … ORDER BY posting_date' },
+  ],
+  // Lock waits — one transaction blocked behind another.
+  locks: [
+    { waitingId: 4088, waitingQuery: 'UPDATE `tabStock Ledger Entry` SET qty_after_transaction = …', blockingId: 4101, blockingQuery: 'SELECT … FROM `tabBin` FOR UPDATE', waitedFor: '8s' },
+  ],
+  // Concerning queries (digest), worst total time first.
+  slowQueries: [
+    { digest: 'SELECT … FROM `tabGL Entry` WHERE `account` LIKE ?', calls: 18422, avgMs: 842, rowsAvg: 5120, totalSec: 15514 },
+    { digest: 'SELECT … FROM `tabVersion` WHERE `ref_doctype` = ? ORDER BY `creation` DESC', calls: 9233, avgMs: 412, rowsAvg: 1, totalSec: 3804 },
+    { digest: 'SELECT COUNT(*) FROM `tabError Log`', calls: 2201, avgMs: 311, rowsAvg: 1, totalSec: 684 },
+  ],
+  // Indexes worth adding (cause full scans) and ones never used (pure overhead).
+  suggestedIndexes: [
+    { table: 'tabGL Entry', columns: ['account', 'posting_date'], reason: 'Filtered 18k times with no covering index', estGainPct: 74 },
+    { table: 'tabSales Invoice', columns: ['customer', 'status'], reason: 'Frequent filter, full scans observed', estGainPct: 38 },
+  ],
+  unusedIndexes: [
+    { table: 'tabActivity Log', name: 'owner_creation_idx', sizeMb: 8, lastUsed: 'never' },
   ],
 }
+
+// Sample schema for the SQL Playground's table browser — enough to write a query
+// against without leaving the page.
+export const DB_TABLES = [
+  { name: 'tabUser', columns: ['name', 'email', 'enabled', 'creation', 'modified'] },
+  { name: 'tabSales Invoice', columns: ['name', 'customer', 'grand_total', 'status', 'posting_date'] },
+  { name: 'tabGL Entry', columns: ['name', 'account', 'debit', 'credit', 'posting_date'] },
+  { name: 'tabItem', columns: ['name', 'item_name', 'item_group', 'stock_uom'] },
+  { name: 'tabVersion', columns: ['name', 'ref_doctype', 'docname', 'data', 'creation'] },
+]
 
 // Background jobs (the "Tasks" dev-tools page). Mirrors Frappe Cloud's agent
 // job history: each run has a type, an outcome, when it ran, how long it took,

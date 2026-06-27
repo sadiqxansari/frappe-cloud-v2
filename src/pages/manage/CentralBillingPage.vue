@@ -10,62 +10,25 @@
             <p class="mt-1 text-p-base text-ink-gray-5">One account funds every server.</p>
           </div>
 
-          <Alert v-if="store.creditExpired" theme="red" class="mt-5" title="Your credit ran out, so your sites are paused" :dismissible="false">
-            <template #description>Add a card to bring them back — nothing was deleted.</template>
-            <template #footer><Button variant="solid" size="sm" label="Add a card" @click="addCardOpen = true" /></template>
-          </Alert>
-
-          <!-- Dunning — an unpaid/overdue invoice is the single most urgent thing
-               here. Settlement is wallet-first, so the lead fix is topping up
-               credit; a declined card (if that's the cause) gets its own alert. -->
-          <Alert v-if="overdueInvoice" theme="red" class="mt-5" :title="`Invoice ${overdueInvoice.number} is overdue`" :dismissible="false">
-            <template #description>
-              {{ inr(total(overdueInvoice)) }} wasn't covered by your wallet credit. Add credit to settle it and avoid suspension.
-            </template>
-            <template #footer>
-              <div class="flex gap-2">
-                <Button variant="solid" size="sm" label="Add credit" @click="creditOpen = true" />
-                <Button variant="outline" size="sm" label="View invoice" @click="openPanel = { type: 'invoice', data: overdueInvoice }" />
-              </div>
-            </template>
-          </Alert>
-
-          <!-- Primary declined but a backup still works → nothing actually broke.
-               We charged the backup; this is just a nudge to fix the primary.
-               Independent v-if (not else-if) so it isn't hidden by other alerts. -->
-          <Alert v-if="declinedPrimary && backupMethod" theme="blue" class="mt-5" title="Primary payment method declined" :dismissible="false">
-            <template #description>
-              {{ declinedPrimary.label }} {{ declinedPrimary.detail }} was declined, so we charged your backup {{ backupMethod.label }} instead. Update it when you can.
-            </template>
-            <template #footer><Button variant="outline" size="sm" label="Update payment method" @click="openPm" /></template>
-          </Alert>
-
-          <!-- Nothing on file can be charged → auto-recharge is blocked and
-               servers will be suspended. This is the real emergency. -->
-          <Alert v-if="noWorkingMethod" theme="red" class="mt-5" title="No working payment method" :dismissible="false">
-            <template #description>
-              Every method was declined. Add a working one to avoid suspension.
-            </template>
-            <template #footer><Button variant="solid" size="sm" label="Update payment method" @click="openPm" /></template>
-          </Alert>
-
-          <!-- The budget alert has been crossed — surface it, with a fix path. -->
-          <Alert v-if="budgetCrossed" theme="yellow" class="mt-5" :title="`This cycle is over your ${inr(store.budgetAlert)} budget alert`" :dismissible="true">
-            <template #description>
-              This cycle's estimate is {{ inr(store.estimatedThisCycle) }} — {{ inr(budgetOverBy) }} over the alert you set. Pause or resize a server to bring it down, or raise the threshold.
-            </template>
-            <template #footer><div class="col-start-2"><Button variant="outline" size="sm" label="Adjust alert" @click="openBudget" /></div></template>
-          </Alert>
+          <!-- Only ever one banner: the single most urgent payment problem (see
+               billingBanner). The budget warning lives inline on the Estimated
+               card below — no stacking. -->
+          <Alert
+            v-if="billingBanner"
+            :key="billingBanner.key"
+            :theme="billingBanner.theme"
+            :title="billingBanner.title"
+            :description="billingBanner.description"
+            :action="billingBanner.action"
+            class="mt-5"
+          />
 
           <div class="mt-5 space-y-5">
             <!-- What it'll cost + what funds it -->
             <div class="grid gap-4 sm:grid-cols-2">
               <!-- Estimated this cycle -->
-              <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
-                  <Button variant="ghost" size="xs" class="-mr-1 shrink-0" :class="budgetCrossed ? '!text-ink-red-8' : store.budgetAlert ? '!text-ink-amber-8' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
-                </div>
+              <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+                <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
                 <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                   <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
@@ -74,10 +37,21 @@
                     {{ Math.abs(store.estimateDeltaPct) }}% vs last month
                   </span>
                 </div>
+                <!-- Budget alert pinned to the bottom, mirroring the wallet card's row -->
+                <div class="mt-auto border-t border-outline-alpha-gray-1 pt-5">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
+                      <span class="lucide-bell size-3.5 shrink-0" :class="budgetCrossed ? 'text-ink-red-8' : budgetNear ? 'text-ink-amber-8' : 'text-ink-gray-4'" />
+                      Budget alert
+                    </span>
+                    <Button variant="subtle" size="sm" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
+                  </div>
+                </div>
               </section>
 
-              <!-- Wallet — the title and chevron open the history panel (no longer
-                   a whole-tile button, so the "Add" inside isn't a nested control). -->
+              <!-- Wallet — the title and chevron open the history panel. Add credit
+                   sits with the balance; auto-recharge is a real toggle here (its
+                   threshold edit still lives in the panel). -->
               <div
                 class="flex flex-col rounded-xl border bg-surface-elevation-1 p-5 transition-colors"
                 :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
@@ -93,19 +67,24 @@
                     <span class="lucide-chevron-right size-4" />
                   </button>
                 </div>
-                <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</div>
-                <!-- Auto-recharge status sits next to Add at the bottom; full
-                     controls live in the panel. -->
-                <div class="mt-auto flex items-end justify-between gap-2 pt-3">
-                  <button class="flex min-w-0 items-center gap-1.5 text-xs transition-colors hover:text-ink-gray-8" :class="store.autoRecharge ? 'text-ink-gray-6' : 'text-ink-gray-5'" @click="openPanel = { type: 'wallet' }">
-                    <span class="lucide-zap size-3 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
-                    <span class="truncate">{{ store.autoRecharge ? 'Auto-recharge on' : 'Auto-recharge off' }}</span>
-                  </button>
-                  <Button variant="subtle" size="sm" label="Add" icon-left="lucide-plus" @click="creditOpen = true" />
+                <!-- Balance + Add credit, paired -->
+                <div class="mt-1 mb-5 flex items-center justify-between gap-2">
+                  <span class="text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</span>
+                  <Button variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
                 </div>
-                <button v-if="store.autoRecharge" class="mt-1 text-left text-xs text-ink-gray-5 transition-colors hover:text-ink-gray-8" @click="openPanel = { type: 'wallet' }">
-                  Below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}
-                </button>
+                <!-- Auto-recharge — the safety toggle, on its own row with room to breathe -->
+                <div class="mt-auto border-t border-outline-alpha-gray-1 pt-5">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
+                      <span class="lucide-zap size-3.5 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
+                      Auto-recharge
+                    </span>
+                    <Switch :modelValue="store.autoRecharge" @update:modelValue="store.setAutoRecharge" />
+                  </div>
+                  <button v-if="store.autoRecharge" class="mt-1 text-left text-xs text-ink-gray-5 transition-colors hover:text-ink-gray-8" @click="openRecharge">
+                    Below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}
+                  </button>
+                </div>
                 <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-p-xs text-ink-amber-8">
                   <span class="lucide-triangle-alert size-3 shrink-0" />
                   Won't cover the {{ inr(store.estimatedThisCycle) }} invoice.
@@ -125,7 +104,7 @@
                 <Button variant="ghost" size="sm" icon="lucide-plus" :aria-label="store.paymentMethods.length ? 'Add backup method' : 'Add payment method'" @click="openPm" />
               </div>
 
-              <div v-if="store.paymentMethods.length" class="mt-2 divide-y divide-outline-gray-1">
+              <div v-if="store.paymentMethods.length" class="mt-2 divide-y divide-outline-alpha-gray-1">
                 <div v-for="pm in store.paymentMethods" :key="pm.id" class="flex items-center gap-3 py-2.5">
                   <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-gray-2 text-ink-gray-6">
                     <span class="size-4" :class="pm.kind === 'upi' ? 'lucide-smartphone' : 'lucide-credit-card'" />
@@ -151,34 +130,35 @@
               >
                 <Button variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="openPm" />
               </EmptyState>
+            </section>
 
-              <!-- Billing contact & tax — email, address and tax details, together (#14) -->
-              <div class="mt-4 border-t border-outline-gray-1 pt-4">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-medium text-ink-gray-7">Billing contact &amp; tax</h3>
-                  <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact and tax" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
-                </div>
-                <dl class="mt-2 space-y-1.5 text-p-sm">
-                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-8' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
-                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
-                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8">{{ taxRegion.country }}</dd></div>
-                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">{{ taxRegion.idLabel }}</dt><dd :class="taxMissing ? 'text-ink-amber-8' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
-                </dl>
-                <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-8" @click="openContact">
-                  <span class="lucide-triangle-alert size-3 shrink-0" />
-                  Invoices are bouncing back — update your billing email.
-                </button>
-                <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openContact">
-                  <span class="lucide-triangle-alert size-3 shrink-0" />
-                  Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
-                </button>
+            <!-- Billing contact & tax — its own card; email, address and tax
+                 details together (#14). -->
+            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+              <div class="flex items-center justify-between">
+                <h2 class="text-base font-semibold text-ink-gray-8">Billing contact &amp; tax</h2>
+                <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact and tax" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
               </div>
+              <dl class="mt-2 space-y-1.5 text-p-sm">
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing email</dt><dd :class="store.billingProfile.emailBounced ? 'text-ink-red-8' : 'text-ink-gray-8'">{{ store.billingProfile.billingEmail || 'Not added' }}{{ store.billingProfile.emailBounced ? ' · bouncing' : '' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Billing address</dt><dd class="max-w-[60%] truncate text-ink-gray-8">{{ store.billingProfile.address || 'Not added' }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Tax region</dt><dd class="text-ink-gray-8">{{ taxRegion.country }}</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">{{ taxRegion.idLabel }}</dt><dd :class="taxMissing ? 'text-ink-amber-8' : 'text-ink-gray-8'">{{ store.billingProfile.taxValue || 'Not added' }}</dd></div>
+              </dl>
+              <button v-if="store.billingProfile.emailBounced" class="mt-2 flex items-center gap-1 text-xs text-ink-red-8 transition-colors hover:text-ink-red-8" @click="openContact">
+                <span class="lucide-triangle-alert size-3 shrink-0" />
+                Invoices are bouncing back — update your billing email.
+              </button>
+              <button v-if="taxMissing" class="mt-2 flex items-center gap-1 text-xs text-ink-amber-8 transition-colors hover:text-ink-amber-4" @click="openContact">
+                <span class="lucide-triangle-alert size-3 shrink-0" />
+                Add your {{ taxRegion.idLabel }} to make invoices tax-compliant.
+              </button>
             </section>
 
             <!-- Subscriptions (one per server) -->
             <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
               <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
-              <div class="mt-2 divide-y divide-outline-gray-1">
+              <div class="mt-2 divide-y divide-outline-alpha-gray-1">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
                   <button class="group flex min-w-0 items-start gap-2.5 text-left" @click="goServer(srv.id)">
                     <span class="lucide-server mt-1 size-4 shrink-0 text-ink-gray-5" />
@@ -296,7 +276,7 @@
             </div>
           </div>
 
-          <div v-if="store.invoices.length" class="mt-3 divide-y divide-outline-gray-1">
+          <div v-if="store.invoices.length" class="mt-3 divide-y divide-outline-alpha-gray-1">
             <button
               v-for="inv in filteredInvoices"
               :key="inv.number"
@@ -361,10 +341,10 @@
               </div>
 
               <div class="overflow-hidden rounded-lg border border-outline-gray-2">
-                <div class="flex items-center justify-between gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
+                <div class="flex items-center justify-between gap-3 border-b border-outline-alpha-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
                   <span>Item</span><span>Amount</span>
                 </div>
-                <div v-for="(it, i) in openPanel.data.items" :key="i" class="flex items-center justify-between gap-3 border-b border-outline-gray-1 px-3 py-2.5 text-sm last:border-b-0">
+                <div v-for="(it, i) in openPanel.data.items" :key="i" class="flex items-center justify-between gap-3 border-b border-outline-alpha-gray-1 px-3 py-2.5 text-sm last:border-b-0">
                   <div class="min-w-0">
                     <div class="truncate text-ink-gray-7">{{ it.label }}</div>
                     <div class="text-p-sm text-ink-gray-5">{{ it.plan }} · {{ it.days }} × {{ inr(it.perDay) }}/day</div>
@@ -377,7 +357,7 @@
                 <div class="flex justify-between"><dt class="text-ink-gray-5">Subtotal</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(subtotal(openPanel.data)) }}</dd></div>
                 <div class="flex justify-between"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openPanel.data)) }}</dd></div>
                 <div v-if="openPanel.data.credits" class="flex justify-between"><dt class="text-ink-green-6">Credits applied</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(openPanel.data.credits) }}</dd></div>
-                <div class="flex justify-between border-t border-outline-gray-1 pt-1.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data)) }}</dd></div>
+                <div class="flex justify-between border-t border-outline-alpha-gray-1 pt-1.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data)) }}</dd></div>
                 <!-- Wallet credit is auto-applied on payment, so preview it here. -->
                 <template v-if="openPanel.data.status === 'Unpaid' && walletApplyPreview > 0">
                   <div class="flex justify-between"><dt class="text-ink-green-6">Wallet credit (applied on payment)</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(walletApplyPreview) }}</dd></div>
@@ -407,8 +387,27 @@
               </button>
             </div>
 
+            <!-- Auto-recharge sits up top, right under the balance — it's the
+                 safety setting that keeps the wallet from running dry, not a
+                 footnote below the history. -->
+            <div class="space-y-2 border-b border-outline-gray-2 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-ink-gray-8">Auto-recharge</div>
+                  <div class="text-xs text-ink-gray-5">
+                    <template v-if="store.autoRecharge">
+                      When your wallet drops below {{ inr(store.rechargeThreshold) }}, we add {{ inr(store.rechargeAmount) }} from your primary method.
+                    </template>
+                    <template v-else>Top up automatically when your wallet runs low.</template>
+                  </div>
+                </div>
+                <Switch :modelValue="store.autoRecharge" @update:modelValue="store.setAutoRecharge" />
+              </div>
+              <Button v-if="store.autoRecharge" variant="ghost" size="xs" class="-ml-1.5" label="Edit threshold & amount" @click="openRecharge" />
+            </div>
+
             <div class="flex-1 overflow-y-auto p-4">
-              <div v-if="store.walletHistory.length" class="divide-y divide-outline-gray-1">
+              <div v-if="store.walletHistory.length" class="divide-y divide-outline-alpha-gray-1">
                 <div v-for="tx in store.walletHistory" :key="tx.id" class="flex items-center justify-between gap-3 py-2.5">
                   <div class="flex min-w-0 items-center gap-2.5">
                     <span class="grid size-7 shrink-0 place-items-center rounded-full" :class="tx.amount >= 0 ? 'bg-surface-green-2 text-ink-green-6' : 'bg-surface-gray-2 text-ink-gray-6'">
@@ -432,20 +431,7 @@
               />
             </div>
 
-            <div class="space-y-3 border-t border-outline-gray-2 p-4">
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <div class="text-sm font-medium text-ink-gray-8">Auto-recharge</div>
-                  <div class="text-xs text-ink-gray-5">
-                    <template v-if="store.autoRecharge">
-                      When your wallet drops below {{ inr(store.rechargeThreshold) }}, we add {{ inr(store.rechargeAmount) }} from your primary method.
-                    </template>
-                    <template v-else>Top up automatically when your wallet runs low.</template>
-                  </div>
-                </div>
-                <Switch :modelValue="store.autoRecharge" @update:modelValue="store.setAutoRecharge" />
-              </div>
-              <Button v-if="store.autoRecharge" variant="ghost" size="xs" class="-ml-1.5" label="Edit threshold & amount" @click="openRecharge" />
+            <div class="border-t border-outline-gray-2 p-4">
               <Button variant="solid" class="w-full" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
             </div>
           </template>
@@ -566,7 +552,8 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Alert, Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
+import Alert from '../../components/Alert.vue'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
 import PaymentSetupDialog from '../../components/PaymentSetupDialog.vue'
@@ -608,7 +595,56 @@ const walletAtRisk = computed(
 const budgetCrossed = computed(
   () => !!store.budgetAlert && store.estimatedThisCycle >= store.budgetAlert,
 )
+// Amber is for "getting close," not "an alert exists" — only warn within 80% of
+// the threshold. Comfortably under (e.g. ₹400 of a ₹20,000 alert) stays neutral.
+const budgetNear = computed(
+  () => !!store.budgetAlert && !budgetCrossed.value && store.estimatedThisCycle >= 0.8 * store.budgetAlert,
+)
 const budgetOverBy = computed(() => Math.max(0, store.estimatedThisCycle - (store.budgetAlert || 0)))
+
+// Stacked banners cause banner-blindness, so we never show more than one. The
+// payment problems are mostly facets of one "we can't charge you" state — we
+// surface only the single most urgent (severity: paused > can't-charge >
+// overdue > declined-but-backup-covered). The budget warning is a separate
+// (spend) concern and lives inline on the Estimated-this-cycle card instead.
+const billingBanner = computed(() => {
+  if (store.creditExpired)
+    return {
+      key: 'credit-expired',
+      theme: 'red',
+      title: 'Your credit ran out, so your sites are paused',
+      description: 'Add a card to bring them back — nothing was deleted.',
+      action: { label: 'Add a card', onClick: () => (addCardOpen.value = true) },
+    }
+  if (noWorkingMethod.value)
+    return {
+      key: 'no-method',
+      theme: 'red',
+      title: 'No working payment method',
+      description: 'Every method was declined. Add a working one to avoid suspension.',
+      action: { label: 'Update payment method', onClick: openPm },
+    }
+  if (overdueInvoice.value)
+    return {
+      key: 'overdue',
+      theme: 'red',
+      title: `Invoice ${overdueInvoice.value.number} is overdue`,
+      description: `${inr(total(overdueInvoice.value))} wasn't covered by your wallet credit. Add credit to settle it and avoid suspension.`,
+      action: [
+        { label: 'Add credit', onClick: () => (creditOpen.value = true) },
+        { label: 'View invoice', onClick: () => (openPanel.value = { type: 'invoice', data: overdueInvoice.value }) },
+      ],
+    }
+  if (declinedPrimary.value && backupMethod.value)
+    return {
+      key: 'declined',
+      theme: 'blue',
+      title: 'Primary payment method declined',
+      description: `${declinedPrimary.value.label} ${declinedPrimary.value.detail} was declined, so we charged your backup ${backupMethod.value.label} instead. Update it when you can.`,
+      action: { label: 'Update payment method', onClick: openPm },
+    }
+  return null
+})
 // Every curated region except the US legally expects a tax ID on B2B invoices.
 const taxRequired = computed(() => store.billingProfile.taxRegion !== 'US')
 const taxMissing = computed(() => taxRequired.value && !store.billingProfile.taxValue)

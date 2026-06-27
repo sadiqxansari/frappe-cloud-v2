@@ -4,7 +4,7 @@ import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planBy
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
-import { makeProcesses } from '../data/system'
+import { BACKGROUND_JOBS, makeProcesses } from '../data/system'
 import { fmtDateTime, slugify, usdToDisplay } from '../utils/format'
 
 let n = 1000
@@ -94,7 +94,10 @@ function makeSite(subdomain, appKeys, status = 'live') {
     createdAt: Date.now(),
     status, // 'live' | 'creating' | 'restoring' | 'moving' | 'suspended'
     apps: appKeys.map(makeApp),
-    domains: [], // custom domains; the primary one is `name`
+    domains: [], // custom domains added on top of the default `name` host
+    // The domain shown in the address bar; everything else 301-redirects to it.
+    // `null` means the default `*.frappe.cloud` host is primary.
+    primaryDomain: null,
     config: { maintenance: false, scheduler: true, devMode: false },
     backupSchedule: 'daily', // 'daily' | 'weekly' | 'monthly'
     backups: [], // { id, at, size, kind: 'auto' | 'manual' }
@@ -172,6 +175,10 @@ function baseState() {
     currentTeamId: 'team-1',
     usage: [],
     activity: [], // newest first — humanized history of everything done here
+    // Background jobs shown on the server's Tasks page. Seeded with history;
+    // real actions (install, update, SSL, …) unshift fresh entries via logTask.
+    jobs: BACKGROUND_JOBS.map((j) => ({ ...j, steps: j.steps.map((s) => ({ ...s })) })),
+    jobSeq: 5822, // next job id, continuing the seeded run numbers
     cardOnFile: false,
     // Settlement is automatic, not a user choice: wallet credit is used first
     // (prepaid), and whatever it doesn't cover is charged to the primary method
@@ -663,6 +670,22 @@ export const useCloudStore = defineStore('cloud', {
       return entry.id
     },
 
+    // Record a background job for the Tasks page. Defaults to a single-step
+    // success; pass `steps` for a richer breakdown (the Install/SSL flows do).
+    logTask(name, { site = null, status = 'success', duration = null, steps = null } = {}) {
+      const job = {
+        id: `job-${this.jobSeq++}`,
+        name,
+        site,
+        status,
+        startedMinsAgo: 0,
+        duration,
+        steps: steps || [{ name, status, duration }],
+      }
+      this.jobs.unshift(job)
+      return job.id
+    },
+
     flipActivity(id, { title, status = 'success', detail } = {}) {
       const entry = this.activity.find((e) => e.id === id)
       if (!entry) return
@@ -810,6 +833,16 @@ export const useCloudStore = defineStore('cloud', {
         const app = makeApp(appKey)
         site.apps.push(app)
         this.logActivity(`Installed ${app.name} on ${site.name}`, { tag: 'app' })
+        this.logTask('Install App', {
+          site: site.name,
+          status: 'success',
+          duration: '34s',
+          steps: [
+            { name: 'Resolve app dependencies', status: 'success', duration: '3s' },
+            { name: 'Build assets', status: 'success', duration: '29s' },
+            { name: 'Run migrations', status: 'success', duration: '2s' },
+          ],
+        })
         return app
       }, 1100)
     },
@@ -822,6 +855,7 @@ export const useCloudStore = defineStore('cloud', {
         if (i === -1) return
         const [app] = site.apps.splice(i, 1)
         this.logActivity(`Uninstalled ${app.name} from ${site.name}`, { tag: 'app' })
+        this.logTask('Uninstall App', { site: site.name, status: 'success', duration: '12s' })
       })
     },
 
@@ -848,8 +882,19 @@ export const useCloudStore = defineStore('cloud', {
         const app = site?.apps.find((a) => a.key === appKey)
         const latest = this.appUpdate(app)
         if (!app || !latest) return
+        const from = app.version
         app.version = latest
         this.logActivity(`Updated ${app.name} to ${latest} on ${site.name}`, { tag: 'app' })
+        this.logTask('Update App', {
+          site: site.name,
+          status: 'success',
+          duration: '41s',
+          steps: [
+            { name: `Fetch ${app.name} ${latest}`, status: 'success', duration: '4s' },
+            { name: 'Build assets', status: 'success', duration: '33s' },
+            { name: `Migrate ${from} → ${latest}`, status: 'success', duration: '4s' },
+          ],
+        })
       })
     },
 
@@ -993,12 +1038,52 @@ export const useCloudStore = defineStore('cloud', {
             title: `DNS check failed for ${live.name}`, status: 'failed',
             detail: 'The records still don’t resolve. Double-check them with your DNS provider — changes can take up to an hour.',
           })
+          this.logTask('Verify Domain', {
+            site: live.name, status: 'failed', duration: '6s',
+            steps: [
+              { name: 'Look up DNS records', status: 'success', duration: '1s' },
+              { name: 'Verify records resolve', status: 'failed', duration: '5s' },
+            ],
+          })
         } else {
           live.status = 'active'
           live.ssl = true
           this.flipActivity(actId, { title: `Connected ${live.name}` })
+          this.logTask('Obtain SSL Certificate', {
+            site: live.name, status: 'success', duration: '14s',
+            steps: [
+              { name: 'Verify DNS records', status: 'success', duration: '2s' },
+              { name: 'Request certificate', status: 'success', duration: '9s' },
+              { name: 'Install certificate', status: 'success', duration: '3s' },
+            ],
+          })
         }
       }, 2500)
+    },
+
+    // Promote a connected domain to primary — others 301-redirect to it.
+    // `domainId === null` hands primary back to the default `*.frappe.cloud` host.
+    setPrimaryDomain(siteId, domainId) {
+      const site = this.findSite(siteId)
+      if (!site) return
+      site.primaryDomain = domainId
+      const name = domainId ? site.domains.find((d) => d.id === domainId)?.name : site.name
+      this.logActivity(`Made ${name} the primary domain for ${site.name}`, { tag: 'domain' })
+    },
+
+    // Unlink a custom domain — immediate, like the platforms (Vercel et al.):
+    // the site stops resolving at that address and we drop its SSL. The DNS
+    // records at the user's provider are theirs to clean up. The default
+    // `*.frappe.cloud` host isn't a domain entry, so it can never land here.
+    unlinkDomain(siteId, domainId) {
+      const site = this.findSite(siteId)
+      if (!site) return
+      const i = site.domains.findIndex((d) => d.id === domainId)
+      if (i === -1) return
+      const [d] = site.domains.splice(i, 1)
+      // If the primary was just removed, fall back to the default host.
+      if (site.primaryDomain === domainId) site.primaryDomain = null
+      this.logActivity(`Unlinked ${d.name} from ${site.name}`, { tag: 'domain' })
     },
 
     restartProcess(serverId, name) {

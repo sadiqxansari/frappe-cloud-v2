@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-screen overflow-hidden bg-surface-elevation-1">
     <aside
-      class="relative flex shrink-0 flex-col border-r border-outline-gray-1 bg-surface-sidebar p-2 transition-all duration-300 ease-in-out"
+      class="relative flex shrink-0 flex-col border-r border-outline-alpha-gray-1 bg-surface-sidebar p-2 transition-all duration-300 ease-in-out"
       :class="collapsed ? 'w-14' : 'w-60'"
     >
       <!-- Brand — the server you're managing; the dropdown jumps to Central -->
@@ -116,7 +116,7 @@
         <div v-if="store.busy > 0" class="console-bar absolute inset-y-0 left-0 bg-[var(--ink-gray-8)]" />
       </div>
 
-      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-gray-1 bg-surface-elevation-1 px-4">
+      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-alpha-gray-1 bg-surface-elevation-1 px-4">
         <Breadcrumbs v-if="crumbs?.length" :items="crumbs" class="min-w-0" />
         <div v-else />
         <div class="flex shrink-0 items-center gap-2">
@@ -130,16 +130,6 @@
             icon-left="lucide-circle-arrow-up"
             @click="updateOpen = true"
           />
-          <button
-            v-if="showCredit"
-            class="hidden items-center gap-1.5 rounded-full border px-3 py-1 text-sm sm:flex"
-            :class="store.creditExpired ? 'border-outline-red-1 text-ink-red-8' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
-            @click="router.push('/billing')"
-          >
-            <span class="lucide-zap size-3.5" :class="store.creditExpired ? 'text-ink-red-8' : 'text-ink-amber-8'" />
-            <span class="font-medium" :class="store.creditExpired ? 'text-ink-red-8' : 'text-ink-gray-8'">{{ usd(store.accountCredit) }}</span>
-            <span :class="store.creditExpired ? 'text-ink-red-8' : 'text-ink-gray-5'">credit</span>
-          </button>
           <!-- Primary action sits right-most. -->
           <slot name="actions" />
         </div>
@@ -164,7 +154,6 @@ import SystemInfoDialog from './SystemInfoDialog.vue'
 import ServerSettingsDialog from './ServerSettingsDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
 import { useCloudStore } from '../stores/cloud'
-import { usd } from '../utils/format'
 
 const props = defineProps({
   crumbs: { type: Array, default: null },
@@ -193,8 +182,6 @@ watch(
   },
   { immediate: true },
 )
-
-const showCredit = computed(() => store.isTrial || store.creditExpired)
 
 // Patch update available within the server's current major (issue #24).
 const updateOpen = ref(false)
@@ -231,7 +218,8 @@ const devItems = computed(() => {
   return [
     { label: 'Insights', icon: 'lucide-chart-line', to: `${b}/analytics`, active: route.path.startsWith(`${b}/analytics`) },
     { label: 'Logs', icon: 'lucide-scroll-text', to: `${b}/developer/logs`, active: route.path.startsWith(`${b}/developer/logs`) },
-    { label: 'Database', icon: 'lucide-database', to: `${b}/developer/database`, active: route.path.startsWith(`${b}/developer/database`) },
+    { label: 'DB analyzer', icon: 'lucide-database', to: `${b}/developer/database`, active: route.path.startsWith(`${b}/developer/database`) },
+    { label: 'SQL playground', icon: 'lucide-terminal', to: `${b}/developer/sql`, active: route.path.startsWith(`${b}/developer/sql`) },
     { label: 'Tasks', icon: 'lucide-list-checks', to: `${b}/developer/tasks`, active: route.path.startsWith(`${b}/developer/tasks`) },
   ]
 })

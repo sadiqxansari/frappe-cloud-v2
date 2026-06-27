@@ -274,6 +274,35 @@ export const APP_CATALOG = [
 ]
 
 
+// Marketplace categories, shaped for the FormControl type="select" filter.
+export const APP_CATEGORIES = [
+  { label: 'Integrations', value: 'integrations' },
+  { label: 'Utility', value: 'utility' },
+  { label: 'Payments', value: 'payments' },
+  { label: 'Business', value: 'business' },
+  { label: 'Dev tools', value: 'dev-tools' },
+  { label: 'Localisation', value: 'localisation' },
+]
+
+// Which category each catalog app falls under (drives the marketplace filter).
+const APP_CATEGORY = {
+  erpnext: 'business',
+  hr: 'business',
+  crm: 'business',
+  helpdesk: 'utility',
+  drive: 'utility',
+  insights: 'utility',
+  builder: 'dev-tools',
+  lending: 'payments',
+  lms: 'business',
+  mail: 'integrations',
+  school: 'business',
+}
+
+export function categoryOf(key) {
+  return APP_CATEGORY[key] || null
+}
+
 export const TEAM_SIZE_TO_PLAN = {
   solo: 'starter',
   small: 'business',

@@ -55,7 +55,8 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Alert, Badge, Button, Dialog, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, toast } from 'frappe-ui'
+import Alert from './Alert.vue'
 import { VERSIONS, appByKey, versionById } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
 

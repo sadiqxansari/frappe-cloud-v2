@@ -1,47 +1,68 @@
 <template>
   <ServerShell v-if="site" :server="server" :crumbs="crumbs">
-    <!-- Site header — the site name is its URL, so the subheader carries other
-         facts; the dotted locator map fills the right and balances it. -->
-    <div class="flex items-start justify-between gap-4">
-      <div class="min-w-0">
-        <div class="flex items-center gap-2">
-          <h1 class="truncate text-xl font-semibold text-ink-gray-9">{{ site.name }}</h1>
-          <Badge v-if="site.status === 'creating'" theme="orange" variant="subtle" label="Setting up…" />
-          <Badge v-else-if="site.status === 'restoring'" theme="blue" variant="subtle" label="Restoring…" />
-          <Badge v-else-if="site.status === 'moving'" theme="blue" variant="subtle" label="Moving…" />
-          <Badge v-else-if="site.status === 'suspended'" theme="orange" variant="subtle" label="Paused" />
-          <Badge v-else theme="green" variant="subtle" label="Live" />
+    <!-- Open site lives in the top nav bar (right-most action slot). -->
+    <template #actions>
+      <Button variant="solid" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
+    </template>
+
+    <!-- Site header — the identity sits over a faded dot field that anchors the
+         page, then dissolves into the normal background. Install app and the ⋯
+         menu sit here; Open site is up in the nav bar. -->
+    <div class="relative -mx-4 -mt-8 overflow-hidden px-4 pb-7 pt-8 sm:-mx-6 sm:px-6">
+      <div class="dot-field pointer-events-none absolute inset-0" aria-hidden="true" />
+      <div class="relative flex items-start justify-between gap-4">
+        <div class="flex min-w-0 items-start gap-3">
+          <SiteIcon size="lg" />
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h1 class="truncate text-xl font-semibold text-ink-gray-9">{{ site.name }}</h1>
+              <Badge v-if="site.status === 'creating'" theme="orange" variant="subtle" label="Setting up…" />
+              <Badge v-else-if="site.status === 'restoring'" theme="blue" variant="subtle" label="Restoring…" />
+              <Badge v-else-if="site.status === 'moving'" theme="blue" variant="subtle" label="Moving…" />
+              <Badge v-else-if="site.status === 'suspended'" theme="orange" variant="subtle" label="Paused" />
+              <Badge v-else theme="green" variant="subtle" label="Live" />
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-gray-5">
+              <span class="inline-flex items-center gap-1.5"><span class="lucide-box size-3.5" /> {{ versionLabel }}</span>
+            </div>
+          </div>
         </div>
-        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-gray-5">
-          <span class="inline-flex items-center gap-1.5 text-ink-green-6"><span class="lucide-lock size-3.5" /> SSL active</span>
-          <span class="inline-flex items-center gap-1.5"><span class="lucide-box size-3.5" /> {{ versionLabel }}</span>
+        <div class="flex shrink-0 items-center gap-2">
+          <Button variant="subtle" size="sm" label="Install app" icon-left="lucide-plus" @click="installApp" />
+          <Dropdown :options="siteMenu" placement="bottom-end">
+            <Button variant="subtle" size="sm" icon="lucide-ellipsis" aria-label="More actions" />
+          </Dropdown>
         </div>
-        <div class="mt-3 flex flex-wrap items-center gap-2">
-          <Button variant="subtle" size="sm" label="Back up now" icon-left="lucide-archive" @click="backupNow" />
-          <Button variant="subtle" size="sm" label="Install app" icon-left="lucide-plus" @click="browseMarketplace" />
-        </div>
-      </div>
-      <div class="hidden h-24 w-60 shrink-0 overflow-hidden rounded-lg sm:block">
-        <WorldMap :focus="server.regionId" class="h-full w-full" />
       </div>
     </div>
 
-    <TabButtons v-model="tab" :buttons="tabs" class="mt-6" />
+    <TabButtons v-model="tab" :buttons="tabs" class="mt-1" />
 
-    <!-- Apps -->
-    <section v-if="tab === 'apps'" class="mt-3">
-      <div class="divide-y divide-outline-gray-1">
-        <div v-for="app in site.apps" :key="app.id" class="flex items-center gap-3 py-3.5">
-          <AppIcon :app-key="app.key" size="md" />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-ink-gray-9">{{ app.name }}</span>
-              <span class="text-sm text-ink-gray-4">{{ app.version }}</span>
+    <!-- Apps — the apps installed on this site, in the FC manage modal's row
+         style: icon, name + version (+ update target), tagline, manage action. -->
+    <section v-if="tab === 'apps'" class="mt-2">
+      <div class="grid gap-x-8" :class="site.apps.length > 1 ? 'sm:grid-cols-2' : ''">
+        <div v-for="app in site.apps" :key="app.id" class="flex items-center gap-2.5">
+          <AppIcon :app-key="app.key" size="md" class="shrink-0" />
+          <div class="flex min-w-0 flex-1 items-center justify-between gap-2 border-b border-outline-alpha-gray-1 py-4">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="truncate text-base font-medium text-ink-gray-8">{{ app.name }}</span>
+                <span class="shrink-0 text-p-xs text-ink-gray-5">{{ app.version }}</span>
+                <template v-if="store.appUpdate(app)">
+                  <span class="lucide-arrow-right size-3 shrink-0 text-ink-gray-4" />
+                  <span class="shrink-0 text-p-xs font-medium text-ink-green-6">{{ store.appUpdate(app) }}</span>
+                </template>
+              </div>
+              <div class="truncate text-p-sm text-ink-gray-5">{{ taglineOf(app.key) }}</div>
             </div>
-            <div v-if="store.appUpdate(app)" class="text-sm text-ink-blue-8">{{ store.appUpdate(app) }} is available</div>
+            <div class="flex shrink-0 items-center gap-2">
+              <Button v-if="store.appUpdate(app)" size="sm" variant="solid" label="Update" @click="updateApp(app)" />
+              <Dropdown :options="appMenu(app)" placement="bottom-end">
+                <Button size="sm" variant="ghost" icon="lucide-more-vertical" aria-label="More" />
+              </Dropdown>
+            </div>
           </div>
-          <Button v-if="store.appUpdate(app)" variant="subtle" size="sm" label="Update" @click="updateApp(app)" />
-          <Button v-if="site.apps.length > 1" variant="ghost" size="sm" label="Uninstall" @click="askUninstall(app)" />
         </div>
       </div>
     </section>
@@ -64,7 +85,7 @@
         </div>
       </div>
 
-      <div v-if="site.backups.length" class="divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
+      <div v-if="site.backups.length" class="divide-y divide-outline-alpha-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
         <div v-for="b in site.backups" :key="b.id" class="flex items-center gap-3 p-4">
           <span class="lucide-archive size-4 shrink-0 text-ink-gray-5" />
           <div class="min-w-0 flex-1">
@@ -93,47 +114,44 @@
         </div>
       </div>
 
-      <div class="mt-3 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
-        <div class="grid grid-cols-[1fr_1fr_6rem_2rem] gap-3 border-b border-outline-gray-2 bg-surface-gray-1 px-4 py-2 text-xs font-medium text-ink-gray-5">
-          <div>Config name</div>
-          <div>Value</div>
-          <div>Type</div>
-          <div />
-        </div>
-        <div
-          v-for="c in configRows"
-          :key="c.key"
-          class="grid grid-cols-[1fr_1fr_6rem_2rem] items-center gap-3 border-b border-outline-gray-1 px-4 py-2.5 text-sm last:border-b-0"
-        >
-          <div class="min-w-0">
-            <div class="truncate font-medium text-ink-gray-8">{{ c.label || c.key }}</div>
-            <div v-if="c.label" class="truncate font-mono text-xs text-ink-gray-4">{{ c.key }}</div>
+      <ListView
+        class="mt-3"
+        :style="{ height: configListHeight }"
+        :columns="configColumns"
+        :rows="configRows"
+        :options="{ selectable: false, showTooltip: false, rowHeight: 48 }"
+        row-key="key"
+      >
+        <template #cell="{ column, row }">
+          <div v-if="column.key === 'name'" class="min-w-0">
+            <div class="truncate text-sm font-medium text-ink-gray-8" :class="{ 'font-mono': !row.label }">{{ row.label || row.key }}</div>
+            <div v-if="row.label" class="truncate font-mono text-xs text-ink-gray-4">{{ row.key }}</div>
           </div>
-          <div class="min-w-0 truncate font-mono text-xs text-ink-gray-7">{{ c.value }}</div>
-          <div><Badge theme="gray" variant="subtle" :label="c.type" /></div>
-          <Dropdown :options="configMenu(c)" placement="bottom-end">
-            <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Edit ${c.key}`"><span class="lucide-ellipsis size-4" /></button>
+          <span v-else-if="column.key === 'value'" class="truncate font-mono text-xs text-ink-gray-7">{{ row.value }}</span>
+          <Badge v-else-if="column.key === 'type'" theme="gray" variant="subtle" :label="row.type" />
+          <Dropdown v-else-if="column.key === 'actions'" :options="configMenu(row)" placement="bottom-end">
+            <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Edit ${row.key}`"><span class="lucide-ellipsis size-4" /></button>
           </Dropdown>
-        </div>
-      </div>
+        </template>
+      </ListView>
     </section>
 
-    <!-- Settings -->
-    <section v-else class="mt-5 space-y-6">
+    <!-- Settings — flat rows divided by hairlines, no card chrome. -->
+    <section v-else class="mt-5 space-y-9">
       <!-- General -->
       <div>
-        <h2 class="text-sm font-semibold text-ink-gray-8">General</h2>
-        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
-          <div class="flex items-center justify-between gap-4 p-4">
-            <div>
-              <div class="text-sm font-medium text-ink-gray-9">Frappe version</div>
+        <h2 class="text-base font-semibold text-ink-gray-8">General</h2>
+        <div class="mt-1">
+          <div class="flex flex-wrap items-center justify-between gap-4 border-b border-outline-alpha-gray-1 py-4">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-gray-8">Frappe version</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">{{ versionLabel }} — set by the server this site runs on.</div>
             </div>
             <Button variant="subtle" size="sm" label="Change version" @click="openVersionMove" />
           </div>
-          <div v-for="opt in configOptions" :key="opt.key" class="flex items-center justify-between gap-4 p-4">
-            <div>
-              <div class="text-sm font-medium text-ink-gray-9">{{ opt.label }}</div>
+          <div v-for="opt in configOptions" :key="opt.key" class="flex flex-wrap items-center justify-between gap-4 border-b border-outline-alpha-gray-1 py-4 last:border-b-0">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-gray-8">{{ opt.label }}</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">{{ opt.desc }}</div>
             </div>
             <Switch :modelValue="site.config[opt.key]" @update:modelValue="toggle(opt)" />
@@ -143,24 +161,24 @@
 
       <!-- Domains -->
       <div>
-        <h2 class="text-sm font-semibold text-ink-gray-8">Domains</h2>
-        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
-          <div class="flex items-center gap-3 p-4">
+        <h2 class="text-base font-semibold text-ink-gray-8">Domains</h2>
+        <div class="mt-1">
+          <div class="flex items-center gap-3 border-b border-outline-alpha-gray-1 py-4">
             <span class="lucide-globe size-4 shrink-0 text-ink-gray-5" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <span class="truncate text-sm font-medium text-ink-gray-9">{{ site.name }}</span>
+                <span class="truncate text-sm font-medium text-ink-gray-8">{{ site.name }}</span>
                 <Badge theme="gray" variant="subtle" label="Included" />
               </div>
               <div class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-6"><span class="lucide-lock size-3" /> SSL active</div>
             </div>
           </div>
-          <div v-for="d in site.domains" :key="d.id" class="p-4">
+          <div v-for="d in site.domains" :key="d.id" class="border-b border-outline-alpha-gray-1 py-4">
             <div class="flex items-center gap-3">
               <span class="lucide-link size-4 shrink-0 text-ink-gray-5" />
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                  <span class="truncate text-sm font-medium text-ink-gray-9">{{ d.name }}</span>
+                  <span class="truncate text-sm font-medium text-ink-gray-8">{{ d.name }}</span>
                   <Badge v-if="d.status === 'verifying'" theme="orange" variant="subtle" label="Checking DNS…" />
                   <Badge v-else-if="d.status === 'failed'" theme="red" variant="subtle" label="Verification failed" />
                   <Badge v-else-if="d.status === 'pending'" theme="orange" variant="subtle" label="DNS setup needed" />
@@ -179,10 +197,10 @@
                  verifying check, until SSL is active. -->
             <template v-if="['pending', 'failed', 'verifying'].includes(d.status) && d.dnsRecords?.length">
               <div class="mt-3 overflow-hidden rounded-lg border border-outline-gray-2">
-                <div class="grid grid-cols-[4rem_1fr_1fr] gap-3 border-b border-outline-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
+                <div class="grid grid-cols-[4rem_1fr_1fr] gap-3 border-b border-outline-alpha-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
                   <span>Type</span><span>Host</span><span>Value</span>
                 </div>
-                <div v-for="(rec, i) in d.dnsRecords" :key="i" class="grid grid-cols-[4rem_1fr_1fr] gap-3 border-b border-outline-gray-1 px-3 py-2 font-mono text-xs text-ink-gray-7 last:border-b-0">
+                <div v-for="(rec, i) in d.dnsRecords" :key="i" class="grid grid-cols-[4rem_1fr_1fr] gap-3 border-b border-outline-alpha-gray-1 px-3 py-2 font-mono text-xs text-ink-gray-7 last:border-b-0">
                   <span>{{ rec.type }}</span>
                   <span class="flex min-w-0 items-center gap-1">
                     <span class="truncate">{{ rec.host }}</span>
@@ -204,13 +222,13 @@
         <Button variant="subtle" size="sm" label="Use your own domain" icon-left="lucide-plus" class="mt-3" @click="addDomainOpen = true" />
       </div>
 
-      <!-- Site actions -->
+      <!-- Actions -->
       <div>
-        <h2 class="text-sm font-semibold text-ink-gray-8">Actions</h2>
-        <div class="mt-2 divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
-          <div v-for="a in siteActions" :key="a.label" class="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div>
-              <div class="text-sm font-medium text-ink-gray-9">{{ a.label }}</div>
+        <h2 class="text-base font-semibold text-ink-gray-8">Actions</h2>
+        <div class="mt-1">
+          <div v-for="a in siteActions" :key="a.label" class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-alpha-gray-1 py-4 last:border-b-0">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-gray-8">{{ a.label }}</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">{{ a.desc }}</div>
             </div>
             <Button variant="subtle" size="sm" :label="a.action" @click="a.onClick" />
@@ -220,25 +238,25 @@
 
       <!-- Danger -->
       <div>
-        <h2 class="text-sm font-semibold text-ink-gray-8">Danger</h2>
-        <div class="mt-2 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
-            <div>
-              <div class="text-sm font-medium text-ink-gray-9">Deactivate this site</div>
+        <h2 class="text-base font-semibold text-ink-gray-8">Danger</h2>
+        <div class="mt-1">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-alpha-gray-1 py-4">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-gray-8">Deactivate this site</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">Takes {{ site.name }} offline without deleting anything. Reactivate anytime.</div>
             </div>
             <Button variant="subtle" :label="site.status === 'suspended' ? 'Reactivate site' : 'Deactivate site'" @click="deactivateOpen = true" />
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
-            <div>
-              <div class="text-sm font-medium text-ink-gray-9">Reset this site</div>
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-alpha-gray-1 py-4">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-gray-8">Reset this site</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">Wipes the database back to a fresh install. Apps stay; all your data is removed.</div>
             </div>
             <Button variant="subtle" theme="red" label="Reset site" @click="resetOpen = true" />
           </div>
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-outline-red-1 bg-surface-elevation-1 p-4">
-            <div>
-              <div class="text-sm font-medium text-ink-gray-9">Drop this site</div>
+          <div class="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-red-8">Drop this site</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">Permanently deletes {{ site.name }} and all its data. Backups are kept for 30 days after.</div>
             </div>
             <Button variant="solid" theme="red" label="Drop site" @click="dropOpen = true" />
@@ -304,16 +322,16 @@
 <script setup>
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, FormControl, ListView, Switch, TabButtons, toast } from 'frappe-ui'
 import AddDomainDialog from '../../components/AddDomainDialog.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import ServerShell from '../../components/ServerShell.vue'
-import WorldMap from '../../components/WorldMap.vue'
+import SiteIcon from '../../components/SiteIcon.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
 import MoveSiteDialog from '../../components/MoveSiteDialog.vue'
-import { versionById } from '../../data/catalog'
+import { appByKey, versionById } from '../../data/catalog'
 import { backupCustomLabel, useCloudStore } from '../../stores/cloud'
 import { fmtDateTime } from '../../utils/format'
 
@@ -357,26 +375,31 @@ const dropOpen = ref(false)
 const deactivateOpen = ref(false)
 const resetOpen = ref(false)
 
-// Install app → the server Marketplace, with this site preselected (§9).
-function browseMarketplace() {
+// — Header identity + actions
+// In the mockup, "Open site" routes to the in-app view rather than the real
+// domain (site.name is a real-looking URL).
+function openSite() {
+  router.push('/app')
+}
+// Install app → the server Marketplace, with this site preselected.
+function installApp() {
   router.push(`/manage/${server.value.id}/marketplace?site=${site.value.id}`)
 }
-
-// — Version / move (a version change IS a move to another server)
-const moveOpen = ref(false)
-const moveVersion = ref(null)
-const versionLabel = computed(() => versionById(server.value.version).label)
-
-function openVersionMove() {
-  moveVersion.value = null
-  moveOpen.value = true
+function loginAsAdmin() {
+  toast.success(`Opening ${site.value.name} as Administrator…`)
 }
-function onMoved(target) {
-  movedAway.value = true
-  router.replace(`/manage/${target.id}/sites/${route.params.siteId}`).then(() => (movedAway.value = false))
-}
+const siteMenu = computed(() => [
+  { label: 'Log in as administrator', icon: 'lucide-log-in', onClick: loginAsAdmin },
+  { label: 'Back up now', icon: 'lucide-archive', onClick: backupNow },
+  {
+    label: site.value.status === 'suspended' ? 'Reactivate site' : 'Deactivate site',
+    icon: 'lucide-power',
+    onClick: () => (deactivateOpen.value = true),
+  },
+])
 
-// — Apps
+// — Apps (installed on this site). Tagline comes from the catalog by key.
+const taglineOf = (key) => appByKey(key)?.tagline || ''
 const uninstallOpen = ref(false)
 const pendingApp = ref(null)
 function updateApp(app) {
@@ -391,6 +414,16 @@ function askUninstall(app) {
   pendingApp.value = app
   uninstallOpen.value = true
 }
+// The overflow always shows (so the dots are there even for a single app);
+// Uninstall is withheld for the last app, since a site needs at least one.
+function appMenu(app) {
+  const opts = [
+    { label: 'View changelog', icon: 'lucide-file-text', onClick: () => toast('In the real thing, this opens the changelog') },
+    { label: 'Documentation', icon: 'lucide-book-open', onClick: () => toast('In the real thing, this opens the docs') },
+  ]
+  if (site.value.apps.length > 1) opts.push({ label: 'Uninstall', icon: 'lucide-trash-2', onClick: () => askUninstall(app) })
+  return opts
+}
 function uninstall() {
   const name = pendingApp.value.name
   toast.promise(store.uninstallApp(site.value.id, pendingApp.value.key), {
@@ -398,6 +431,20 @@ function uninstall() {
     success: `${name} uninstalled`,
     error: 'Uninstall failed',
   })
+}
+
+// — Version / move (a version change IS a move to another server)
+const moveOpen = ref(false)
+const moveVersion = ref(null)
+const versionLabel = computed(() => versionById(server.value.version).label)
+
+function openVersionMove() {
+  moveVersion.value = null
+  moveOpen.value = true
+}
+function onMoved(target) {
+  movedAway.value = true
+  router.replace(`/manage/${target.id}/sites/${route.params.siteId}`).then(() => (movedAway.value = false))
 }
 
 // — Backups
@@ -485,7 +532,15 @@ function toggle(opt) {
   toast.success(`${opt.label} turned ${site.value.config[opt.key] ? 'on' : 'off'}`)
 }
 
-// — Config tab: raw key/value table
+// — Config tab: raw key/value table, rendered with frappe-ui's ListView.
+const configColumns = [
+  { label: 'Config name', key: 'name', width: 2 },
+  { label: 'Value', key: 'value', width: 2 },
+  { label: 'Type', key: 'type', width: 1 },
+  { label: '', key: 'actions', width: '52px' },
+]
+// Size the list to its rows so it shows everything without an inner scrollbar.
+const configListHeight = computed(() => `${56 + configRows.value.length * 48}px`)
 const configRows = computed(() => {
   const dbName = '_' + site.value.id.replace(/[^a-z0-9]/gi, '').slice(0, 12)
   return [
@@ -534,3 +589,15 @@ function resetSite() {
   toast.success('Resetting — a fresh database will be ready in a minute')
 }
 </script>
+
+<style scoped>
+/* Faded dot field behind the header — anchors the page, then dissolves into
+   the background. The dot colour and the mask both adapt to dark mode. */
+.dot-field {
+  background-image: radial-gradient(var(--outline-gray-2) 1.1px, transparent 1.3px);
+  background-size: 16px 16px;
+  background-position: -8px -8px;
+  -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.65), transparent 88%);
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.65), transparent 88%);
+}
+</style>

@@ -71,7 +71,7 @@
               <h2 class="text-lg font-semibold text-ink-gray-9">Firewall</h2>
               <Button variant="subtle" size="sm" label="Add rule" icon-left="lucide-plus" @click="ruleOpen = true" />
             </div>
-            <div class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2 text-sm">
+            <div class="mt-3 divide-y divide-outline-alpha-gray-1 rounded-lg border border-outline-gray-2 text-sm">
               <div v-for="r in server.firewallRules" :key="r.id" class="flex items-center gap-3 p-3">
                 <div class="min-w-0 flex-1">
                   <span class="font-medium text-ink-gray-8">{{ r.name }}</span>
@@ -104,7 +104,7 @@
                 <h3 class="text-base font-semibold text-ink-gray-8">SSH keys</h3>
                 <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
               </div>
-              <div v-if="store.accountSshKeys.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
+              <div v-if="store.accountSshKeys.length" class="mt-3 divide-y divide-outline-alpha-gray-1 rounded-lg border border-outline-gray-2">
                 <div v-for="k in store.accountSshKeys" :key="k.id" class="flex items-center gap-3 p-3">
                   <span class="lucide-key-round size-4 shrink-0 text-ink-gray-5" />
                   <div class="min-w-0 flex-1">
@@ -124,7 +124,7 @@
                 <h3 class="text-base font-semibold text-ink-gray-8">Webhooks</h3>
                 <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />
               </div>
-              <div v-if="store.webhooks.length" class="mt-3 divide-y divide-outline-gray-1 rounded-lg border border-outline-gray-2">
+              <div v-if="store.webhooks.length" class="mt-3 divide-y divide-outline-alpha-gray-1 rounded-lg border border-outline-gray-2">
                 <div v-for="w in store.webhooks" :key="w.id" class="p-3">
                   <div class="flex items-center gap-3">
                     <span class="lucide-webhook size-4 shrink-0 text-ink-gray-5" />

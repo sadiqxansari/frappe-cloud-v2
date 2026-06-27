@@ -4,7 +4,7 @@
 
     <div class="space-y-5">
       <!-- Identity + account settings -->
-      <div class="divide-y divide-outline-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
+      <div class="divide-y divide-outline-alpha-gray-1 rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
         <div class="flex items-center gap-3 p-4">
           <Avatar :label="store.user.name || 'You'" size="lg" />
           <div class="min-w-0 flex-1">

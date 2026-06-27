@@ -27,7 +27,7 @@
             variant="ghost"
             icon="lucide-settings"
             label="Frappe Cloud"
-            @click="openManage('Apps')"
+            @click="openManage('Billing')"
           />
           <Button variant="ghost" icon="lucide-bell" label="Notifications" @click="mock('Notifications')" />
           <Dropdown :options="userOptions" placement="bottom-end">
@@ -47,12 +47,10 @@
         v-if="deskAlert"
         :theme="deskAlert.theme"
         :title="deskAlert.title"
-        :dismissible="false"
+        :description="deskAlert.description"
+        :action="{ label: deskAlert.action, onClick: () => openManage(deskAlert.tab) }"
         class="mb-8"
-      >
-        <template #description>{{ deskAlert.description }}</template>
-        <template #footer><Button variant="solid" size="sm" :label="deskAlert.action" @click="openManage(deskAlert.tab)" /></template>
-      </Alert>
+      />
 
       <div class="grid grid-cols-3 gap-x-6 gap-y-10 sm:grid-cols-4 md:grid-cols-6">
         <button
@@ -74,7 +72,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Alert, Avatar, Button, Dropdown, toast } from 'frappe-ui'
+import { Avatar, Button, Dropdown, toast } from 'frappe-ui'
+import Alert from '../../components/Alert.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import FcManageModal from '../../components/FcManageModal.vue'
 import SitePausedPage from './SitePausedPage.vue'
@@ -101,7 +100,7 @@ const deskAlert = computed(() => {
     return { theme: 'yellow', title: 'Your trial credit is running low', description: "Add a payment method to keep your site running once it's used up.", action: 'Set up billing', tab: 'Billing' }
   }
   if (!serverHealth.value.ok) {
-    return { theme: 'yellow', title: 'Your server is filling up', description: "It's close to its plan limits — upgrade to add headroom.", action: 'Review usage', tab: 'Advanced' }
+    return { theme: 'yellow', title: 'Your server is filling up', description: "It's close to its plan limits — upgrade to add headroom.", action: 'Review usage', tab: 'Billing' }
   }
   return null
 })
@@ -109,8 +108,8 @@ const deskAlert = computed(() => {
 // The Frappe Cloud modal — the launcher's destination. The entry point picks
 // the tab: the launcher opens Apps; a billing/usage banner opens its own tab.
 const manageOpen = ref(false)
-const manageTab = ref('Apps')
-function openManage(tab = 'Apps') {
+const manageTab = ref('Billing')
+function openManage(tab = 'Billing') {
   manageTab.value = tab
   manageOpen.value = true
 }

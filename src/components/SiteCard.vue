@@ -3,7 +3,7 @@
     class="flex w-full items-center gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4 text-left transition-colors hover:bg-surface-gray-1"
     @click="$emit('open', site)"
   >
-    <AppIcon :app-key="site.apps[0]?.key || 'erpnext'" size="md" />
+    <SiteIcon size="md" />
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
         <span class="truncate font-semibold text-ink-gray-9">{{ site.name }}</span>
@@ -24,7 +24,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Badge } from 'frappe-ui'
-import AppIcon from './AppIcon.vue'
+import SiteIcon from './SiteIcon.vue'
 import { useCloudStore } from '../stores/cloud'
 import { timeAgo } from '../utils/format'
 

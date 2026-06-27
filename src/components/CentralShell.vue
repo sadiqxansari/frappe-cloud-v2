@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-screen overflow-hidden bg-surface-elevation-1">
     <aside
-      class="relative flex shrink-0 flex-col border-r border-outline-gray-1 bg-surface-sidebar p-2 transition-all duration-300 ease-in-out"
+      class="relative flex shrink-0 flex-col border-r border-outline-alpha-gray-1 bg-surface-sidebar p-2 transition-all duration-300 ease-in-out"
       :class="collapsed ? 'w-14' : 'w-60'"
     >
       <!-- Brand — Frappe Cloud, with the current team as subtext. The dropdown
@@ -39,7 +39,7 @@
         </div>
 
         <!-- Gap, then the primary navigation -->
-        <div class="my-2 h-px shrink-0 bg-outline-gray-1" />
+        <div class="my-2 h-px shrink-0 bg-outline-alpha-gray-1" />
 
         <div class="flex flex-col gap-0.5">
           <template v-for="item in items" :key="item.label">
@@ -136,7 +136,7 @@
         <div v-if="store.busy > 0" class="console-bar absolute inset-y-0 left-0 bg-[var(--ink-gray-8)]" />
       </div>
 
-      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-gray-1 bg-surface-elevation-1 px-4">
+      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-alpha-gray-1 bg-surface-elevation-1 px-4">
         <Breadcrumbs v-if="crumbs?.length" :items="crumbs" class="min-w-0" />
         <div v-else />
         <div class="flex shrink-0 items-center gap-2">

@@ -20,7 +20,7 @@
       />
     </div>
 
-    <div v-if="shownJobs.length" class="mt-4 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
+    <div v-if="shownJobs.length" class="mt-4 divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
       <div v-for="job in shownJobs" :key="job.id">
         <button class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-gray-1" @click="toggle(job.id)">
           <span class="grid size-7 shrink-0 place-items-center rounded-full" :class="tile(job.status)">
@@ -36,11 +36,11 @@
             </span>
           </span>
           <span class="font-mono text-xs text-ink-gray-4">{{ job.id }}</span>
-          <span class="lucide-chevron-down size-4 shrink-0 text-ink-gray-4 transition-transform" :class="open[job.id] ? 'rotate-180' : ''" />
+          <span class="lucide-chevron-down size-4 shrink-0 text-ink-gray-4 transition-transform" :class="isOpen(job) ? 'rotate-180' : ''" />
         </button>
 
         <!-- Steps -->
-        <div v-if="open[job.id]" class="border-t border-outline-gray-1 bg-surface-gray-1 px-4 py-2">
+        <div v-if="isOpen(job)" class="border-t border-outline-alpha-gray-1 bg-surface-gray-1 px-4 py-2">
           <div v-for="(step, i) in job.steps" :key="i" class="flex items-center gap-2.5 py-1.5">
             <span class="size-3.5 shrink-0" :class="[icon(step.status), stepColor(step.status), step.status === 'running' ? 'animate-spin' : '']" />
             <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-7">{{ step.name }}</span>
@@ -66,7 +66,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, toast } from 'frappe-ui'
 import EmptyState from '../../components/EmptyState.vue'
 import ServerShell from '../../components/ServerShell.vue'
-import { BACKGROUND_JOBS } from '../../data/system'
 import { useCloudStore } from '../../stores/cloud'
 
 const store = useCloudStore()
@@ -87,16 +86,18 @@ const filters = [
 ]
 const filter = ref('all')
 const shownJobs = computed(() =>
-  filter.value === 'all' ? BACKGROUND_JOBS : BACKGROUND_JOBS.filter((j) => j.status === filter.value),
+  filter.value === 'all' ? store.jobs : store.jobs.filter((j) => j.status === filter.value),
 )
 
-// Expanded rows — failed/running jobs start open so the interesting detail is
-// visible without a click.
-const open = reactive(
-  Object.fromEntries(BACKGROUND_JOBS.map((j) => [j.id, j.status === 'failed' || j.status === 'running'])),
-)
+// Expanded rows — failed/running jobs start open (including freshly logged ones)
+// so the interesting detail is visible without a click.
+const open = reactive({})
+function isOpen(job) {
+  return open[job.id] ?? (job.status === 'failed' || job.status === 'running')
+}
 function toggle(id) {
-  open[id] = !open[id]
+  const job = store.jobs.find((j) => j.id === id)
+  open[id] = !isOpen(job)
 }
 
 function relTime(mins) {

@@ -31,6 +31,7 @@ const routes = [
   { path: '/manage/:serverId/developer', redirect: (to) => `/manage/${to.params.serverId}/developer/logs` },
   { path: '/manage/:serverId/developer/logs', name: 'server-logs', component: () => import('./pages/manage/LogsPage.vue') },
   { path: '/manage/:serverId/developer/database', name: 'server-database', component: () => import('./pages/manage/DatabasePage.vue') },
+  { path: '/manage/:serverId/developer/sql', name: 'server-sql', component: () => import('./pages/manage/SqlPlaygroundPage.vue') },
   { path: '/manage/:serverId/developer/tasks', name: 'server-tasks', component: () => import('./pages/manage/TasksPage.vue') },
   // Migration progress screen — standalone tab, opened from the server list.
   { path: '/migration/:serverId', name: 'migration', component: () => import('./pages/manage/MigrationPage.vue') },

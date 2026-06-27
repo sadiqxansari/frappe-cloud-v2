@@ -11,11 +11,10 @@
         v-if="store.graduationNotice"
         theme="blue"
         title="You've got two servers now"
-        :dismissible="false"
+        :action="{ label: 'Got it', onClick: () => store.dismissGraduationNotice() }"
         class="m-4 mb-0"
       >
         <template #description>This is your home for managing them. Your bill now combines both servers into one — nothing else changed.</template>
-        <template #footer><Button variant="solid" size="sm" label="Got it" @click="store.dismissGraduationNotice()" /></template>
       </Alert>
 
       <div class="flex min-h-0 flex-1 lg:flex-row">
@@ -36,7 +35,7 @@
             <button class="grid size-8 place-items-center text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom in" @click="zoom(0.3)">
               <span class="lucide-zoom-in size-4" />
             </button>
-            <button class="grid size-8 place-items-center border-t border-outline-gray-1 text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom out" @click="zoom(-0.3)">
+            <button class="grid size-8 place-items-center border-t border-outline-alpha-gray-1 text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom out" @click="zoom(-0.3)">
               <span class="lucide-zoom-out size-4" />
             </button>
           </div>
@@ -44,7 +43,7 @@
       </section>
 
       <!-- List (left) -->
-      <section class="flex h-full w-full flex-col lg:w-[40rem] lg:shrink-0 lg:border-l lg:border-outline-gray-1">
+      <section class="flex h-full w-full flex-col lg:w-[40rem] lg:shrink-0 lg:border-l lg:border-outline-alpha-gray-1">
         <div class="shrink-0 px-6 pb-3 pt-6">
           <h2 class="text-lg font-semibold text-ink-gray-9">Your servers</h2>
           <div class="mt-3 flex items-center gap-2">
@@ -70,7 +69,7 @@
           <div
             v-for="srv in filtered"
             :key="srv.id"
-            class="grid grid-cols-[1fr_9.5rem_7rem_1.75rem] items-center gap-3 border-b border-outline-gray-1 px-6 py-3 transition-colors hover:bg-surface-gray-1"
+            class="grid grid-cols-[1fr_9.5rem_7rem_1.75rem] items-center gap-3 border-b border-outline-alpha-gray-1 px-6 py-3 transition-colors hover:bg-surface-gray-1"
             @mouseenter="hoverId = srv.id"
             @mouseleave="hoverId = null"
           >
@@ -145,7 +144,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Alert, Badge, Button, Dropdown, FormControl, Spinner, toast } from 'frappe-ui'
+import { Badge, Button, Dropdown, FormControl, Spinner, toast } from 'frappe-ui'
+import Alert from '../../components/Alert.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import MigrationScheduledModal from '../../components/MigrationScheduledModal.vue'

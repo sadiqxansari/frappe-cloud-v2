@@ -7,7 +7,7 @@
 
     <div class="flex min-h-0 flex-col-reverse lg:h-[calc(100vh-50px)] lg:flex-row">
       <!-- Map (left) -->
-      <div class="border-t border-outline-gray-1 p-4 lg:flex-1 lg:border-r lg:border-t-0">
+      <div class="border-t border-outline-alpha-gray-1 p-4 lg:flex-1 lg:border-r lg:border-t-0">
         <div class="relative h-72 w-full overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-gray-1 lg:h-full">
           <WorldMap
             :pins="pins"
@@ -23,7 +23,7 @@
             <button class="grid size-8 place-items-center text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom in" @click="zoom(0.4)">
               <span class="lucide-zoom-in size-4" />
             </button>
-            <button class="grid size-8 place-items-center border-t border-outline-gray-1 text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom out" @click="zoom(-0.4)">
+            <button class="grid size-8 place-items-center border-t border-outline-alpha-gray-1 text-ink-gray-6 hover:bg-surface-gray-2" aria-label="Zoom out" @click="zoom(-0.4)">
               <span class="lucide-zoom-out size-4" />
             </button>
           </div>
@@ -103,7 +103,7 @@
                   {{ showSpecs ? 'Hide specs' : 'Show specs' }}
                 </button>
               </div>
-              <div class="mt-1 divide-y divide-outline-gray-1">
+              <div class="mt-1 divide-y divide-outline-alpha-gray-1">
                 <button
                   v-for="p in PLANS"
                   :key="p.id"

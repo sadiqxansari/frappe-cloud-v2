@@ -55,7 +55,7 @@
       </FormControl>
 
       <!-- Member list — full row is clickable -->
-      <div class="mt-3 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
+      <div class="mt-3 divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
         <div
           v-for="m in filteredMembers"
           :key="m.id"
@@ -175,7 +175,7 @@
         <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
       </FormControl>
 
-      <div class="mt-3 divide-y divide-outline-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
+      <div class="mt-3 divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
         <div
           v-for="r in filteredRoles"
           :key="r.id"
@@ -273,7 +273,7 @@
         </div>
         <div>
           <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">General</div>
-          <div class="divide-y divide-outline-gray-1 overflow-hidden rounded-lg border border-outline-gray-2">
+          <div class="divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-lg border border-outline-gray-2">
             <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
               <div>
                 <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
@@ -331,7 +331,7 @@
             </div>
             <div>
               <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">General</div>
-              <div class="divide-y divide-outline-gray-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
+              <div class="divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
                 <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
                   <div>
                     <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
@@ -355,7 +355,7 @@
             class="col-start-1 row-start-1"
             :class="{ 'invisible pointer-events-none': roleDialogTab !== 'members' }"
           >
-            <div v-if="store.membersForRole(roleDialogRole.id).length" class="divide-y divide-outline-gray-1">
+            <div v-if="store.membersForRole(roleDialogRole.id).length" class="divide-y divide-outline-alpha-gray-1">
               <div v-for="m in store.membersForRole(roleDialogRole.id)" :key="m.id" class="flex items-center gap-2 py-2.5">
                 <Avatar :label="m.name" size="sm" class="shrink-0" />
                 <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ m.name }}</span>
@@ -367,7 +367,7 @@
             <!-- Add an existing team member directly — no invite (issue #7).
                  Pick the member and which resource the role applies to (issue #16).
                  Assigning the Owner role transfers ownership, so it's owner-only. -->
-            <div v-if="isAdminOrOwner && (roleDialogRole.id !== 'role-owner' || loggedInIsOwner)" class="mt-3 border-t border-outline-gray-1 pt-3">
+            <div v-if="isAdminOrOwner && (roleDialogRole.id !== 'role-owner' || loggedInIsOwner)" class="mt-3 border-t border-outline-alpha-gray-1 pt-3">
               <template v-if="addableMemberOptions(roleDialogRole.id).length">
                 <div class="flex items-end gap-2">
                   <div class="min-w-0 flex-1">
@@ -425,7 +425,7 @@
 
       <!-- View mode: compact roles table -->
       <div v-if="memberDialogMode === 'view' && memberDialogTarget" class="max-h-[28rem] overflow-y-auto rounded-xl border border-outline-gray-2">
-        <div v-for="row in memberDialogRows(memberDialogTarget)" :key="row.key" class="flex items-center gap-3 border-b border-outline-gray-1 px-3 py-2.5 last:border-b-0">
+        <div v-for="row in memberDialogRows(memberDialogTarget)" :key="row.key" class="flex items-center gap-3 border-b border-outline-alpha-gray-1 px-3 py-2.5 last:border-b-0">
           <span v-if="row.providerId" class="grid size-6 shrink-0 place-items-center rounded text-[9px] font-bold" :class="row.providerTile">{{ row.providerMono }}</span>
           <span v-else class="grid size-6 shrink-0 place-items-center rounded bg-surface-gray-2">
             <span class="lucide-globe size-3.5 text-ink-gray-5" />
@@ -558,7 +558,8 @@
 
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { Alert, Avatar, Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast, Tooltip } from 'frappe-ui'
+import { Avatar, Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast, Tooltip } from 'frappe-ui'
+import Alert from '../../components/Alert.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import { useCloudStore } from '../../stores/cloud'
 import { providerById, regionById } from '../../data/catalog'
