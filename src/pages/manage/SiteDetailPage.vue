@@ -8,10 +8,10 @@
     <!-- Site header — the identity sits over a faded dot field that anchors the
          page, then dissolves into the normal background. Install app and the ⋯
          menu sit here; Open site is up in the nav bar. -->
-    <div class="relative -mx-4 -mt-8 overflow-hidden px-4 pb-7 pt-8 sm:-mx-6 sm:px-6">
+    <div class="relative -mx-4 -mt-8 overflow-hidden px-4 pb-7 pt-8 sm:-mx-8 sm:px-8">
       <div class="dot-field pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div class="relative flex items-start justify-between gap-4">
-        <div class="flex min-w-0 items-start gap-3">
+      <div class="relative flex items-start justify-between gap-4 rounded-xl border border-outline-gray-2 bg-surface-base p-4">
+        <div class="flex min-w-0 items-center gap-3">
           <SiteIcon size="lg" />
           <div class="min-w-0">
             <div class="flex items-center gap-2">
@@ -22,7 +22,7 @@
               <Badge v-else-if="site.status === 'suspended'" theme="orange" variant="subtle" label="Paused" />
               <Badge v-else theme="green" variant="subtle" label="Live" />
             </div>
-            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-gray-5">
+            <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-p-sm text-ink-gray-5">
               <span class="inline-flex items-center gap-1.5"><span class="lucide-box size-3.5" /> {{ versionLabel }}</span>
             </div>
           </div>
@@ -594,10 +594,10 @@ function resetSite() {
 /* Faded dot field behind the header — anchors the page, then dissolves into
    the background. The dot colour and the mask both adapt to dark mode. */
 .dot-field {
-  background-image: radial-gradient(var(--outline-gray-2) 1.1px, transparent 1.3px);
+  background-image: radial-gradient(var(--outline-gray-3) 1.1px, transparent 1.3px);
   background-size: 16px 16px;
   background-position: -8px -8px;
-  -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.65), transparent 88%);
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.65), transparent 88%);
+  -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.95), transparent 90%);
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.95), transparent 90%);
 }
 </style>
