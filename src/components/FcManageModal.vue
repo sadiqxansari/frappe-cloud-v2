@@ -225,19 +225,20 @@
 
         <!-- Billing — plan, what it's using, cost, balance, payment method. -->
         <section v-else-if="active === 'Billing'" class="space-y-4">
-          <!-- Plan + specs + live consumption. "Change plan" opens plan options. -->
-          <div class="space-y-3 rounded-lg border border-outline-gray-2 p-3">
-            <div class="flex items-center justify-between gap-3">
+          <!-- Plan + live consumption in one card: the plan up top, the meters
+               across the bottom. -->
+          <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+            <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <div class="text-p-xs text-ink-gray-5">Plan</div>
-                <div class="truncate font-medium text-ink-gray-8">{{ planName }}</div>
-                <div v-if="planSpecs" class="mt-0.5 truncate text-p-xs text-ink-gray-5">{{ planSpecs.compute }} compute · {{ planSpecs.database }} DB · {{ planSpecs.disk }} disk</div>
+                <div class="text-sm text-ink-gray-5">Plan</div>
+                <div class="mt-1 truncate text-base font-semibold text-ink-gray-9">{{ planName }}</div>
+                <div v-if="planSpecs" class="mt-0.5 truncate text-xs text-ink-gray-5">{{ planSpecs.database }} DB · {{ planSpecs.disk }} disk</div>
               </div>
               <Button variant="subtle" size="sm" label="Change plan" @click="upgrade" />
             </div>
-            <div class="grid grid-cols-3 gap-3 border-t border-outline-gray-2 pt-3">
+            <div class="mt-5 grid grid-cols-3 gap-4">
               <div v-for="m in meters" :key="m.label">
-                <div class="flex items-center justify-between text-p-xs">
+                <div class="flex items-center justify-between text-xs">
                   <span class="text-ink-gray-6">{{ m.label }}</span>
                   <span class="tabular-nums text-ink-gray-7">{{ m.pct }}%</span>
                 </div>
@@ -246,7 +247,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           <!-- Resource pressure surfaces here, next to consumption, with the fix. -->
           <Alert
@@ -256,20 +257,56 @@
             :action="{ label: 'Upgrade', onClick: upgrade }"
           />
 
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg border border-outline-gray-2 p-3">
-              <div class="text-p-xs text-ink-gray-5">This month</div>
-              <div class="mt-0.5 font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
-              <div class="mt-0.5 text-p-xs text-ink-gray-5">Covers every site on your server</div>
-            </div>
-            <div class="rounded-lg border border-outline-gray-2 p-3">
-              <div class="text-p-xs text-ink-gray-5">{{ balanceLabel }}</div>
-              <div class="mt-0.5 font-semibold tabular-nums text-ink-gray-9">{{ money(balanceValue) }}</div>
-              <div class="mt-0.5 text-p-xs" :class="covers ? 'text-ink-gray-5' : 'text-ink-amber-8'">{{ coverNote }}</div>
-            </div>
+          <!-- Same two cards as Central billing (minus the wallet-history chevron). -->
+          <div class="grid gap-4 sm:grid-cols-2">
+            <!-- Estimated this cycle — the exact card from Central billing. -->
+            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+              <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
+              <div class="mt-2 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
+              <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
+                <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-8' : 'text-ink-green-6'">
+                  <span class="size-3" :class="deltaUp ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
+                  {{ Math.abs(store.estimateDeltaPct) }}% vs last month
+                </span>
+              </div>
+              <div class="mt-auto pt-4">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
+                    <span class="lucide-bell size-3.5 shrink-0" :class="budgetCrossed ? 'text-ink-red-8' : budgetNear ? 'text-ink-amber-8' : 'text-ink-gray-4'" />
+                    Budget alert
+                  </span>
+                  <Button variant="subtle" size="sm" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" :label="store.budgetAlert ? `Alert at ${money(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
+                </div>
+              </div>
+            </section>
+
+            <!-- Credit balance — Add credit and auto-recharge sit in the card. -->
+            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+              <span class="text-sm text-ink-gray-5">{{ balanceLabel }}</span>
+              <div class="mt-1 flex items-center justify-between gap-2">
+                <span class="text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(balanceValue) }}</span>
+                <Button v-if="hasMethod" variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="addCredit" />
+              </div>
+              <div class="mt-1.5 text-xs" :class="covers ? 'text-ink-gray-5' : 'text-ink-amber-8'">{{ coverNote }}</div>
+              <div v-if="hasMethod" class="mt-auto pt-4">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
+                    <span class="lucide-zap size-3.5 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
+                    Auto-recharge
+                  </span>
+                  <Switch :model-value="store.autoRecharge" @update:model-value="store.setAutoRecharge" />
+                </div>
+                <p v-if="store.autoRecharge" class="mt-1 text-xs text-ink-gray-5">Below {{ money(store.rechargeThreshold) }}, add {{ money(store.rechargeAmount) }} from {{ primaryMethodLabel }}.</p>
+              </div>
+            </section>
           </div>
-          <!-- Not set up yet: the payment-method empty state, set up right here
-               in the Desk — no trip to Central (decision 2). -->
+
+          <!-- Helper line sits under both cards. -->
+          <p v-if="hasMethod" class="text-p-xs text-ink-gray-5">{{ primaryMethodLabel }} · opens a secure checkout, then brings you back here.</p>
+
+          <!-- Not set up yet: trial credit → prompt to add a method, right here in
+               the Desk — no trip to Central (decision 2). -->
           <div v-if="!hasMethod" class="rounded-lg border border-dashed border-outline-gray-2 bg-surface-base p-4">
             <div class="flex items-start gap-3">
               <span class="lucide-credit-card size-5 shrink-0 text-ink-gray-5" />
@@ -280,33 +317,13 @@
             </div>
             <Button class="mt-3" variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="pmSetupOpen = true" />
           </div>
-
-          <!-- Set up: a quick top-up at the gateway, then back to the Desk. -->
-          <div v-else class="space-y-4">
-            <div>
-              <Button variant="solid" label="Add credit" icon-left="lucide-plus" @click="addCredit" />
-              <p class="mt-2 text-p-xs text-ink-gray-5">{{ primaryMethodLabel }} · opens a secure checkout, then brings you back here.</p>
-            </div>
-
-            <!-- Auto-recharge — keep credit topped up so the site never pauses. -->
-            <div class="flex items-center justify-between gap-3 rounded-lg border border-outline-gray-2 p-3">
-              <div class="min-w-0">
-                <div class="text-base font-medium text-ink-gray-8">Auto-recharge</div>
-                <p class="mt-0.5 text-p-sm text-ink-gray-5">
-                  <template v-if="store.autoRecharge">Below {{ money(store.rechargeThreshold) }}, we add {{ money(store.rechargeAmount) }} from {{ primaryMethodLabel }}.</template>
-                  <template v-else>Top up credit automatically so your site never pauses.</template>
-                </p>
-              </div>
-              <Switch :model-value="store.autoRecharge" class="shrink-0" @update:model-value="store.setAutoRecharge" />
-            </div>
-          </div>
         </section>
 
         <!-- Advanced — the escape hatches out of the Desk: the full server, and
              the account. No cards; the action sits at the far right of each. -->
         <section v-else-if="active === 'Advanced'">
           <div class="divide-y divide-outline-gray-2">
-            <div class="flex items-start justify-between gap-3 py-3">
+            <div class="flex items-start justify-between gap-3 py-4">
               <div class="min-w-0">
                 <div class="text-base font-medium text-ink-gray-8">Open your server</div>
                 <p class="mt-0.5 text-p-sm text-ink-gray-5">Deploys, scaling, SSH, backups, and adding or changing sites — the full controls live on your server.</p>
@@ -314,7 +331,7 @@
               <Button class="shrink-0" variant="subtle" size="sm" label="Open server" icon-right="lucide-arrow-up-right" @click="openServer" />
             </div>
 
-            <div class="flex items-start justify-between gap-3 py-3">
+            <div class="flex items-start justify-between gap-3 py-4">
               <div class="min-w-0">
                 <div class="text-base font-medium text-ink-gray-8">Account &amp; billing</div>
                 <p class="mt-0.5 text-p-sm text-ink-gray-5">Payment methods, invoices, billing email and your account settings — manage it all in one place.</p>
@@ -335,6 +352,36 @@
   <!-- The billing first-time-setup, in-modal (shared with the Central billing
        page). On completion the Billing tab flips to its set-up state. -->
   <PaymentSetupDialog v-model:open="pmSetupOpen" />
+
+  <!-- Add credit — the same dialog Central uses; the credit lands in the shared
+       wallet, so it shows up in Central too. Opened in-Desk, no redirect. -->
+  <Dialog v-model:open="creditOpen" size="sm">
+    <template #title><span class="text-xl font-semibold text-ink-gray-9">Add credit</span></template>
+    <div class="space-y-3">
+      <div class="flex gap-2">
+        <Button v-for="amt in [2000, 5000, 10000]" :key="amt" :variant="creditAmount === String(amt) ? 'solid' : 'subtle'" :label="money(amt)" @click="creditAmount = String(amt)" />
+      </div>
+      <FormControl v-model="creditAmount" type="number" label="Amount" placeholder="5000" />
+    </div>
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <Button label="Cancel" @click="creditOpen = false" />
+        <Button variant="solid" label="Add to wallet" :disabled="!(Number(creditAmount) > 0)" @click="confirmAddCredit" />
+      </div>
+    </template>
+  </Dialog>
+
+  <!-- Budget alert — same as Central. -->
+  <Dialog v-model:open="budgetOpen" size="sm">
+    <template #title><span class="text-xl font-semibold text-ink-gray-9">Set a budget alert</span></template>
+    <FormControl v-model="budget" type="number" label="Alert me when the cycle estimate exceeds" placeholder="20000" />
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <Button label="Cancel" @click="budgetOpen = false" />
+        <Button variant="solid" label="Set alert" :disabled="!(Number(budget) > 0)" @click="setBudget" />
+      </div>
+    </template>
+  </Dialog>
 
   <!-- Danger confirms — uninstalling an app and unlinking a custom domain. -->
   <ConfirmDialog
@@ -364,7 +411,7 @@ import AppIcon from './AppIcon.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import PaymentSetupDialog from './PaymentSetupDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
-import { useCloudStore } from '../stores/cloud'
+import { CYCLE_DAYS, useCloudStore } from '../stores/cloud'
 import { money as fmtMoney } from '../utils/format'
 import { APP_CATALOG, APP_CATEGORIES, categoryOf, planById, versionById } from '../data/catalog'
 
@@ -400,6 +447,38 @@ const balanceLabel = computed(() => (hasMethod.value ? 'Credit balance' : 'Trial
 const balanceValue = computed(() => (hasMethod.value ? store.walletBalance : store.creditDisplay))
 const covers = computed(() => balanceValue.value >= store.estimatedThisCycle)
 const coverNote = computed(() => (covers.value ? 'Covers this month' : "Won't cover this month"))
+
+// — Estimate card (mirrors Central's "Estimated this cycle"): cycle position,
+// the month-over-month delta, and the budget-alert threshold state.
+const cycleDays = CYCLE_DAYS
+const daysElapsed = Math.min(new Date().getDate(), CYCLE_DAYS)
+const billingDueDate = computed(() => {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+})
+const deltaUp = computed(() => store.estimateDeltaPct > 0)
+const budgetCrossed = computed(() => !!store.budgetAlert && store.estimatedThisCycle >= store.budgetAlert)
+const budgetNear = computed(() => !!store.budgetAlert && !budgetCrossed.value && store.estimatedThisCycle >= 0.8 * store.budgetAlert)
+
+// Add credit + budget alert, both opened as dialogs right here in the Desk.
+const creditOpen = ref(false)
+const creditAmount = ref('5000')
+const budgetOpen = ref(false)
+const budget = ref('20000')
+function confirmAddCredit() {
+  store.addToWallet(creditAmount.value)
+  toast.success(`Added ${money(Number(creditAmount.value))} to your wallet`)
+  creditOpen.value = false
+}
+function openBudget() {
+  budget.value = store.budgetAlert ? String(store.budgetAlert) : '20000'
+  budgetOpen.value = true
+}
+function setBudget() {
+  store.setBudget(budget.value)
+  toast.success(`Budget alert set at ${money(Number(budget.value))}/cycle`)
+  budgetOpen.value = false
+}
 
 // — Domains: the whole add → DNS → verify → SSL loop, in the Desk (issue #22).
 // The default `*.frappe.cloud` host is `site.name`, not a domain entry, so it's
@@ -643,10 +722,10 @@ function origin() {
   return { label: site.value?.subdomain || 'your site', path: '/app' }
 }
 function addCredit() {
-  // Only reachable once billing is set up. A quick top-up at the gateway, or the
-  // combined Central view post-graduation (decision 9).
-  open.value = false
-  store.redirectWithReturn(router, store.centralUnlocked ? '/billing' : '/pay', origin())
+  // Add credit is a Central/account action; we open its dialog in place rather
+  // than leaving the Desk. The credit lands in the shared wallet.
+  creditAmount.value = '5000'
+  creditOpen.value = true
 }
 function upgrade() {
   open.value = false

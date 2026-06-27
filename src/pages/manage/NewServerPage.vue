@@ -119,7 +119,7 @@
                   <span class="flex min-w-0 flex-1 items-center gap-1.5">
                     <span class="text-sm font-medium text-ink-gray-9">{{ p.name }}</span>
                     <span v-if="p.recommended" class="lucide-star size-3 shrink-0 text-ink-amber-8" />
-                    <span v-if="showSpecs" class="truncate text-xs text-ink-gray-5">· {{ p.specs.compute }} · {{ p.specs.disk }}</span>
+                    <span v-if="showSpecs" class="truncate text-xs text-ink-gray-5">· {{ p.specs.database }} RAM · {{ p.specs.disk }}</span>
                   </span>
                   <span class="shrink-0 text-sm font-semibold tabular-nums text-ink-gray-9">
                     {{ inr(priceFor(p.id, regionId)) }}<span class="text-[11px] font-normal text-ink-gray-5">/mo</span>

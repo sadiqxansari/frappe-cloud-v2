@@ -94,7 +94,6 @@
           </li>
         </ul>
         <div v-if="rawSpecs" class="mt-3 space-y-1 rounded-lg bg-surface-gray-1 p-2.5 text-xs">
-          <div class="flex justify-between"><span class="text-ink-gray-5">Compute</span><span class="text-ink-gray-8">{{ p.specs.compute }}</span></div>
           <div class="flex justify-between"><span class="text-ink-gray-5">Database</span><span class="text-ink-gray-8">{{ p.specs.database }}</span></div>
           <div class="flex justify-between"><span class="text-ink-gray-5">Disk</span><span class="text-ink-gray-8">{{ p.specs.disk }}</span></div>
         </div>
@@ -149,7 +148,6 @@ const region = computed(() => regionById(regionId.value))
 const price = computed(() => priceFor(selectedId.value, regionId.value))
 
 const specRows = computed(() => [
-  { label: 'Compute', value: plan.value.specs.compute },
   { label: 'Database', value: plan.value.specs.database },
   { label: 'Disk', value: plan.value.specs.disk },
   { label: 'Region', value: `${region.value.name} (${region.value.provider})` },
