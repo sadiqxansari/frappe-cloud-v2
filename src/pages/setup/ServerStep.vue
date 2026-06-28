@@ -1,46 +1,52 @@
 <template>
   <OnboardingShell :step="3" back="/setup/app">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Host {{ appName }} on your server</h1>
-    <p class="mt-1.5 text-p-base text-ink-gray-6">
-      {{ appName }} runs on a server that's yours. We recommend this one — you can resize anytime.
-    </p>
-
-    <div class="mt-6 rounded-xl border border-outline-gray-2 p-5">
-      <div class="flex items-center justify-between">
-        <div class="text-lg font-semibold text-ink-gray-9">{{ plan.name }}</div>
-        <Badge v-if="plan.id === store.recommendedPlanId" theme="blue" variant="subtle" label="Recommended" />
+    <div class="flex items-start gap-3">
+      <AppIcon :app-key="store.onboarding.appKey" size="md" class="mt-0.5" />
+      <div class="min-w-0">
+        <h1 class="text-xl font-semibold text-ink-gray-9">Host {{ appName }} on your server</h1>
+        <p class="mt-1 text-p-sm text-ink-gray-6">
+          This server is all yours. We've picked a size to start — resize anytime.
+        </p>
       </div>
+    </div>
 
-      <div class="mt-4 flex items-baseline gap-2">
-        <span class="text-2xl font-semibold text-ink-gray-9">{{ inr(price) }}</span>
-        <span class="text-sm text-ink-gray-5">/month · ≈{{ inr(Math.round(price / 30)) }}/day</span>
+    <div class="mt-5 rounded-xl border border-outline-gray-2 p-4">
+      <!-- Header: plan + recommended on the left, price on the right -->
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg font-semibold text-ink-gray-9">{{ plan.name }}</span>
+          <Badge v-if="plan.id === store.recommendedPlanId" theme="blue" variant="subtle" label="Recommended" />
+        </div>
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-2xl font-semibold text-ink-gray-9">₹0</span>
+          <span class="text-base text-ink-gray-4 line-through">{{ inr(price) }}</span>
+          <span class="text-xs text-ink-gray-5">/month</span>
+        </div>
       </div>
-      <div class="mt-2 flex items-center gap-1.5 text-sm font-medium text-ink-green-6">
+      <div class="mt-4 flex items-center gap-1.5 text-sm font-medium text-ink-green-6">
         <span class="lucide-gift size-4" />
-        Free on your $25 credit
+        Free while your $25 credit lasts
       </div>
 
-      <!-- Where it runs — info only; plan and region both change in the one modal -->
-      <div class="mt-3 flex items-center gap-1.5 text-sm text-ink-gray-5">
-        <span class="lucide-map-pin size-3.5" />
-        Runs in {{ region.name }} ({{ region.provider }})
-      </div>
-
-      <ul class="mt-4 space-y-2">
-        <li v-for="f in plan.features" :key="f" class="flex items-start gap-2 text-sm text-ink-gray-7">
-          <span class="lucide-check mt-0.5 size-4 shrink-0 text-ink-green-6" />
+      <ul class="mt-3 space-y-2">
+        <li v-for="f in plan.features" :key="f" class="flex items-start gap-2 text-sm text-ink-gray-8">
+          <span class="lucide-check mt-0.5 size-4 shrink-0 text-ink-gray-4" />
           {{ f }}
         </li>
       </ul>
 
-      <button
-        class="mt-4 flex items-center gap-1 text-sm text-ink-gray-5 hover:text-ink-gray-7"
-        @click="showSpecs = !showSpecs"
-      >
-        Server details
-        <span class="size-4" :class="showSpecs ? 'lucide-chevron-up' : 'lucide-chevron-down'" />
-      </button>
-      <div v-if="showSpecs" class="mt-2 space-y-1.5 rounded-lg bg-surface-gray-1 p-3 text-sm">
+      <!-- Technical facts, set apart from the value above by a single rule -->
+      <div class="mt-4 flex items-center justify-between gap-3 border-t border-outline-gray-2 pt-3 text-sm text-ink-gray-5">
+        <span class="flex min-w-0 items-center gap-1.5">
+          <span class="lucide-map-pin size-3.5 shrink-0" />
+          <span class="truncate">{{ region.name }} ({{ region.provider }})</span>
+        </span>
+        <button class="flex shrink-0 items-center gap-1 hover:text-ink-gray-7" @click="showSpecs = !showSpecs">
+          Server details
+          <span class="size-4" :class="showSpecs ? 'lucide-chevron-up' : 'lucide-chevron-down'" />
+        </button>
+      </div>
+      <div v-if="showSpecs" class="mt-2 space-y-1.5 rounded-lg bg-surface-alpha-gray-1 p-3 text-sm">
         <div v-for="row in specRows" :key="row.label" class="flex justify-between">
           <span class="text-ink-gray-5">{{ row.label }}</span>
           <span class="text-ink-gray-8">{{ row.value }}</span>
@@ -48,12 +54,7 @@
       </div>
     </div>
 
-    <p class="mt-3 flex items-center gap-1.5 text-p-sm text-ink-gray-5">
-      <span class="lucide-refresh-cw size-3.5" />
-      Resize anytime — start small and grow when you need to.
-    </p>
-
-    <Button variant="solid" size="md" label="Set up my server" class="mt-5 w-full" @click="confirm" />
+    <Button variant="solid" size="md" label="Set up my server" class="mt-6 w-full" @click="confirm" />
 
     <template #below>
       <Button variant="ghost" size="sm" label="Compare plans & regions" icon-left="lucide-sliders-horizontal" @click="compareOpen = true" />
@@ -119,6 +120,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Badge, Button, Dialog, Switch } from 'frappe-ui'
+import AppIcon from '../../components/AppIcon.vue'
 import OnboardingShell from '../../components/OnboardingShell.vue'
 import ProviderRegionPicker from '../../components/ProviderRegionPicker.vue'
 import { FEATURED_PLANS, PLANS, appByKey, planById, priceFor, regionById } from '../../data/catalog'
@@ -150,7 +152,6 @@ const price = computed(() => priceFor(selectedId.value, regionId.value))
 const specRows = computed(() => [
   { label: 'Database', value: plan.value.specs.database },
   { label: 'Disk', value: plan.value.specs.disk },
-  { label: 'Region', value: `${region.value.name} (${region.value.provider})` },
 ])
 
 function choose(planId) {

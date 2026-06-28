@@ -1,15 +1,8 @@
 <template>
   <OnboardingShell :step="2" back="/setup/account">
-    <!-- Title with the "what we're setting up" context pinned far right -->
-    <div class="flex items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-ink-gray-9">Name your site</h1>
-      <div class="inline-flex shrink-0 items-center gap-2 rounded-full border border-outline-gray-2 bg-surface-gray-1 py-1 pl-1 pr-2.5">
-        <AppIcon app-key="erpnext" size="sm" />
-        <span class="text-xs font-medium text-ink-gray-7">Setting up ERPNext</span>
-      </div>
-    </div>
-    <p class="mt-1.5 text-p-base text-ink-gray-6">
-      This is the web address you'll use to reach it. You can connect a custom domain later.
+    <h1 class="text-xl font-semibold text-ink-gray-9">Name your site</h1>
+    <p class="mt-2 text-p-base text-ink-gray-6">
+      Your web address — you can add a custom domain later.
     </p>
 
     <!-- The one decision on this screen — give it room -->
@@ -20,7 +13,7 @@
       size="md"
       label="Site address"
       placeholder="yourcompany"
-      class="site-address mt-6"
+      class="site-address mt-8"
       @keydown.enter="go"
     >
       <template #suffix>
@@ -39,7 +32,7 @@
       <span v-else class="text-ink-gray-4">Lowercase letters, numbers and hyphens.</span>
     </div>
 
-    <Button variant="solid" size="md" label="Continue" class="mt-6 w-full" :disabled="!slug" @click="go" />
+    <Button variant="solid" size="md" label="Continue" class="mt-8 w-full" :disabled="!slug" @click="go" />
   </OnboardingShell>
 </template>
 
@@ -47,7 +40,6 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, FormControl } from 'frappe-ui'
-import AppIcon from '../../components/AppIcon.vue'
 import OnboardingShell from '../../components/OnboardingShell.vue'
 import { useCloudStore } from '../../stores/cloud'
 
