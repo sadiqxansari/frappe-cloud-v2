@@ -232,7 +232,7 @@
               <div class="min-w-0">
                 <div class="text-sm text-ink-gray-5">Plan</div>
                 <div class="mt-1 truncate text-base font-semibold text-ink-gray-9">{{ planName }}</div>
-                <div v-if="planSpecs" class="mt-0.5 truncate text-xs text-ink-gray-5">{{ planSpecs.database }} DB · {{ planSpecs.disk }} disk</div>
+                <div v-if="planSpecs" class="mt-0.5 truncate text-xs text-ink-gray-5">{{ planSpecs.database }} database</div>
               </div>
               <Button variant="subtle" size="sm" label="Change plan" @click="upgrade" />
             </div>
@@ -245,6 +245,7 @@
                 <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-gray-3">
                   <div class="h-full rounded-full" :class="barClass(m.pct)" :style="{ width: Math.max(m.pct, 2) + '%' }" />
                 </div>
+                <div v-if="m.cap" class="mt-1.5 text-xs tabular-nums text-ink-gray-5">{{ m.cap }}</div>
               </div>
             </div>
           </section>
@@ -260,44 +261,31 @@
           <!-- Same two cards as Central billing (minus the wallet-history chevron). -->
           <div class="grid gap-4 sm:grid-cols-2">
             <!-- Estimated this cycle — the exact card from Central billing. -->
-            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
-              <div class="mt-2 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
-              <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
+              <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
                 <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-8' : 'text-ink-green-6'">
                   <span class="size-3" :class="deltaUp ? 'lucide-arrow-up' : 'lucide-arrow-down'" />
                   {{ Math.abs(store.estimateDeltaPct) }}% vs last month
                 </span>
               </div>
-              <div class="mt-auto pt-4">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
-                    <span class="lucide-bell size-3.5 shrink-0" :class="budgetCrossed ? 'text-ink-red-8' : budgetNear ? 'text-ink-amber-8' : 'text-ink-gray-4'" />
-                    Budget alert
-                  </span>
-                  <Button variant="subtle" size="sm" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" :label="store.budgetAlert ? `Alert at ${money(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
-                </div>
-              </div>
+              <Button class="mt-auto -ml-2 self-start" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" variant="ghost" size="xs" icon-left="lucide-bell" :label="budgetStateText" @click="openBudget" />
             </section>
 
-            <!-- Credit balance — Add credit and auto-recharge sit in the card. -->
-            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+            <!-- Credit balance — coverage status, then Add credit + auto-recharge,
+                 paired exactly like Central's wallet card. -->
+            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <span class="text-sm text-ink-gray-5">{{ balanceLabel }}</span>
-              <div class="mt-1 flex items-center justify-between gap-2">
-                <span class="text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(balanceValue) }}</span>
-                <Button v-if="hasMethod" variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="addCredit" />
-              </div>
-              <div class="mt-1.5 text-xs" :class="covers ? 'text-ink-gray-5' : 'text-ink-amber-8'">{{ coverNote }}</div>
-              <div v-if="hasMethod" class="mt-auto pt-4">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
-                    <span class="lucide-zap size-3.5 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
-                    Auto-recharge
-                  </span>
-                  <Switch :model-value="store.autoRecharge" @update:model-value="store.setAutoRecharge" />
-                </div>
-                <p v-if="store.autoRecharge" class="mt-1 text-xs text-ink-gray-5">Below {{ money(store.rechargeThreshold) }}, add {{ money(store.rechargeAmount) }} from {{ primaryMethodLabel }}.</p>
+              <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(balanceValue) }}</div>
+              <p class="mt-1.5 flex items-center gap-1.5 text-xs" :class="covers ? 'text-ink-gray-5' : 'text-ink-amber-8'">
+                <span class="size-3.5 shrink-0" :class="covers ? 'lucide-circle-check text-ink-green-6' : 'lucide-triangle-alert'" />
+                {{ coverNote }}
+              </p>
+              <div v-if="hasMethod" class="mt-auto flex items-center justify-between gap-2 pt-4">
+                <Button class="-ml-2" variant="ghost" size="xs" :label="store.autoRecharge ? 'Auto-recharge on' : 'Auto-recharge off'" icon-left="lucide-zap" @click="openRecharge" />
+                <Button variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="addCredit" />
               </div>
             </section>
           </div>
@@ -383,6 +371,26 @@
     </template>
   </Dialog>
 
+  <!-- Auto-recharge — same as Central: turn on / configure / turn off all here. -->
+  <Dialog v-model:open="rechargeOpen" size="sm">
+    <template #title><span class="text-xl font-semibold text-ink-gray-9">Auto-recharge</span></template>
+    <div class="space-y-3">
+      <p class="text-p-sm text-ink-gray-6">Keep the wallet topped up automatically so a low balance never interrupts service.</p>
+      <FormControl v-model="rechargeForm.threshold" type="number" label="Top up when the balance drops below" placeholder="2000" />
+      <FormControl v-model="rechargeForm.amount" type="number" label="Add this much each time" placeholder="5000" />
+    </div>
+    <template #actions>
+      <div class="flex items-center justify-between gap-2">
+        <Button v-if="store.autoRecharge" variant="ghost" theme="red" label="Turn off" @click="disableRecharge" />
+        <span v-else />
+        <div class="flex gap-2">
+          <Button label="Cancel" @click="rechargeOpen = false" />
+          <Button variant="solid" :label="store.autoRecharge ? 'Save changes' : 'Turn on'" :disabled="!(Number(rechargeForm.threshold) > 0 && Number(rechargeForm.amount) > 0)" @click="saveRecharge" />
+        </div>
+      </div>
+    </template>
+  </Dialog>
+
   <!-- Danger confirms — uninstalling an app and unlinking a custom domain. -->
   <ConfirmDialog
     v-model:open="uninstallOpen"
@@ -405,7 +413,7 @@
 <script setup>
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
 import Alert from './Alert.vue'
 import AppIcon from './AppIcon.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -459,6 +467,12 @@ const billingDueDate = computed(() => {
 const deltaUp = computed(() => store.estimateDeltaPct > 0)
 const budgetCrossed = computed(() => !!store.budgetAlert && store.estimatedThisCycle >= store.budgetAlert)
 const budgetNear = computed(() => !!store.budgetAlert && !budgetCrossed.value && store.estimatedThisCycle >= 0.8 * store.budgetAlert)
+const budgetStateText = computed(() => {
+  if (!store.budgetAlert) return 'Set a budget alert'
+  if (budgetCrossed.value) return `Over your ${money(store.budgetAlert)} alert`
+  if (budgetNear.value) return `Nearing your ${money(store.budgetAlert)} alert`
+  return `Budget alert at ${money(store.budgetAlert)}`
+})
 
 // Add credit + budget alert, both opened as dialogs right here in the Desk.
 const creditOpen = ref(false)
@@ -478,6 +492,27 @@ function setBudget() {
   store.setBudget(budget.value)
   toast.success(`Budget alert set at ${money(Number(budget.value))}/cycle`)
   budgetOpen.value = false
+}
+
+// Auto-recharge — enable / configure / disable, mirroring Central's dialog.
+const rechargeOpen = ref(false)
+const rechargeForm = reactive({ threshold: '', amount: '' })
+function openRecharge() {
+  rechargeForm.threshold = String(store.rechargeThreshold)
+  rechargeForm.amount = String(store.rechargeAmount)
+  rechargeOpen.value = true
+}
+function saveRecharge() {
+  const wasOn = store.autoRecharge
+  store.setRecharge({ threshold: rechargeForm.threshold, amount: rechargeForm.amount })
+  if (!wasOn) store.setAutoRecharge(true)
+  toast.success(wasOn ? 'Auto-recharge updated' : 'Auto-recharge on')
+  rechargeOpen.value = false
+}
+function disableRecharge() {
+  store.setAutoRecharge(false)
+  toast.success('Auto-recharge off')
+  rechargeOpen.value = false
 }
 
 // — Domains: the whole add → DNS → verify → SSL loop, in the Desk (issue #22).
@@ -690,10 +725,11 @@ const planName = computed(() => planById(server.value?.planId)?.name || '')
 const planSpecs = computed(() => planById(server.value?.planId)?.specs || null)
 const meters = computed(() => {
   const h = health.value
+  const s = planSpecs.value || {}
   return [
-    { label: 'CPU', pct: h.cpuPct },
-    { label: 'Memory', pct: h.memPct },
-    { label: 'Storage', pct: h.diskPct },
+    { label: 'CPU', pct: h.cpuPct, cap: s.cpu },
+    { label: 'Memory', pct: h.memPct, cap: s.memory },
+    { label: 'Storage', pct: h.diskPct, cap: s.disk },
   ]
 })
 function barClass(pct) {

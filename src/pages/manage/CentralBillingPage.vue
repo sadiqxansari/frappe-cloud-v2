@@ -26,10 +26,11 @@
           <div class="mt-5 space-y-5">
             <!-- What it'll cost + what funds it -->
             <div class="grid gap-4 sm:grid-cols-2">
-              <!-- Estimated this cycle -->
+              <!-- Estimated this cycle — the stat, with the budget alert as a quiet
+                   footer line since the alert is what watches this number. -->
               <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
                 <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
-                <div class="mt-1 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
+                <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.estimatedThisCycle) }}</div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                   <span class="text-ink-gray-5">Day {{ daysElapsed }} of {{ cycleDays }} · bills {{ billingDueDate }}</span>
                   <span v-if="store.estimateDeltaPct" class="inline-flex items-center gap-0.5 font-medium" :class="deltaUp ? 'text-ink-amber-8' : 'text-ink-green-6'">
@@ -37,21 +38,11 @@
                     {{ Math.abs(store.estimateDeltaPct) }}% vs last month
                   </span>
                 </div>
-                <!-- Budget alert pinned to the bottom, mirroring the wallet card's row -->
-                <div class="mt-auto border-t border-outline-alpha-gray-1 pt-5">
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
-                      <span class="lucide-bell size-3.5 shrink-0" :class="budgetCrossed ? 'text-ink-red-8' : budgetNear ? 'text-ink-amber-8' : 'text-ink-gray-4'" />
-                      Budget alert
-                    </span>
-                    <Button variant="subtle" size="sm" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" :label="store.budgetAlert ? `Alert at ${inr(store.budgetAlert)}` : 'Set alert'" @click="openBudget" />
-                  </div>
-                </div>
+                <Button class="mt-auto -ml-2 self-start" :class="budgetCrossed ? '!text-ink-red-8' : budgetNear ? '!text-ink-amber-8' : ''" variant="ghost" size="xs" icon-left="lucide-bell" :label="budgetStateText" @click="openBudget" />
               </section>
 
-              <!-- Wallet — the title and chevron open the history panel. Add credit
-                   sits with the balance; auto-recharge is a real toggle here (its
-                   threshold edit still lives in the panel). -->
+              <!-- Wallet — balance + how this cycle gets covered, plus auto-recharge
+                   as a quiet footer line (it refills the wallet, so it belongs here). -->
               <div
                 class="flex flex-col rounded-xl border bg-surface-elevation-1 p-5 transition-colors"
                 :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
@@ -67,28 +58,23 @@
                     <span class="lucide-chevron-right size-4" />
                   </button>
                 </div>
-                <!-- Balance + Add credit, paired -->
-                <div class="mt-1 mb-5 flex items-center justify-between gap-2">
-                  <span class="text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</span>
-                  <Button variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
-                </div>
-                <!-- Auto-recharge — the safety toggle, on its own row with room to breathe -->
-                <div class="mt-auto border-t border-outline-alpha-gray-1 pt-5">
+                <!-- Balance -->
+                <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ inr(store.walletBalance) }}</div>
+                <!-- Funding footer: coverage status, then the two funding actions paired -->
+                <div class="mt-auto space-y-2.5 pt-4">
+                  <p v-if="walletAtRisk" class="flex items-center gap-1.5 text-xs text-ink-red-8">
+                    <span class="lucide-triangle-alert size-3.5 shrink-0" />
+                    Won't cover the {{ inr(store.estimatedThisCycle) }} invoice
+                  </p>
+                  <p v-else-if="walletShort" class="flex items-center gap-1.5 text-xs text-ink-gray-5">
+                    <span class="lucide-credit-card size-3.5 shrink-0 text-ink-gray-4" />
+                    Card covers the {{ inr(walletShortfall) }} over your balance
+                  </p>
                   <div class="flex items-center justify-between gap-2">
-                    <span class="flex items-center gap-1.5 text-sm text-ink-gray-8">
-                      <span class="lucide-zap size-3.5 shrink-0" :class="store.autoRecharge ? 'text-ink-green-6' : 'text-ink-gray-4'" />
-                      Auto-recharge
-                    </span>
-                    <Switch :modelValue="store.autoRecharge" @update:modelValue="store.setAutoRecharge" />
+                    <Button class="-ml-2" variant="ghost" size="xs" :label="store.autoRecharge ? 'Auto-recharge on' : 'Auto-recharge off'" icon-left="lucide-zap" @click="openRecharge" />
+                    <Button variant="subtle" size="sm" label="Add credit" icon-left="lucide-plus" @click="creditOpen = true" />
                   </div>
-                  <button v-if="store.autoRecharge" class="mt-1 text-left text-xs text-ink-gray-5 transition-colors hover:text-ink-gray-8" @click="openRecharge">
-                    Below {{ inr(store.rechargeThreshold) }}, add {{ inr(store.rechargeAmount) }}
-                  </button>
                 </div>
-                <p v-if="walletAtRisk" class="mt-2 flex items-center gap-1 text-p-xs text-ink-amber-8">
-                  <span class="lucide-triangle-alert size-3 shrink-0" />
-                  Won't cover the {{ inr(store.estimatedThisCycle) }} invoice.
-                </p>
               </div>
             </div>
 
@@ -528,17 +514,23 @@
       </template>
     </Dialog>
 
-    <!-- Edit auto-recharge threshold & amount -->
+    <!-- Auto-recharge: turn on / configure / turn off all live here now that the
+         card shows a single button instead of a toggle. -->
     <Dialog v-model:open="rechargeOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Auto-recharge</span></template>
       <div class="space-y-3">
+        <p class="text-p-sm text-ink-gray-6">Keep the wallet topped up automatically so a low balance never interrupts service.</p>
         <FormControl v-model="rechargeForm.threshold" type="number" label="Top up when wallet drops below (₹)" placeholder="2000" />
         <FormControl v-model="rechargeForm.amount" type="number" label="Add this much each time (₹)" placeholder="5000" />
       </div>
       <template #actions>
-        <div class="flex justify-end gap-2">
-          <Button label="Cancel" @click="rechargeOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!(Number(rechargeForm.threshold) > 0 && Number(rechargeForm.amount) > 0)" @click="saveRecharge" />
+        <div class="flex items-center justify-between gap-2">
+          <Button v-if="store.autoRecharge" variant="ghost" theme="red" label="Turn off" @click="disableRecharge" />
+          <span v-else />
+          <div class="flex gap-2">
+            <Button label="Cancel" @click="rechargeOpen = false" />
+            <Button variant="solid" :label="store.autoRecharge ? 'Save changes' : 'Turn on'" :disabled="!(Number(rechargeForm.threshold) > 0 && Number(rechargeForm.amount) > 0)" @click="saveRecharge" />
+          </div>
         </div>
       </template>
     </Dialog>
@@ -601,6 +593,22 @@ const budgetNear = computed(
   () => !!store.budgetAlert && !budgetCrossed.value && store.estimatedThisCycle >= 0.8 * store.budgetAlert,
 )
 const budgetOverBy = computed(() => Math.max(0, store.estimatedThisCycle - (store.budgetAlert || 0)))
+
+// — Spending controls, surfaced as quiet metadata on the card each one governs
+// rather than as a section of their own. Auto-recharge refills the wallet, so it
+// lives on the Wallet card; the budget alert watches the cycle estimate, so it
+// lives on the Estimated card. Both stay caption-quiet and only tint when the
+// state is worth noticing.
+const walletShort = computed(() => store.walletBalance < store.estimatedThisCycle)
+const walletShortfall = computed(() => Math.max(0, store.estimatedThisCycle - store.walletBalance))
+// Budget alert line — states the relationship to the estimate, not just the raw
+// threshold, so the number means something at a glance.
+const budgetStateText = computed(() => {
+  if (!store.budgetAlert) return 'Set a budget alert'
+  if (budgetCrossed.value) return `Over your ${inr(store.budgetAlert)} alert`
+  if (budgetNear.value) return `Nearing your ${inr(store.budgetAlert)} alert`
+  return `Budget alert at ${inr(store.budgetAlert)}`
+})
 
 // Stacked banners cause banner-blindness, so we never show more than one. The
 // payment problems are mostly facets of one "we can't charge you" state — we
@@ -805,8 +813,15 @@ function openRecharge() {
   rechargeOpen.value = true
 }
 function saveRecharge() {
+  const wasOn = store.autoRecharge
   store.setRecharge({ threshold: rechargeForm.threshold, amount: rechargeForm.amount })
-  toast.success('Auto-recharge updated')
+  if (!wasOn) store.setAutoRecharge(true)
+  toast.success(wasOn ? 'Auto-recharge updated' : 'Auto-recharge on')
+  rechargeOpen.value = false
+}
+function disableRecharge() {
+  store.setAutoRecharge(false)
+  toast.success('Auto-recharge off')
   rechargeOpen.value = false
 }
 
