@@ -43,8 +43,8 @@
               :r="p.glowR"
               :fill="p.glowColor"
               class="wm-glow"
-              :class="{ 'wm-pulse': p.broken }"
-              :style="p.broken ? null : { opacity: p.glow ? 0.18 : 0 }"
+              :class="{ 'wm-pulse': p.broken || p.pulse }"
+              :style="(p.broken || p.pulse) ? null : { opacity: p.glow ? 0.18 : 0 }"
             />
             <circle
               cx="0"
@@ -227,6 +227,7 @@ const projected = computed(() => {
       color,
       glowColor: color,
       glow: broken || hot,
+      pulse: !!p.pulse,
       r: 5 * ps,
       glowR: 11 * ps,
       label: p.label || null,

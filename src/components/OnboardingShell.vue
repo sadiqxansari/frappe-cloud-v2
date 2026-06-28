@@ -3,8 +3,9 @@
     <main class="flex flex-1 items-start justify-center px-4 pb-20 pt-16">
       <div class="w-full max-w-sm">
         <!-- Brand centered over the stepper; Back is absolute so it never
-             shifts the layout when it appears (only on later steps). -->
-        <div class="relative mb-6 flex h-7 items-center justify-center">
+             shifts the layout when it appears (only on later steps). The
+             provisioning screen hides it — its header carries the logo instead. -->
+        <div v-if="!hideBrand" class="relative mb-6 flex h-7 items-center justify-center">
           <button
             v-if="back"
             class="absolute left-0 inline-flex items-center gap-1 text-sm text-ink-gray-5 transition-colors hover:text-ink-gray-8"
@@ -19,7 +20,7 @@
           </div>
         </div>
 
-        <div class="mb-5 flex gap-1.5">
+        <div v-if="!hideStepper" class="mb-5 flex gap-1.5">
           <div
             v-for="i in steps"
             :key="i"
@@ -44,8 +45,12 @@
 import cloudLogo from '../assets/apps/cloud.png'
 
 defineProps({
-  step: { type: Number, required: true },
-  steps: { type: Number, default: 4 },
+  step: { type: Number, default: 0 },
+  steps: { type: Number, default: 3 },
+  // Provisioning runs after the 3-step flow, so it hides the stepper entirely.
+  hideStepper: { type: Boolean, default: false },
+  // Provisioning's own header carries the logo, so it hides the centered brand.
+  hideBrand: { type: Boolean, default: false },
   // Route to return to — renders a Back link (issue #5). Omit on the first step.
   back: { type: String, default: null },
 })
