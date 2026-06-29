@@ -55,64 +55,27 @@
               </button>
             </Tooltip>
 
-            <!-- Collapsible group (e.g. Billing) -->
-            <template v-else-if="!collapsed">
-              <button
-                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
-                :class="item.active ? 'text-ink-gray-9' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-                @click="toggleGroup(item.label)"
-              >
-                <span class="size-4 shrink-0 text-ink-gray-6" :class="item.icon" />
-                <span class="flex-1 truncate">{{ item.label }}</span>
-                <span class="lucide-chevron-down size-3.5 shrink-0 text-ink-gray-5 transition-transform" :class="isGroupOpen(item) && 'rotate-180'" />
-              </button>
-              <div v-if="isGroupOpen(item)" class="ml-3 flex flex-col gap-0.5 border-l border-outline-gray-2 pl-2">
+            <!-- Grouped items: a lowercase caption (expanded) then flat children -->
+            <template v-else>
+              <div v-if="!collapsed" class="px-2 pb-1 pt-3 text-xs font-medium text-ink-gray-4">{{ item.label }}</div>
+              <div v-else class="my-1 h-px shrink-0 bg-outline-alpha-gray-1" />
+              <Tooltip v-for="c in item.children" :key="c.label" :text="collapsed ? c.label : ''" placement="right" :hover-delay="0">
                 <button
-                  v-for="c in item.children"
-                  :key="c.label"
                   class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
-                  :class="c.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+                  :class="[c.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2', collapsed && 'justify-center']"
                   @click="router.push(c.to)"
                 >
                   <span class="size-4 shrink-0 text-ink-gray-6" :class="c.icon" />
-                  <span class="truncate">{{ c.label }}</span>
+                  <span v-if="!collapsed" class="truncate">{{ c.label }}</span>
                 </button>
-              </div>
+              </Tooltip>
             </template>
-
-            <!-- Collapsed rail: one icon per child (issue #21) -->
-            <Tooltip
-              v-else
-              v-for="c in item.children"
-              :key="c.label"
-              :text="c.label"
-              placement="right"
-              :hover-delay="0"
-            >
-              <button
-                class="flex w-full items-center justify-center gap-2 rounded px-2 py-1.5 text-sm transition-colors"
-                :class="c.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-                @click="router.push(c.to)"
-              >
-                <span class="size-4 shrink-0 text-ink-gray-6" :class="c.icon" />
-              </button>
-            </Tooltip>
           </template>
         </div>
       </nav>
 
-      <!-- Explicit, remembered collapse toggle (issue #3) -->
-      <button
-        class="mb-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-6 transition-colors hover:bg-surface-gray-2"
-        :class="collapsed && 'justify-center'"
-        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        @click="collapsed = !collapsed"
-      >
-        <span class="size-4 shrink-0" :class="collapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'" />
-        <span v-if="!collapsed" class="truncate">Collapse</span>
-      </button>
-
+      <!-- Collapsing is handled by clicking the rail edge (the strip below) — no
+           separate toggle button needed. -->
       <Dropdown :options="userOptions" placement="top-start">
         <button class="flex w-full shrink-0 items-center gap-2 rounded-lg p-1.5 hover:bg-surface-gray-2" :class="collapsed && 'justify-center'">
           <Avatar :label="store.user.name || 'You'" size="sm" />
@@ -164,20 +127,29 @@
 
     <ProfileDialog v-model:open="profileOpen" />
 
-    <!-- Switch team -->
+    <!-- Change team -->
     <Dialog v-model:open="switchTeamOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Switch team</span></template>
+      <template #title>
+        <div>
+          <span class="text-xl font-semibold text-ink-gray-9">Change team</span>
+          <p class="mt-1 text-sm font-normal text-ink-gray-5">Switch to another team you belong to.</p>
+        </div>
+      </template>
       <div class="space-y-1">
         <button
           v-for="t in store.teams"
           :key="t.id"
-          class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-surface-gray-2"
+          class="flex w-full items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors"
+          :class="t.id === store.currentTeamId ? 'border-outline-gray-3 bg-surface-gray-2' : 'border-transparent hover:bg-surface-gray-2'"
           @click="chooseTeam(t)"
         >
-          <img v-if="t.avatar" :src="t.avatar" class="size-7 shrink-0 rounded-md object-cover" />
-          <span v-else class="grid size-7 shrink-0 place-items-center rounded-md bg-surface-gray-3 text-xs font-semibold text-ink-gray-7">{{ t.name[0].toUpperCase() }}</span>
-          <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink-gray-8">{{ t.name }}</span>
-          <span v-if="t.id === store.currentTeamId" class="lucide-check size-4 shrink-0 text-ink-gray-6" />
+          <img v-if="t.avatar" :src="t.avatar" class="size-8 shrink-0 rounded-md object-cover" />
+          <span v-else class="grid size-8 shrink-0 place-items-center rounded-md bg-surface-gray-3 text-sm font-semibold text-ink-gray-7">{{ t.name[0].toUpperCase() }}</span>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-sm font-medium text-ink-gray-8">{{ t.name }}</div>
+            <div v-if="t.id === store.currentTeamId" class="text-xs text-ink-gray-5">Current team</div>
+          </div>
+          <span v-if="t.id === store.currentTeamId" class="lucide-check size-4 shrink-0 text-ink-gray-7" />
         </button>
       </div>
       <template #actions>
@@ -242,6 +214,7 @@ const utilityItems = [
 const billingActive = computed(() => route.path.startsWith('/billing'))
 const items = computed(() => [
   { label: 'Servers', icon: 'lucide-server', to: '/servers', active: route.path === '/servers' || route.path.startsWith('/servers/') },
+  { label: 'Teams', icon: 'lucide-users', to: '/settings', active: route.path.startsWith('/settings') },
   {
     label: 'Billing',
     icon: 'lucide-wallet',
@@ -252,19 +225,7 @@ const items = computed(() => [
       { label: 'Limit Tiers', icon: 'lucide-layers', to: '/billing/limit-tiers', active: route.path === '/billing/limit-tiers' },
     ],
   },
-  { label: 'Team & Permissions', icon: 'lucide-users', to: '/settings', active: route.path.startsWith('/settings') },
 ])
-
-// A collapsible group auto-opens when you're on one of its routes; `openGroups`
-// remembers explicit toggles and overrides that default.
-const openGroups = ref({})
-function isGroupOpen(item) {
-  return openGroups.value[item.label] ?? item.active
-}
-function toggleGroup(label) {
-  const item = items.value.find((i) => i.label === label)
-  openGroups.value[label] = !isGroupOpen(item)
-}
 
 // Brand dropdown — account-level switches that used to be a standalone team selector.
 // Light / dark / system, with a check on the active choice. Theme is an

@@ -31,7 +31,7 @@
         >
           <AppIcon :app-key="u.appKey" size="md" />
           <div class="min-w-0 flex-1">
-            <div class="text-p-sm font-medium text-ink-gray-9">{{ u.name }}<span v-if="multiSite" class="font-normal text-ink-gray-5"> · {{ u.site }}</span></div>
+            <div class="text-p-sm font-medium text-ink-gray-9">{{ u.name }}</div>
             <div class="text-p-xs text-ink-gray-5"><span class="font-mono">{{ u.from }}</span> <span class="lucide-arrow-right inline-block size-3 align-middle" /> <span class="font-mono text-ink-green-6">{{ u.to }}</span></div>
           </div>
           <Checkbox :model-value="selected.has(u.key)" tabindex="-1" class="pointer-events-none shrink-0" />
@@ -40,13 +40,9 @@
 
       <div class="mt-4 flex flex-col items-start gap-2.5">
         <Checkbox v-model="later" label="Schedule for later" />
-        <input
-          v-if="later"
-          v-model="scheduleAt"
-          type="datetime-local"
-          :min="nowLocal"
-          class="ml-6 rounded-md border border-outline-gray-2 bg-surface-elevation-1 px-2.5 py-1.5 text-p-sm text-ink-gray-8 focus:outline-none focus:ring-2 focus:ring-outline-gray-3"
-        />
+        <div v-if="later" class="ml-6 w-full">
+          <ScheduleField v-model="scheduleAt" />
+        </div>
         <Checkbox v-model="skipFailing" label="Skip failing patches" />
       </div>
     </template>
@@ -74,6 +70,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { Button, Checkbox, Dialog, toast } from 'frappe-ui'
 import AppIcon from './AppIcon.vue'
+import ScheduleField from './ScheduleField.vue'
 import { useCloudStore } from '../stores/cloud'
 
 const props = defineProps({
@@ -83,16 +80,21 @@ const open = defineModel('open', { type: Boolean, default: false })
 
 const store = useCloudStore()
 
-const multiSite = computed(() => (props.server?.sites.length || 0) > 1)
+// One row per app, not per site — an app update applies across every site that
+// has it. We collapse the per-site occurrences into a single entry (keyed by the
+// app), keeping the list of affected site ids so apply can expand it again.
 const appUpdates = computed(() => {
-  const out = []
+  const byApp = new Map()
   for (const s of props.server?.sites || []) {
     for (const app of s.apps) {
       const to = store.appUpdate(app)
-      if (to) out.push({ key: `${s.id}:${app.key}`, siteId: s.id, appKey: app.key, name: app.name, site: s.subdomain, from: app.version, to })
+      if (!to) continue
+      const existing = byApp.get(app.key)
+      if (existing) existing.siteIds.push(s.id)
+      else byApp.set(app.key, { key: app.key, appKey: app.key, name: app.name, from: app.version, to, siteIds: [s.id] })
     }
   }
-  return out
+  return [...byApp.values()]
 })
 const scheduled = computed(() => props.server?.scheduledUpdate || null)
 
@@ -103,13 +105,6 @@ const skipFailing = ref(false)
 
 const allSelected = computed(() => appUpdates.value.length > 0 && selected.size === appUpdates.value.length)
 const actionLabel = computed(() => (later.value ? 'Schedule update' : allSelected.value ? 'Update all' : `Update ${selected.size}`))
-
-// datetime-local wants a 'YYYY-MM-DDTHH:mm' min — the local clock, a few minutes out.
-const nowLocal = computed(() => {
-  const d = new Date(Date.now() + 5 * 60 * 1000)
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-})
 
 function selectAll() {
   appUpdates.value.forEach((u) => selected.add(u.key))
@@ -139,8 +134,11 @@ function fmt(at) {
   }
 }
 
+// Expand each selected app back into a (site, app) pair for every site it's on.
 function refs() {
-  return appUpdates.value.filter((u) => selected.has(u.key)).map((u) => ({ siteId: u.siteId, appKey: u.appKey }))
+  return appUpdates.value
+    .filter((u) => selected.has(u.key))
+    .flatMap((u) => u.siteIds.map((siteId) => ({ siteId, appKey: u.appKey })))
 }
 
 function apply() {

@@ -126,7 +126,7 @@ watch(effectiveVersion, () => {
   choice.value = candidates.value[0]?.id || 'new'
 })
 
-const newPrice = computed(() => priceFor(props.server.planId, props.server.regionId))
+const newPrice = computed(() => priceFor(props.server.planId, props.server.regionId, props.server.customSpec))
 
 function move() {
   let target

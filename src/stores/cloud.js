@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { toast } from 'frappe-ui'
-import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planById, regionById, versionById } from '../data/catalog'
+import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planById, priceFor, regionById, versionById } from '../data/catalog'
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
@@ -118,6 +118,7 @@ function makeServer(opts = {}) {
     build: latestBuildFor(version), // installed patch build; behind latest ⇒ update available (#24)
     scheduledUpdate: null, // { at, skipFailing } once the owner schedules updates (#42)
     planId: 'business',
+    customSpec: null, // { vcpu, memory, disk } only when planId === 'custom'
     status: 'active', // 'provisioning' | 'active'
     creditBalance: 25,
     creditTotal: 25,
@@ -127,6 +128,9 @@ function makeServer(opts = {}) {
     sites: [],
     // Resource picture; disk scales with the plan so resizes stay sensible.
     health: { cpuPct: 15, memUsedGb: 1.2, memTotalGb: 1.9, diskFrac: 0.24 },
+    // Extra storage bought on top of the plan's base disk (GB). Added from the
+    // server overview in Central; folded into the resolved disk total.
+    diskAddonGb: 0,
     processes: makeProcesses(),
     firewallRules: [
       { id: uid('fw'), name: 'HTTPS', port: 443, action: 'Allow', enabled: true },
@@ -239,7 +243,7 @@ function baseState() {
     // destination renders a ReturnBar, and completeAndReturn() routes back.
     returnContext: null,
     busy: 0, // in-flight work; drives the top progress bar
-    onboarding: { appKey: 'erpnext', teamSize: 'small', planId: CHEAPEST_PLAN_ID, subdomain: '', regionId: 'aws-mumbai' },
+    onboarding: { appKey: 'erpnext', teamSize: 'small', planId: CHEAPEST_PLAN_ID, customSpec: null, subdomain: '', regionId: 'aws-mumbai' },
   }
 }
 
@@ -268,16 +272,16 @@ function grownState() {
     build: '15.78.1', // a patch behind latest — shows the "update available" flow (#24)
     planHistory: [
       { id: uid('ph'), date: '10 Jun 2026', from: 'Starter', to: 'Business', direction: 'upgrade' },
-      { id: uid('ph'), date: '2 Mar 2026', from: 'Standard', to: 'Starter', direction: 'downgrade' },
-      { id: uid('ph'), date: '14 Jan 2026', from: 'Growth', to: 'Standard', direction: 'downgrade' },
-      { id: uid('ph'), date: '20 Nov 2025', from: 'Standard', to: 'Growth', direction: 'upgrade' },
-      { id: uid('ph'), date: '3 Sep 2025', from: 'Starter', to: 'Standard', direction: 'upgrade' },
+      { id: uid('ph'), date: '2 Mar 2026', from: 'Business', to: 'Starter', direction: 'downgrade' },
+      { id: uid('ph'), date: '14 Jan 2026', from: 'Enterprise', to: 'Business', direction: 'downgrade' },
+      { id: uid('ph'), date: '20 Nov 2025', from: 'Business', to: 'Enterprise', direction: 'upgrade' },
+      { id: uid('ph'), date: '3 Sep 2025', from: 'Starter', to: 'Business', direction: 'upgrade' },
     ],
   })
   const euServer = makeServer({
     name: 'atlas-eu-01',
     regionId: 'hetzner-nuremberg',
-    planId: 'standard',
+    planId: 'starter',
     creditBalance: 21,
     creditTotal: 25,
     sites: [makeSite('EU Staging', ['erpnext'])],
@@ -299,7 +303,7 @@ function grownState() {
     sites: [makeSite('US Marketing', ['erpnext'])],
     health: { cpuPct: 18, memUsedGb: 1.1, memTotalGb: 3.0, diskFrac: 0.16 },
     planHistory: [
-      { id: uid('ph'), date: '28 Apr 2026', from: 'Business', to: 'Growth', direction: 'upgrade' },
+      { id: uid('ph'), date: '28 Apr 2026', from: 'Business', to: 'Enterprise', direction: 'upgrade' },
     ],
   })
   // A server that's fallen over — shows the red map pin + "Broken" state.
@@ -353,7 +357,7 @@ function grownState() {
       number: 'INV-2026-0005', period: 'May 2026', issued: '1 Jun 2026', status: 'Paid', credits: 1000,
       items: [
         { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
-        { label: 'atlas-eu-01', plan: 'Standard', days: 30, perDay: 55, amount: 1650 },
+        { label: 'atlas-eu-01', plan: 'Starter', days: 30, perDay: 55, amount: 1650 },
       ],
     },
     {
@@ -362,15 +366,15 @@ function grownState() {
     },
     {
       number: 'INV-2026-0003', period: 'March 2026', issued: '1 Apr 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Standard', days: 30, perDay: 68, amount: 2040 }],
+      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 30, perDay: 68, amount: 2040 }],
     },
     {
       number: 'INV-2026-0002', period: 'February 2026', issued: '1 Mar 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Standard', days: 28, perDay: 68, amount: 1904 }],
+      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 28, perDay: 68, amount: 1904 }],
     },
     {
       number: 'INV-2026-0001', period: 'January 2026', issued: '1 Feb 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Standard', days: 31, perDay: 68, amount: 2108 }],
+      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 31, perDay: 68, amount: 2108 }],
     },
     {
       number: 'INV-2025-0012', period: 'December 2025', issued: '1 Jan 2026', status: 'Paid', credits: 0,
@@ -539,11 +543,16 @@ export const useCloudStore = defineStore('cloud', {
 
     regionOf: () => (server) => regionById(server.regionId),
 
-    // What this server actually costs in its region.
-    monthlyPriceOf: () => (server) => {
-      const base = planById(server.planId).priceMonthly
-      return Math.round((base * regionById(server.regionId).priceFactor) / 50) * 50
-    },
+    // The resolved resource picture: a custom server carries its own config,
+    // a curated one inherits its plan's fixed specs.
+    specsOf: () => (server) =>
+      server.planId === 'custom' && server.customSpec
+        ? server.customSpec
+        : planById(server.planId)?.specs,
+
+    // What this server actually costs in its region (custom builds price per unit).
+    monthlyPriceOf: () => (server) =>
+      priceFor(server.planId, server.regionId, server.customSpec),
 
     // Informational per-day rate (monthly ÷ 30) — not a daily charge.
     perDayOf() {
@@ -568,9 +577,9 @@ export const useCloudStore = defineStore('cloud', {
     recommendedPlanId: () => CHEAPEST_PLAN_ID,
 
     // One legible resource picture per server; disk scales with the plan.
-    healthOf: () => (server) => {
-      const plan = planById(server.planId)
-      const diskTotal = parseInt(plan.specs.disk) || 50
+    healthOf() {
+      return (server) => {
+      const diskTotal = (this.specsOf(server)?.disk || 50) + (server.diskAddonGb || 0)
       const diskUsed = Math.max(Math.round(diskTotal * server.health.diskFrac * 10) / 10, 0.5)
       const cpuPct = server.health.cpuPct
       const memPct = Math.round((server.health.memUsedGb / server.health.memTotalGb) * 100)
@@ -584,6 +593,7 @@ export const useCloudStore = defineStore('cloud', {
         diskUsed,
         diskTotal,
         ok: cpuPct < 80 && memPct < 85 && diskPct < 85,
+      }
       }
     },
 
@@ -708,8 +718,9 @@ export const useCloudStore = defineStore('cloud', {
       this.onboarding.planId = TEAM_SIZE_TO_PLAN[size] || 'business'
     },
 
-    choosePlan(planId) {
+    choosePlan(planId, customSpec = null) {
       this.onboarding.planId = planId
+      this.onboarding.customSpec = planId === 'custom' ? customSpec : null
     },
 
     provisionServer() {
@@ -717,6 +728,7 @@ export const useCloudStore = defineStore('cloud', {
       this.servers = [
         makeServer({
           planId: this.onboarding.planId,
+          customSpec: this.onboarding.planId === 'custom' ? this.onboarding.customSpec : null,
           regionId: this.onboarding.regionId,
           status: 'provisioning',
         }),
@@ -726,10 +738,11 @@ export const useCloudStore = defineStore('cloud', {
 
     // A second (third…) server. The activity entry carries the price —
     // a new server is a new recurring charge, and the history should say so.
-    addServer({ name, planId, regionId, version }) {
+    addServer({ name, planId, regionId, version, customSpec }) {
       const srv = makeServer({
         name: name || `My server ${this.servers.length + 1}`,
         planId: planId || 'business',
+        customSpec: planId === 'custom' ? customSpec || null : null,
         regionId: regionId || 'aws-mumbai',
         version: version || 'v15',
         status: 'provisioning',
@@ -1102,14 +1115,21 @@ export const useCloudStore = defineStore('cloud', {
       }, 2000)
     },
 
-    resizeServer(serverId, planId) {
+    resizeServer(serverId, planId, customSpec = null) {
       const srv = this.findServer(serverId)
-      if (!srv || srv.planId === planId) return
+      if (!srv) return
+      const specChanged =
+        planId === 'custom' && JSON.stringify(customSpec) !== JSON.stringify(srv.customSpec)
+      if (srv.planId === planId && !specChanged) return
       const fromPlan = planById(srv.planId)
       const toPlan = planById(planId)
-      const direction = toPlan.priceMonthly >= fromPlan.priceMonthly ? 'upgrade' : 'downgrade'
+      // Custom plans have no fixed price — compare resolved monthly cost instead.
+      const fromPrice = priceFor(srv.planId, srv.regionId, srv.customSpec)
+      const toPrice = priceFor(planId, srv.regionId, customSpec)
+      const direction = toPrice >= fromPrice ? 'upgrade' : 'downgrade'
       return this._work(() => {
         srv.planId = planId
+        srv.customSpec = planId === 'custom' ? customSpec : null
         srv.planHistory.unshift({
           id: uid('ph'),
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -1121,20 +1141,37 @@ export const useCloudStore = defineStore('cloud', {
       }, 1400)
     },
 
+    // Add storage on top of the plan's base disk. `newTotalGb` is the desired
+    // total; we store the delta as an add-on so plan/pricing logic stays intact.
+    addServerStorage(serverId, newTotalGb) {
+      const srv = this.findServer(serverId)
+      if (!srv) return
+      const base = this.specsOf(srv)?.disk || 50
+      const addon = Math.max(0, Math.round(newTotalGb - base))
+      if (addon === (srv.diskAddonGb || 0)) return
+      return this._work(() => {
+        srv.diskAddonGb = addon
+        this.logActivity(`Increased storage on ${srv.name} to ${base + addon} GB`, { tag: 'server' })
+      }, 1200)
+    },
+
     // Migration is in-place — the same server entry changes status rather than
     // spawning a second one. `scheduledAt` (ISO string) defers the actual move.
-    migrateServer(serverId, { planId, regionId, scheduledAt } = {}) {
+    migrateServer(serverId, { planId, regionId, customSpec, scheduledAt } = {}) {
       const srv = this.findServer(serverId)
       if (!srv) return
       // Clear any live timer before replacing the migration. A _tick/_schedule
       // restored from localStorage is just a stale number from a previous page
       // load, so clearing it here is a harmless no-op in this context.
       this._clearMigrationTimers(srv)
+      const toPlanId = planId || srv.planId
       srv.migration = {
         fromRegionId: srv.regionId,
         fromPlanId: srv.planId,
+        fromCustomSpec: srv.customSpec,
         toRegionId: regionId,
-        toPlanId: planId || srv.planId,
+        toPlanId,
+        toCustomSpec: toPlanId === 'custom' ? customSpec || srv.customSpec : null,
         scheduledAt: scheduledAt || null,
         completedSteps: 0,
         paused: false,
@@ -1231,14 +1268,19 @@ export const useCloudStore = defineStore('cloud', {
       const toRegion = regionById(srv.migration.toRegionId)
       const toPlanId = srv.migration.toPlanId
       const fromPlanId = srv.migration.fromPlanId
+      const toCustomSpec = srv.migration.toCustomSpec
+      const fromCustomSpec = srv.migration.fromCustomSpec
       const actId = srv.migration._actId
       srv.regionId = srv.migration.toRegionId
       srv.planId = toPlanId
+      srv.customSpec = toPlanId === 'custom' ? toCustomSpec : null
       srv.sites.forEach((s) => { if (s.status === 'moving') s.status = 'live' })
       if (toPlanId !== fromPlanId) {
         const fromPlan = planById(fromPlanId)
         const toPlan = planById(toPlanId)
-        const direction = toPlan.priceMonthly >= fromPlan.priceMonthly ? 'upgrade' : 'downgrade'
+        const fromPrice = priceFor(fromPlanId, srv.regionId, fromCustomSpec)
+        const toPrice = priceFor(toPlanId, srv.regionId, toCustomSpec)
+        const direction = toPrice >= fromPrice ? 'upgrade' : 'downgrade'
         srv.planHistory.unshift({
           id: uid('ph'),
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -1693,7 +1735,7 @@ export const useCloudStore = defineStore('cloud', {
         status: 'Unpaid', overdue: true, dueDate: '8 Jun 2026', credits: 0,
         items: [
           { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
-          { label: 'atlas-eu-01', plan: 'Standard', days: 30, perDay: 55, amount: 1650 },
+          { label: 'atlas-eu-01', plan: 'Starter', days: 30, perDay: 55, amount: 1650 },
         ],
       })
 

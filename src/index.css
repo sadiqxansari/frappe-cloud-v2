@@ -49,3 +49,12 @@
 .reveal-leave-to {
   opacity: 0;
 }
+
+/* DateTimePicker calendar: a selected day carries both its base ink
+   (`text-ink-gray-8`/`-9`, light in dark mode) and the selected ink
+   (`text-ink-base`, dark) — the light one wins and the number washes out on the
+   light selected pill. Force the dark, high-contrast ink on the selected cell.
+   Scoped to day cells (`size-7` grid buttons) so dropdowns/tabs are untouched. */
+[class*='size-7'][aria-selected='true'] {
+  color: var(--ink-base) !important;
+}

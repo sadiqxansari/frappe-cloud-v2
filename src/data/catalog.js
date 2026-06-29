@@ -1,88 +1,126 @@
 // Static catalogs — plans, regions, versions and installable apps.
-// Plan copy leads with plain outcomes; raw specs only ever render
-// behind a "details" toggle (see design principle: legible transparency).
 
-// The full size ladder, in ascending price order. `featured` plans are the
-// three we lead with in onboarding — the rest live behind "More sizes"
-// (progressive disclosure, not a wall of SKUs). `recommended` drives the
-// onboarding suggestion. `enterprise` marks the top tier (Product Warranty
-// included) that the Change-plan dialog reveals behind its "Enterprise plans"
-// toggle; keeping it a separate flag preserves the ascending-price ladder.
+// Three curated plans plus a fully custom fourth. Curated plans are the common
+// case (one of three clear picks); Custom is the escape hatch where the user
+// dials in CPU, memory and storage with sliders (see PlanPicker). `specs` are
+// numeric now — vCPU count and GB — formatted for display via `fmtSpec`.
+// `bestFor` is the short audience line; `recommended` drives the onboarding
+// suggestion; `popular` marks the one most teams pick.
 export const PLANS = [
-  {
-    id: 'hobby',
-    name: 'Hobby',
-    priceMonthly: 410,
-    blurb: 'The smallest, cheapest way to get started. Resize the moment you need more.',
-    features: ['Great for a first site or a side project', 'Daily backups', 'Community support'],
-    specs: { cpu: '1 vCPU', memory: '1 GB', database: '250 MB', disk: '2 GB' },
-    featured: true,
-    recommended: true,
-  },
   {
     id: 'starter',
     name: 'Starter',
-    priceMonthly: 820,
-    blurb: 'For trying things out or running something small on the side.',
-    features: ['Runs one app for 1–2 people', 'Daily backups', 'Email support'],
-    specs: { cpu: '1 vCPU', memory: '2 GB', database: '500 MB', disk: '5 GB' },
-    featured: true,
-    recommended: false,
-  },
-  {
-    id: 'standard',
-    name: 'Standard',
-    priceMonthly: 2050,
-    blurb: 'One busy app, or a couple of small ones.',
-    features: ['Good for small teams', 'Daily backups', 'Email support'],
-    specs: { cpu: '2 vCPU', memory: '4 GB', database: '1 GB', disk: '25 GB' },
-    featured: false,
-    recommended: false,
+    priceMonthly: 1900,
+    bestFor: 'For 1–3 people',
+    blurb: 'A small site or a side project, comfortably.',
+    features: ['Runs one app for a small team', 'Daily backups', 'Email support'],
+    specs: { vcpu: 2, memory: 4, disk: 40, database: 1 },
+    recommended: true,
   },
   {
     id: 'business',
     name: 'Business',
     priceMonthly: 4100,
-    blurb: 'Comfortably runs ERPNext for a small team, with daily backups and monitoring.',
-    features: ['Good for teams of 2–25 people', 'Daily backups and monitoring', 'Room for a few apps'],
-    specs: { cpu: '4 vCPU', memory: '8 GB', database: '2 GB', disk: '50 GB' },
-    featured: true,
-    recommended: false,
+    bestFor: 'For teams of 5–25',
+    blurb: 'ERPNext for a growing team, with room for a few apps.',
+    features: ['Comfortable for daily ERPNext use', 'Daily backups and monitoring', 'Room for a few apps'],
+    specs: { vcpu: 4, memory: 8, disk: 75, database: 2 },
+    popular: true,
   },
   {
-    id: 'growth',
-    name: 'Growth',
-    priceMonthly: 6150,
-    blurb: 'Headroom for several apps and more people.',
-    features: ['Good for teams of 10–40 people', 'Daily backups and monitoring', 'Several apps, comfortably'],
-    specs: { cpu: '4 vCPU', memory: '16 GB', database: '3 GB', disk: '75 GB' },
-    featured: false,
-    recommended: false,
-    enterprise: true,
-  },
-  {
-    id: 'busy',
-    name: 'Busy',
+    id: 'enterprise',
+    name: 'Enterprise',
     priceMonthly: 8200,
-    blurb: 'For bigger teams and heavier day-to-day use.',
-    features: ['Good for teams of 25 and up', 'Daily backups and monitoring', 'Plenty of headroom to grow'],
-    specs: { cpu: '8 vCPU', memory: '32 GB', database: '4 GB', disk: '100 GB' },
-    featured: false,
-    recommended: false,
-    enterprise: true,
-  },
-  {
-    id: 'heavy',
-    name: 'Heavy',
-    priceMonthly: 12300,
-    blurb: 'The biggest teams and the heaviest loads.',
-    features: ['Good for 50+ people', 'Daily backups and monitoring', 'Priority support'],
-    specs: { cpu: '16 vCPU', memory: '64 GB', database: '8 GB', disk: '200 GB' },
-    featured: false,
-    recommended: false,
-    enterprise: true,
+    bestFor: 'For teams of 25+',
+    blurb: 'Heavy, busy workloads for a larger team.',
+    features: ['Built for heavy, busy workloads', 'Daily backups and monitoring', 'Priority support'],
+    specs: { vcpu: 8, memory: 16, disk: 160, database: 4 },
   },
 ]
+
+// The custom plan isn't a fixed size — the user sets vCPU, memory and storage
+// with sliders, and the price is summed per unit (see UNIT_PRICING). It carries
+// no fixed `specs`; the chosen config lives on the server as `customSpec`.
+export const CUSTOM_PLAN = {
+  id: 'custom',
+  name: 'Custom',
+  bestFor: 'You set the specs',
+  blurb: 'Dial in exactly the CPU, memory and storage you need.',
+  custom: true,
+}
+
+export const ALL_PLANS = [...PLANS, CUSTOM_PLAN]
+
+// Per-unit monthly price (₹, before the region factor) for a custom build.
+// Curated plans are priced a touch below the equivalent custom total, so a
+// named plan is honest value and Custom is the escape hatch.
+export const UNIT_PRICING = { vcpu: 500, memory: 250, disk: 7 }
+
+// Compute is a fixed ladder of vCPU counts. The slider rides this list.
+export const COMPUTE_SIZES = [0.125, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256]
+
+// Memory pairs with vCPU within a supported band, set as GB of RAM per vCPU.
+// 2× (compute), 4× (balanced), 8× (memory-heavy) — anything outside isn't a
+// buildable shape (a stray ratio strands the host's other resource). DEFAULT
+// is what a fresh pick and a slider move land on.
+export const MEMORY_RATIOS = [2, 4, 8]
+export const DEFAULT_RATIO = 2
+// Shown in the memory menu — ratios outside MEMORY_RATIOS render disabled so
+// the supported band is visible, not hidden.
+export const MEMORY_RATIOS_SHOWN = [1, 2, 4, 8, 16]
+
+// Memory options for a vCPU count: the value (GB), its ratio, and whether it's
+// a supported shape. Used to build the memory dropdown.
+export function memoryOptionsFor(vcpu) {
+  return MEMORY_RATIOS_SHOWN.map((ratio) => ({
+    memory: vcpu * ratio,
+    ratio,
+    supported: MEMORY_RATIOS.includes(ratio),
+  }))
+}
+
+// The supported memory range (GB) for a vCPU count — for menu hint copy.
+export function memoryRangeFor(vcpu) {
+  return { min: vcpu * MEMORY_RATIOS[0], max: vcpu * MEMORY_RATIOS[MEMORY_RATIOS.length - 1] }
+}
+
+// Storage is the one independently-set dimension — a number stepper bounded
+// by min/max/step. (Compute lives in COMPUTE_SIZES above.)
+export const CUSTOM_LIMITS = {
+  disk: { min: 10, max: 1000, step: 10, label: 'Storage', unit: 'GB' },
+}
+
+// Common storage sizes for the quick-pick dropdown; the stepper still nudges
+// by 10 GB for anything in between.
+export const DISK_CHOICES = [10, 20, 50, 100, 200, 500, 1000]
+
+// Pretty vCPU label — sub-1 cores read as fractions (⅛, ¼, ½).
+const VCPU_FRACTIONS = { 0.125: '⅛', 0.25: '¼', 0.5: '½' }
+export function fmtVcpu(v) {
+  return VCPU_FRACTIONS[v] || String(v)
+}
+
+// Where the custom sliders start — sits right next to Business.
+export const CUSTOM_DEFAULT = { vcpu: 4, memory: 8, disk: 80 }
+
+// Sum the per-unit prices for a custom resource picture.
+export function customMonthly(spec = CUSTOM_DEFAULT) {
+  return (
+    spec.vcpu * UNIT_PRICING.vcpu +
+    spec.memory * UNIT_PRICING.memory +
+    spec.disk * UNIT_PRICING.disk
+  )
+}
+
+// Human label for a numeric spec value.
+export function fmtSpec(key, val) {
+  if (val == null) return '—'
+  if (key === 'vcpu') return `${fmtVcpu(val)} vCPU`
+  if (key === 'memory') return `${val} GB RAM`
+  if (key === 'disk') return `${val} GB SSD`
+  if (key === 'database') return `${val} GB DB`
+  return String(val)
+}
 
 // Cluster management stays internal. Users pick a provider and a region —
 // each provider runs its own set of regions, and pricing follows the
@@ -306,11 +344,11 @@ export function categoryOf(key) {
 export const TEAM_SIZE_TO_PLAN = {
   solo: 'starter',
   small: 'business',
-  large: 'busy',
+  large: 'enterprise',
 }
 
 export function planById(id) {
-  return PLANS.find((p) => p.id === id)
+  return ALL_PLANS.find((p) => p.id === id)
 }
 
 export function appByKey(key) {
@@ -336,18 +374,11 @@ export function versionById(id) {
   return VERSIONS.find((v) => v.id === id) || VERSIONS[0]
 }
 
-export const FEATURED_PLANS = PLANS.filter((p) => p.featured)
-
-// Change-plan grouping: standard tier shows by default, enterprise tier
-// (Product Warranty included) reveals behind the toggle. Both keep PLANS'
-// ascending-price order, so the combined list stays a monotonic ladder.
-export const STANDARD_PLANS = PLANS.filter((p) => !p.enterprise)
-export const ENTERPRISE_PLANS = PLANS.filter((p) => p.enterprise)
-
 // Monthly price for a plan in a region, rounded to a tidy number.
-// Pricing follows the provider behind the region.
-export function priceFor(planId, regionId) {
-  const base = planById(planId).priceMonthly
+// Pricing follows the provider behind the region. For the custom plan, pass the
+// chosen resource picture as `customSpec`; the total is summed per unit.
+export function priceFor(planId, regionId, customSpec) {
+  const base = planId === 'custom' ? customMonthly(customSpec) : planById(planId).priceMonthly
   const factor = regionById(regionId).priceFactor
   return Math.round((base * factor) / 50) * 50
 }

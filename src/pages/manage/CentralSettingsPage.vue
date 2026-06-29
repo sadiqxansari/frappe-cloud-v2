@@ -1,6 +1,6 @@
 <template>
-  <CentralShell :crumbs="[{ label: 'Team & Permissions', route: '/settings' }]">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Team &amp; Permissions</h1>
+  <CentralShell :crumbs="[{ label: 'Teams', route: '/settings' }]">
+    <h1 class="text-xl font-semibold text-ink-gray-9">Teams</h1>
 
     <TabButtons v-model="tab" :buttons="tabs" class="mt-4" />
 
@@ -54,43 +54,45 @@
         <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
       </FormControl>
 
-      <!-- Member list — full row is clickable -->
-      <div class="mt-3 divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
-        <div
-          v-for="m in filteredMembers"
-          :key="m.id"
-          class="flex cursor-pointer items-center gap-3 p-3 hover:bg-surface-gray-1"
-          @click="openMemberDialog(m)"
-        >
-          <!-- Avatar — tooltip for Owner/Admin -->
-          <Tooltip v-if="memberIsOwner(m) || memberIsAdmin(m)" text="This role has access to all servers and permissions.">
-            <Avatar :label="m.name" size="md" class="shrink-0" />
-          </Tooltip>
-          <Avatar v-else :label="m.name" size="md" class="shrink-0" />
-
-          <!-- Name + badges -->
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span class="truncate text-sm font-medium text-ink-gray-9">{{ m.name }}</span>
-              <Badge v-if="m.invited && !m.inviteExpired" theme="orange" variant="subtle" label="Invited" />
-              <template v-else-if="m.invited && m.inviteExpired">
-                <Badge theme="red" variant="subtle" label="Expired" />
-                <button class="text-xs text-ink-gray-5 underline hover:text-ink-gray-8" @click.stop="doResendInvite(m)">Resend</button>
-              </template>
+      <!-- Member list — frappe-ui ListView; full row opens the member dialog. -->
+      <ListView
+        class="mt-3 fc-listview"
+        :style="{ height: `${52 + filteredMembers.length * 60}px` }"
+        :columns="memberColumns"
+        :rows="memberRows"
+        :options="{ selectable: false, showTooltip: false, rowHeight: 60, onRowClick: (row) => openMemberDialog(row._m) }"
+        row-key="id"
+      >
+        <template #cell="{ column, row }">
+          <!-- Member: avatar + name + email -->
+          <div v-if="column.key === 'member'" class="flex min-w-0 items-center gap-3">
+            <Tooltip v-if="memberIsOwner(row._m) || memberIsAdmin(row._m)" text="This role has access to all servers and permissions.">
+              <Avatar :label="row._m.name" size="md" class="shrink-0" />
+            </Tooltip>
+            <Avatar v-else :label="row._m.name" size="md" class="shrink-0" />
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span class="truncate text-sm font-medium text-ink-gray-9">{{ row._m.name }}</span>
+                <Badge v-if="row._m.invited && !row._m.inviteExpired" theme="orange" variant="subtle" label="Invited" />
+                <template v-else-if="row._m.invited && row._m.inviteExpired">
+                  <Badge theme="red" variant="subtle" label="Expired" />
+                  <button class="text-xs text-ink-gray-5 underline hover:text-ink-gray-8" @click.stop="doResendInvite(row._m)">Resend</button>
+                </template>
+              </div>
+              <div class="truncate text-xs text-ink-gray-5">{{ row._m.email }}</div>
             </div>
-            <div class="truncate text-xs text-ink-gray-5">{{ m.email }}</div>
           </div>
 
-          <!-- Role chips -->
-          <div class="flex flex-wrap justify-end gap-1" @click.stop>
-            <template v-if="memberIsOwner(m)">
+          <!-- Roles: chips -->
+          <div v-else-if="column.key === 'roles'" class="flex flex-wrap gap-1" @click.stop>
+            <template v-if="memberIsOwner(row._m)">
               <Badge theme="green" variant="subtle">
                 <template #prefix><span class="lucide-crown size-3" /></template>
                 Owner
               </Badge>
             </template>
             <template v-else>
-              <template v-for="chip in roleChipsFor(m)" :key="chip.roleId">
+              <template v-for="chip in roleChipsFor(row._m)" :key="chip.roleId">
                 <Badge v-if="chip.roleId === 'role-admin'" theme="orange" variant="subtle">
                   <template #prefix><span class="lucide-shield size-3" /></template>
                   Admin
@@ -119,38 +121,14 @@
           </div>
 
           <!-- More menu -->
-          <Dropdown v-if="memberMenuOptions(m).length" :options="memberMenuOptions(m)" placement="bottom-end" @click.stop>
-            <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" :aria-label="`Actions for ${m.name}`" @click.stop />
+          <Dropdown v-else-if="column.key === 'actions' && memberMenuOptions(row._m).length" :options="memberMenuOptions(row._m)" placement="bottom-end">
+            <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${row._m.name}`" @click.stop><span class="lucide-ellipsis-vertical size-4" /></button>
           </Dropdown>
-          <div v-else class="size-7 shrink-0" />
-        </div>
-        <p v-if="!filteredMembers.length" class="p-6 text-center text-p-sm text-ink-gray-4">
-          No members match “{{ memberQuery }}”.
-        </p>
-      </div>
-
-      <!-- Frappe Partner -->
-      <div class="mt-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-base font-semibold text-ink-gray-8">Frappe Partner</h2>
-            <p class="mt-0.5 text-p-sm text-ink-gray-5">Manage partner access to your account</p>
-          </div>
-          <Button
-            variant="subtle"
-            size="sm"
-            :icon-left="store.partnerCode ? 'lucide-pencil' : 'lucide-square-pen'"
-            :label="store.partnerCode ? 'Change Partner Code' : 'Add Partner Code'"
-            @click="openPartner"
-          />
-        </div>
-        <p v-if="store.partnerCode" class="mt-3 text-p-sm text-ink-gray-6">
-          Linked to Partner code <span class="font-mono font-medium text-ink-gray-8">{{ store.partnerCode }}</span>.
-        </p>
-        <p v-else class="mt-3 text-p-sm text-ink-gray-6">
-          Have a Frappe Partner Referral Code? Click on <span class="font-medium text-ink-gray-8">Add Partner Code</span> to link with your Partner team.
-        </p>
-      </div>
+        </template>
+      </ListView>
+      <p v-if="!filteredMembers.length" class="rounded-xl border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
+        No members match “{{ memberQuery }}”.
+      </p>
     </div>
 
     <!-- ── Roles ──────────────────────────────────────────────── -->
@@ -175,69 +153,56 @@
         <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
       </FormControl>
 
-      <div class="mt-3 divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-xl border border-outline-gray-2">
-        <div
-          v-for="r in filteredRoles"
-          :key="r.id"
-          class="flex cursor-pointer items-center gap-3 p-3.5 hover:bg-surface-gray-1"
-          @click="openRoleDialog(r)"
-        >
-          <!-- Role icon — amber tile for owner/admin -->
-          <span
-            class="grid size-8 shrink-0 place-items-center rounded-lg"
-            :class="(r.id === 'role-owner' || r.id === 'role-admin') ? 'bg-surface-amber-2' : 'bg-surface-gray-2'"
-          >
-            <Tooltip v-if="r.id === 'role-owner' || r.id === 'role-admin'" text="This role has access to all servers and permissions.">
-              <span class="lucide-shield size-4" :class="(r.id === 'role-owner' || r.id === 'role-admin') ? 'text-ink-amber-8' : 'text-ink-gray-6'" />
-            </Tooltip>
-            <span v-else class="lucide-user size-4 text-ink-gray-6" />
-          </span>
-
-          <!-- Role info -->
-          <div class="min-w-0 flex-1">
-            <div class="truncate text-sm font-medium text-ink-gray-9">{{ r.name }}</div>
-            <div class="truncate text-xs text-ink-gray-5">{{ r.desc }}</div>
+      <ListView
+        class="mt-3 fc-listview"
+        :style="{ height: `${52 + filteredRoles.length * 60}px` }"
+        :columns="roleColumns"
+        :rows="roleRows"
+        :options="{ selectable: false, showTooltip: false, rowHeight: 60, onRowClick: (row) => openRoleDialog(row._role) }"
+        row-key="id"
+      >
+        <template #cell="{ column, row }">
+          <!-- Role: icon + name + description -->
+          <div v-if="column.key === 'role'" class="flex min-w-0 items-center gap-3">
+            <span
+              class="grid size-8 shrink-0 place-items-center rounded-lg"
+              :class="(row._role.id === 'role-owner' || row._role.id === 'role-admin') ? 'bg-surface-amber-2' : 'bg-surface-gray-2'"
+            >
+              <Tooltip v-if="row._role.id === 'role-owner' || row._role.id === 'role-admin'" text="This role has access to all servers and permissions.">
+                <span class="lucide-shield size-4 text-ink-amber-8" />
+              </Tooltip>
+              <span v-else class="lucide-user size-4 text-ink-gray-6" />
+            </span>
+            <div class="min-w-0">
+              <div class="truncate text-sm font-medium text-ink-gray-9">{{ row._role.name }}</div>
+              <div class="truncate text-xs text-ink-gray-5">{{ row._role.desc }}</div>
+            </div>
           </div>
 
-          <!-- Stacked assignee avatars -->
-          <div v-if="store.membersForRole(r.id).length" class="flex -space-x-1.5">
-            <Tooltip v-for="m in store.membersForRole(r.id).slice(0, 4)" :key="m.id" :text="m.name">
+          <!-- Members: stacked avatars -->
+          <div v-else-if="column.key === 'members'" class="flex -space-x-1.5">
+            <Tooltip v-for="m in store.membersForRole(row._role.id).slice(0, 4)" :key="m.id" :text="m.name">
               <Avatar :label="m.name" size="sm" class="ring-2 ring-[var(--surface-elevation-1)]" />
             </Tooltip>
             <span
-              v-if="store.membersForRole(r.id).length > 4"
+              v-if="store.membersForRole(row._role.id).length > 4"
               class="inline-flex size-7 items-center justify-center rounded-full bg-surface-gray-3 text-xs font-medium text-ink-gray-7 ring-2 ring-[var(--surface-elevation-1)]"
             >
-              +{{ store.membersForRole(r.id).length - 4 }}
+              +{{ store.membersForRole(row._role.id).length - 4 }}
             </span>
+            <span v-if="!store.membersForRole(row._role.id).length" class="text-xs text-ink-gray-4">No one yet</span>
           </div>
 
-          <!-- Delete button -->
-          <Button
-            v-if="!r.system"
-            variant="ghost"
-            size="sm"
-            icon="lucide-trash-2"
-            :aria-label="`Delete ${r.name}`"
-            @click.stop="promptDeleteRole(r)"
-          />
-        </div>
-        <p v-if="!filteredRoles.length" class="p-6 text-center text-p-sm text-ink-gray-4">
-          No roles match “{{ roleQuery }}”.
-        </p>
-      </div>
+          <!-- Delete -->
+          <button v-else-if="column.key === 'actions' && !row._role.system" class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-red-2 hover:text-ink-red-7" :aria-label="`Delete ${row._role.name}`" @click.stop="promptDeleteRole(row._role)"><span class="lucide-trash-2 size-4" /></button>
+        </template>
+      </ListView>
+      <p v-if="!filteredRoles.length" class="rounded-xl border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
+        No roles match “{{ roleQuery }}”.
+      </p>
     </div>
 
     <!-- ── Dialogs ─────────────────────────────────────────── -->
-
-    <Dialog v-model:open="partnerOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add Partner Code</span></template>
-      <FormControl v-model="partnerDraft" type="text" label="Partner Referral Code" placeholder="e.g. ABC123" />
-      <p class="mt-2 text-p-sm text-ink-gray-5">Link your account with a Frappe Partner team using their referral code.</p>
-      <template #actions>
-        <div class="flex justify-end gap-2"><Button label="Cancel" @click="partnerOpen = false" /><Button variant="solid" label="Link" :disabled="!partnerDraft.trim()" @click="savePartner" /></div>
-      </template>
-    </Dialog>
 
     <Dialog v-model:open="inviteOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Invite to team</span></template>
@@ -252,32 +217,53 @@
       </template>
     </Dialog>
 
-    <!-- New role — with permissions -->
+    <!-- New role — name it, then grant what it can do -->
     <Dialog v-model:open="roleOpen">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">New role</span></template>
-      <div class="space-y-4">
-        <FormControl v-model="newRole.name" type="text" label="Name" placeholder="e.g. Support" />
-        <FormControl v-model="newRole.desc" type="text" label="Description" placeholder="What can this role do?" />
+      <template #title>
         <div>
-          <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">Important</div>
-          <div class="flex items-center justify-between rounded-lg border border-outline-gray-2 px-3 py-2.5">
-            <div>
-              <div class="text-sm text-ink-gray-8">Administrator</div>
-              <div class="text-xs text-ink-gray-4">Full access to all resources and settings</div>
+          <span class="text-xl font-semibold text-ink-gray-9">New role</span>
+          <p class="mt-1 text-sm font-normal text-ink-gray-5">Name it and choose what it can do. You'll assign people to it on the Team tab.</p>
+        </div>
+      </template>
+      <div class="space-y-5">
+        <div class="grid grid-cols-2 gap-3">
+          <FormControl v-model="newRole.name" type="text" label="Name" placeholder="e.g. Support" />
+          <FormControl v-model="newRole.desc" type="text" label="Description" placeholder="What it's for (optional)" />
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">Permissions</div>
+
+          <!-- Administrator — the master switch; cascades to everything below -->
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors"
+            :class="newRole.permissions.administrator ? 'border-outline-amber-1 bg-surface-amber-1' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+            @click="setPermission(newRole.permissions, 'administrator', !newRole.permissions.administrator)"
+          >
+            <span class="grid size-8 shrink-0 place-items-center rounded-lg" :class="newRole.permissions.administrator ? 'bg-surface-amber-2' : 'bg-surface-gray-2'">
+              <span class="lucide-shield size-4" :class="newRole.permissions.administrator ? 'text-ink-amber-8' : 'text-ink-gray-6'" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-ink-gray-8">Administrator</div>
+              <div class="text-xs text-ink-gray-5">Full access to every server, site and setting</div>
             </div>
             <Switch
               :modelValue="newRole.permissions.administrator"
               @update:modelValue="(v) => setPermission(newRole.permissions, 'administrator', v)"
+              @click.stop
             />
-          </div>
-        </div>
-        <div>
-          <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">General</div>
+          </button>
+
+          <!-- Granular permissions -->
           <div class="divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-lg border border-outline-gray-2">
-            <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
-              <div>
-                <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
-                <p v-if="permLocked(perm, newRole.permissions)" class="text-p-xs text-ink-gray-4">Available to Admin roles only</p>
+            <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center gap-3 px-3 py-2.5" :class="permLocked(perm, newRole.permissions) && 'opacity-60'">
+              <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-gray-2">
+                <span class="size-4 text-ink-gray-6" :class="perm.icon" />
+              </span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm text-ink-gray-8">{{ perm.label }}</div>
+                <p class="text-xs text-ink-gray-5">{{ permLocked(perm, newRole.permissions) ? 'Available to Admin roles only' : perm.desc }}</p>
               </div>
               <Switch
                 :modelValue="newRole.permissions[perm.key]"
@@ -426,7 +412,7 @@
       <!-- View mode: compact roles table -->
       <div v-if="memberDialogMode === 'view' && memberDialogTarget" class="max-h-[28rem] overflow-y-auto rounded-xl border border-outline-gray-2">
         <div v-for="row in memberDialogRows(memberDialogTarget)" :key="row.key" class="flex items-center gap-3 border-b border-outline-alpha-gray-1 px-3 py-2.5 last:border-b-0">
-          <span v-if="row.providerId" class="grid size-6 shrink-0 place-items-center rounded text-[9px] font-bold" :class="row.providerTile">{{ row.providerMono }}</span>
+          <ProviderIcon v-if="row.provider" :provider="row.provider" :size="24" class="rounded" />
           <span v-else class="grid size-6 shrink-0 place-items-center rounded bg-surface-gray-2">
             <span class="lucide-globe size-3.5 text-ink-gray-5" />
           </span>
@@ -558,8 +544,9 @@
 
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { Avatar, Badge, Button, Dialog, Dropdown, FormControl, Switch, TabButtons, toast, Tooltip } from 'frappe-ui'
+import { Avatar, Badge, Button, Dialog, Dropdown, FormControl, ListView, Switch, TabButtons, toast, Tooltip } from 'frappe-ui'
 import Alert from '../../components/Alert.vue'
+import ProviderIcon from '../../components/ProviderIcon.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import { useCloudStore } from '../../stores/cloud'
 import { providerById, regionById } from '../../data/catalog'
@@ -600,10 +587,10 @@ watch(tab, () => {
 })
 
 const GENERAL_PERMISSIONS = [
-  { key: 'createSites', label: 'Create Sites', short: 'Sites' },
-  { key: 'marketplace', label: 'Marketplace', short: 'Market' },
-  { key: 'webhooks', label: 'Webhooks', short: 'Hooks' },
-  { key: 'billing', label: 'Billing', short: 'Billing' },
+  { key: 'createSites', label: 'Create sites', short: 'Sites', desc: 'Spin up new sites on any server', icon: 'lucide-layout-grid' },
+  { key: 'marketplace', label: 'Marketplace', short: 'Market', desc: 'Install and manage paid apps', icon: 'lucide-store' },
+  { key: 'webhooks', label: 'Webhooks', short: 'Hooks', desc: 'Create and manage outgoing webhooks', icon: 'lucide-webhook' },
+  { key: 'billing', label: 'Billing', short: 'Billing', desc: 'View invoices and manage payment', icon: 'lucide-wallet' },
 ]
 
 function makeDefaultPermissions() {
@@ -685,8 +672,7 @@ function memberDialogRows(m) {
       key: r.roleId + '::' + (r.resourceId || ''),
       serverLabel: server ? server.name : 'All servers',
       providerId: provider?.id || null,
-      providerTile: provider?.tile || '',
-      providerMono: provider?.mono || '',
+      provider: provider || null,
       roleName: role?.name || 'Unknown',
       permissions: role?.permissions || {},
       enabledPerms: GENERAL_PERMISSIONS.filter((p) => role?.permissions?.[p.key]),
@@ -740,20 +726,21 @@ const nonOwnerMemberOptions = computed(() =>
     .map((m) => ({ label: m.name, value: m.id }))
 )
 
-// ── Frappe Partner ────────────────────────────────────────────
+// ── ListView columns / rows ──────────────────────────────────
 
-const partnerOpen = ref(false)
-const partnerDraft = ref('')
-function openPartner() {
-  partnerDraft.value = store.partnerCode
-  partnerOpen.value = true
-}
-function savePartner() {
-  if (!partnerDraft.value.trim()) return
-  store.setPartnerCode(partnerDraft.value)
-  toast.success('Linked to Partner team')
-  partnerOpen.value = false
-}
+const memberColumns = [
+  { label: 'Member', key: 'member', width: 2 },
+  { label: 'Roles', key: 'roles', width: 2 },
+  { label: '', key: 'actions', width: '3rem', align: 'right' },
+]
+const memberRows = computed(() => filteredMembers.value.map((m) => ({ id: m.id, _m: m })))
+
+const roleColumns = [
+  { label: 'Role', key: 'role', width: 2 },
+  { label: 'Members', key: 'members', width: 1 },
+  { label: '', key: 'actions', width: '3rem', align: 'right' },
+]
+const roleRows = computed(() => filteredRoles.value.map((r) => ({ id: r.id, _role: r })))
 
 // ── Team identity ─────────────────────────────────────────────
 

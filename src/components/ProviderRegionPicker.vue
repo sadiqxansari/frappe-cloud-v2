@@ -12,14 +12,11 @@
           aria-controls="provider-listbox"
           :aria-expanded="providerOpen"
           :aria-activedescendant="providerOpen ? `provider-opt-${providerActiveIndex}` : undefined"
-          class="flex w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 py-[7px] text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
+          class="flex h-9 w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
           @click="providerOpen ? closeProviderMenu() : openProviderMenu()"
           @keydown="onProviderKeydown"
         >
-          <span
-            class="grid size-5 shrink-0 place-items-center rounded text-[9px] font-bold"
-            :class="selectedProvider.tile"
-          >{{ selectedProvider.mono }}</span>
+          <ProviderIcon :provider="selectedProvider" :size="24" class="rounded" />
           <span class="min-w-0 flex-1 truncate text-ink-gray-9">{{ selectedProvider.name }}</span>
           <Badge v-if="isCurrentProvider" label="Current" theme="gray" variant="subtle" size="sm" class="shrink-0" />
           <Badge v-else label="Migration required" theme="blue" variant="subtle" size="sm" class="shrink-0" />
@@ -48,13 +45,9 @@
             @mouseenter="providerActiveIndex = index"
             @click="selectProvider(p.id)"
           >
-            <span
-              class="grid size-6 shrink-0 place-items-center rounded text-[10px] font-bold"
-              :class="p.tile"
-            >{{ p.mono }}</span>
+            <ProviderIcon :provider="p" :size="24" class="rounded" />
             <div class="min-w-0 flex-1">
               <div class="truncate text-sm text-ink-gray-9">{{ p.name }}</div>
-              <div class="text-xs text-ink-gray-5">from {{ inr(startingPrice(p.id)) }}/mo</div>
             </div>
             <Badge v-if="p.id === currentProviderId" label="Current" theme="gray" variant="subtle" size="sm" class="shrink-0" />
             <span v-else class="lucide-arrow-right-left size-3.5 shrink-0 text-ink-gray-5" />
@@ -76,10 +69,11 @@
           aria-controls="region-listbox"
           :aria-expanded="regionOpen"
           :aria-activedescendant="regionOpen ? `region-opt-${regionActiveIndex}` : undefined"
-          class="flex w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 py-[7px] text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
+          class="flex h-9 w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
           @click="regionOpen ? closeRegionMenu() : openRegionMenu()"
           @keydown="onRegionKeydown"
         >
+          <span class="shrink-0 text-base leading-none">{{ selectedRegionFlag }}</span>
           <span class="min-w-0 flex-1 truncate text-ink-gray-9">{{ selectedRegionLabel }}</span>
           <Badge v-if="isCurrentProvider && regionId === currentRegionId" label="Current" theme="gray" variant="subtle" size="sm" class="shrink-0" />
           <Badge v-else-if="isCurrentProvider && regionId !== currentRegionId" label="Migration required" theme="blue" variant="subtle" size="sm" class="shrink-0" />
@@ -108,6 +102,7 @@
             @mouseenter="regionActiveIndex = index"
             @click="selectRegion(r.value)"
           >
+            <span class="shrink-0 text-base leading-none">{{ r.flag }}</span>
             <span class="min-w-0 flex-1 truncate text-ink-gray-9">{{ r.label }}</span>
             <template v-if="isCurrentProvider">
               <Badge v-if="r.value === currentRegionId" label="Current" theme="gray" variant="subtle" size="sm" class="shrink-0" />
@@ -124,8 +119,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Badge } from 'frappe-ui'
-import { PLANS, PROVIDERS, providerById, regionById, regionsOf, priceFor } from '../data/catalog'
-import { inr } from '../utils/format'
+import ProviderIcon from './ProviderIcon.vue'
+import { PROVIDERS, providerById, regionById, regionsOf } from '../data/catalog'
 
 const props = defineProps({
   currentProviderId: { type: String, default: null },
@@ -143,12 +138,6 @@ const providerPickerEl = ref(null)
 
 const selectedProvider = computed(() => providerById(providerId.value))
 const isCurrentProvider = computed(() => providerId.value === props.currentProviderId)
-
-function startingPrice(pid) {
-  const regions = regionsOf(pid)
-  if (!regions.length) return 0
-  return Math.min(...PLANS.map((p) => priceFor(p.id, regions[0].id)))
-}
 
 function openProviderMenu() {
   providerActiveIndex.value = PROVIDERS.findIndex((p) => p.id === providerId.value)
@@ -192,6 +181,7 @@ const regionOptions = computed(() =>
   regionsOf(providerId.value).map((r) => ({
     label: r.beta ? `${r.name} (Beta)` : r.name,
     value: r.id,
+    flag: r.flag,
   })),
 )
 
@@ -199,6 +189,10 @@ const selectedRegionLabel = computed(() => {
   const opt = regionOptions.value.find((r) => r.value === regionId.value)
   return opt?.label ?? regionId.value
 })
+
+const selectedRegionFlag = computed(
+  () => regionOptions.value.find((r) => r.value === regionId.value)?.flag ?? '',
+)
 
 function openRegionMenu() {
   regionActiveIndex.value = Math.max(0, regionOptions.value.findIndex((r) => r.value === regionId.value))
