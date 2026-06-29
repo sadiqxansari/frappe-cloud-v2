@@ -6,7 +6,7 @@
 
     <!-- Step 1 — choose a plan -->
     <div v-if="step === 'choose'">
-      <div class="mb-3 rounded-lg border border-outline-gray-2 p-3">
+      <div class="mb-3">
         <ProviderRegionPicker
           v-model="regionId"
           :current-provider-id="currentProvider.id"
@@ -14,61 +14,32 @@
         />
       </div>
 
-      <!-- Column headers — transparent 1px border matches the rows' border so columns line up -->
-      <div class="mb-1.5 flex items-center gap-4 border border-transparent px-4 text-xs font-medium text-ink-gray-6">
-        <span class="min-w-0 flex-1">Plan</span>
-        <span class="w-24">Database</span>
-        <span class="w-20">Disk</span>
-        <span class="w-24 text-center">Product warranty</span>
-        <span class="w-28 text-right">Monthly cost</span>
-      </div>
+      <PlanPicker
+        v-model:plan-id="selectedId"
+        v-model:custom-spec="customSpec"
+        :region-id="regionId"
+        :current-plan-id="server?.planId"
+        :current-spec="server?.customSpec"
+        refined
+      />
 
-      <!-- Full plan ladder in ascending price; the warranty tier is marked by a divider -->
-      <div class="flex flex-col gap-1">
-        <template v-for="p in PLANS" :key="p.id">
-          <button
-            class="flex w-full items-center gap-4 rounded-[10px] border px-4 py-1.5 text-left transition-colors"
-            :class="isSelected(p) ? 'border-outline-gray-5 bg-surface-gray-1' : 'border-outline-gray-3 hover:bg-surface-gray-1'"
-            :aria-pressed="isSelected(p)"
-            @click="selectedId = p.id"
-          >
-            <span class="min-w-0 flex-1">
-              <span class="flex items-center gap-2">
-                <span class="text-sm font-medium text-ink-gray-9">{{ p.name }}</span>
-                <Badge v-if="isCurrent(p)" theme="gray" variant="outline" label="Current" size="sm" />
-                <Badge v-else-if="p.recommended" theme="green" variant="subtle" label="Recommended" size="sm" />
-                <template v-if="isSelected(p) && !isPlanAffordable(p.id)">
-                  <Tooltip text="Not enough credit — add billing first.">
-                    <span class="lucide-alert-circle size-3.5 shrink-0 text-ink-red-8" />
-                  </Tooltip>
-                  <a
-                    :href="router.resolve('/billing').href"
-                    target="_blank"
-                    rel="noopener"
-                    class="cursor-pointer text-xs font-medium text-ink-gray-7 underline hover:text-ink-gray-9"
-                    @click.stop
-                  >Go to Billing</a>
-                </template>
-              </span>
-            </span>
-            <span class="w-24 text-sm text-ink-gray-6">{{ p.specs.database }}</span>
-            <span class="w-20 text-sm text-ink-gray-6">{{ p.specs.disk }}</span>
-            <span class="flex w-24 justify-center">
-              <span v-if="p.enterprise" class="lucide-check size-4 text-ink-green-6" />
-              <span v-else class="lucide-x size-4 text-ink-gray-4" />
-            </span>
-            <span class="w-28 text-right">
-              <span class="text-base font-semibold text-ink-gray-9">{{ inr(priceFor(p.id, regionId)) }}</span>
-              <span class="text-xs text-ink-gray-5">/mo</span>
-            </span>
-          </button>
-        </template>
+      <!-- Affordability note — only when the chosen plan outruns available billing -->
+      <div v-if="!canAffordPlan" class="mt-3 flex items-center gap-2 rounded-lg border border-outline-red-2 bg-surface-red-1 px-3 py-2 text-xs text-ink-gray-7">
+        <span class="lucide-alert-circle size-3.5 shrink-0 text-ink-red-8" />
+        Insufficient balance — set up billing to switch.
+        <a
+          :href="router.resolve('/billing').href"
+          target="_blank"
+          rel="noopener"
+          class="ml-auto cursor-pointer font-medium text-ink-gray-8 underline hover:text-ink-gray-9"
+          @click.stop
+        >Go to Billing</a>
       </div>
 
       <!-- Billing note -->
-      <div class="mt-3 flex items-center gap-1.5 text-xs text-ink-gray-5">
+      <div v-else class="mt-3 flex items-center gap-1.5 text-xs text-ink-gray-5">
         <span class="lucide-credit-card size-3 shrink-0" />
-        Your new plan takes effect today and is billed by the day.
+        Takes effect today, billed by the day.
         <a href="#billing-docs" class="font-medium text-ink-gray-7 underline hover:text-ink-gray-9">Learn more</a>
       </div>
     </div>
@@ -85,10 +56,7 @@
       <div class="mt-4 overflow-hidden rounded-2xl border border-outline-gray-3 shadow-sm">
         <div class="flex items-center gap-3 p-3">
           <div class="flex min-w-0 flex-1 items-center gap-2.5">
-            <span
-              class="grid size-7 shrink-0 place-items-center rounded text-[10px] font-bold"
-              :class="currentProvider.tile"
-            >{{ currentProvider.mono }}</span>
+            <ProviderIcon :provider="currentProvider" :size="28" class="rounded" />
             <div class="min-w-0">
               <div class="text-xs text-ink-gray-5">From</div>
               <div class="truncate text-sm font-medium text-ink-gray-9">{{ currentRegion.name }}</div>
@@ -97,10 +65,7 @@
           </div>
           <span class="lucide-arrow-right size-4 shrink-0 text-ink-gray-4" />
           <div class="flex min-w-0 flex-1 items-center gap-2.5">
-            <span
-              class="grid size-7 shrink-0 place-items-center rounded text-[10px] font-bold"
-              :class="destProvider.tile"
-            >{{ destProvider.mono }}</span>
+            <ProviderIcon :provider="destProvider" :size="28" class="rounded" />
             <div class="min-w-0">
               <div class="text-xs text-ink-gray-5">To</div>
               <div class="truncate text-sm font-medium text-ink-gray-9">{{ region.name }}</div>
@@ -129,30 +94,11 @@
         </div>
       </div>
 
-      <!-- Migration steps with titles -->
-      <ol class="mt-4 space-y-0">
-        <li
-          v-for="(s, i) in migrationSteps"
-          :key="i"
-          class="relative flex items-start gap-3 pb-4 last:pb-0"
-        >
-          <div v-if="i < migrationSteps.length - 1" class="absolute left-[0.6rem] top-6 bottom-0 w-px bg-outline-gray-2" />
-          <span class="relative z-10 grid size-5 shrink-0 place-items-center rounded-full bg-surface-gray-3 text-xs font-semibold text-ink-gray-7">{{ i + 1 }}</span>
-          <span class="pt-0.5 text-sm">
-            <span class="font-semibold text-ink-gray-8">{{ s.title }}</span>
-            <span class="text-ink-gray-5"> — {{ s.text }}</span>
-          </span>
-        </li>
-      </ol>
-
-      <!-- Scheduler: two side-by-side inputs -->
-      <div class="mt-3 flex items-center gap-3 rounded-lg border border-outline-gray-2 px-3 py-2.5">
-        <Switch v-model="scheduled" size="sm" class="shrink-0" />
-        <span class="text-sm text-ink-gray-7">Schedule for later</span>
-        <div v-if="scheduled" class="ml-auto flex gap-2">
-          <FormControl v-model="scheduledDate" type="date" :min="minScheduleDate" />
-          <FormControl v-model="scheduledTime" type="time" :min="minScheduleTime || undefined" />
-        </div>
+      <!-- Scheduler: obvious times first, Custom for anything else.
+           Here the options sit inline on the far right of the toggle row. -->
+      <div class="mt-5 flex items-start gap-3">
+        <Checkbox v-model="scheduled" label="Schedule for later" />
+        <ScheduleField v-if="scheduled" v-model="scheduleAt" class="ml-auto items-end" />
       </div>
     </div>
 
@@ -210,7 +156,7 @@
           <Button
             variant="solid"
             :label="scheduled ? 'Schedule plan change' : 'Migrate'"
-            :disabled="scheduled && (!scheduledDate || !scheduledTime || scheduledInPast)"
+            :disabled="scheduled && !scheduleAt"
             @click="doMigrate"
           />
         </div>
@@ -222,10 +168,13 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Dialog, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
+import { Button, Checkbox, Dialog, Tooltip, toast } from 'frappe-ui'
 import ProviderRegionPicker from './ProviderRegionPicker.vue'
+import ProviderIcon from './ProviderIcon.vue'
+import PlanPicker from './PlanPicker.vue'
+import ScheduleField from './ScheduleField.vue'
 import WorldMap from './WorldMap.vue'
-import { PLANS, planById, priceFor, providerById, regionById } from '../data/catalog'
+import { planById, priceFor, providerById, regionById } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
 import { inr } from '../utils/format'
 
@@ -240,20 +189,20 @@ const router = useRouter()
 
 const step = ref('choose')
 const selectedId = ref(null)
+const customSpec = ref(null)
 const regionId = ref('aws-mumbai')
 const scheduled = ref(false)
-const scheduledDate = ref('')
-const scheduledTime = ref('')
+const scheduleAt = ref('')
 const mapHighlight = ref(null)
 
 watch(open, (isOpen) => {
   if (isOpen) {
     step.value = 'choose'
     selectedId.value = props.server?.planId
+    customSpec.value = props.server?.customSpec ? { ...props.server.customSpec } : null
     regionId.value = props.server?.regionId || 'aws-mumbai'
     scheduled.value = false
-    scheduledDate.value = ''
-    scheduledTime.value = ''
+    scheduleAt.value = ''
   }
 })
 
@@ -271,7 +220,7 @@ function isPlanAffordable(planId) {
   // path) or any saved card/UPI in the list (Payment methods path).
   if (store.cardOnFile || store.paymentMethods.length > 0) return true
   // …otherwise prepaid funds must cover it: server credit + wallet (both in ₹).
-  const monthlyINR = priceFor(planId, regionId.value)
+  const monthlyINR = priceFor(planId, regionId.value, customSpec.value)
   const creditINR = (props.server?.creditBalance ?? 0) * INR_PER_USD
   return monthlyINR <= creditINR + store.walletBalance
 }
@@ -298,48 +247,16 @@ watch(
 
 const regionChanged = computed(() => regionId.value !== props.server?.regionId)
 const providerChanged = computed(() => region.value.providerId !== currentRegion.value.providerId)
-const planChanged = computed(() => !!selected.value && selectedId.value !== props.server?.planId)
+const specChanged = computed(
+  () =>
+    selectedId.value === 'custom' &&
+    JSON.stringify(customSpec.value) !== JSON.stringify(props.server?.customSpec),
+)
+const planChanged = computed(
+  () => !!selected.value && (selectedId.value !== props.server?.planId || specChanged.value),
+)
 
-const newPrice = computed(() => priceFor(selectedId.value, regionId.value))
-
-// Local YYYY-MM-DD / HH:mm — toISOString() is UTC and would drift a day in IST.
-function pad(x) {
-  return String(x).padStart(2, '0')
-}
-const minScheduleDate = computed(() => {
-  const d = new Date()
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-})
-const minScheduleTime = computed(() => {
-  if (scheduledDate.value !== minScheduleDate.value) return '' // only constrain "today"
-  const d = new Date()
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
-})
-const scheduledInPast = computed(() => {
-  if (!scheduledDate.value || !scheduledTime.value) return false
-  return new Date(`${scheduledDate.value}T${scheduledTime.value}`) < new Date()
-})
-
-function isCurrent(p) {
-  return p.id === props.server?.planId && regionId.value === props.server?.regionId
-}
-function isSelected(p) {
-  return p.id === selectedId.value
-}
-
-const migrationSteps = computed(() => {
-  const n = props.server?.sites.length || 0
-  return [
-    { title: 'Provision', text: `We create a new server in ${region.value.name}.` },
-    {
-      title: 'Transfer',
-      text: n
-        ? `Your ${n} site${n === 1 ? '' : 's'} move across — same domain names and URLs, brief downtime during cutover.`
-        : "Once it's ready, it takes over as your server.",
-    },
-    { title: 'Retire', text: `The old server in ${currentRegion.value.name} is retired automatically.` },
-  ]
-})
+const newPrice = computed(() => priceFor(selectedId.value, regionId.value, customSpec.value))
 
 const migrationPins = computed(() => {
   if (!currentRegion.value || !region.value) return []
@@ -355,21 +272,22 @@ const migrationConnections = computed(() => {
 })
 
 function doResize() {
-  const p = store.resizeServer(props.server.id, selectedId.value)
+  const p = store.resizeServer(props.server.id, selectedId.value, customSpec.value)
   open.value = false
   toast.promise(p, { loading: 'Changing plan…', success: 'Plan changed', error: 'Could not change plan' })
 }
 
 function doMigrate() {
-  const scheduledAt = scheduled.value ? `${scheduledDate.value}T${scheduledTime.value}` : undefined
+  const scheduledAt = scheduled.value && scheduleAt.value ? scheduleAt.value : undefined
   store.migrateServer(props.server.id, {
     planId: selectedId.value,
+    customSpec: customSpec.value,
     regionId: regionId.value,
     scheduledAt,
   })
   open.value = false
   if (scheduled.value) {
-    toast.success(`Migration scheduled for ${new Date(scheduledAt).toLocaleString()}`)
+    toast.success(`Migration scheduled for ${new Date(scheduledAt.replace(' ', 'T')).toLocaleString()}`)
   } else {
     toast.success('Migration started')
   }

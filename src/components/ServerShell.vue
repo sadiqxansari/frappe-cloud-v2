@@ -33,61 +33,23 @@
           </button>
         </Tooltip>
 
-        <!-- Dev tools — a collapsible group, closed by default -->
-        <template v-if="!collapsed">
+        <!-- Dev tools — flat items under a lowercase caption -->
+        <div v-if="!collapsed" class="px-2 pb-1 pt-3 text-xs font-medium text-ink-gray-4">Dev tools</div>
+        <div v-else class="my-1 h-px shrink-0 bg-outline-alpha-gray-1" />
+        <Tooltip v-for="d in devItems" :key="d.label" :text="collapsed ? d.label : ''" placement="right" :hover-delay="0">
           <button
-            class="mt-0.5 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
-            :class="devActive ? 'text-ink-gray-9' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-            @click="devOpen = !devOpen"
-          >
-            <span class="lucide-terminal size-4 shrink-0 text-ink-gray-6" />
-            <span class="flex-1 truncate">Dev tools</span>
-            <span class="lucide-chevron-down size-3.5 shrink-0 text-ink-gray-5 transition-transform" :class="devOpen && 'rotate-180'" />
-          </button>
-          <div v-if="devOpen" class="ml-3 flex flex-col gap-0.5 border-l border-outline-gray-2 pl-2">
-            <button
-              v-for="d in devItems"
-              :key="d.label"
-              class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
-              :class="d.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-              @click="router.push(d.to)"
-            >
-              <span class="size-4 shrink-0 text-ink-gray-6" :class="d.icon" />
-              <span class="truncate">{{ d.label }}</span>
-            </button>
-          </div>
-        </template>
-        <!-- Collapsed rail: one icon per dev item (issue #21) -->
-        <Tooltip
-          v-else
-          v-for="d in devItems"
-          :key="d.label"
-          :text="d.label"
-          placement="right"
-          :hover-delay="0"
-        >
-          <button
-            class="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
-            :class="d.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
+            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+            :class="[d.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2', collapsed && 'justify-center']"
             @click="router.push(d.to)"
           >
             <span class="size-4 shrink-0 text-ink-gray-6" :class="d.icon" />
+            <span v-if="!collapsed" class="truncate">{{ d.label }}</span>
           </button>
         </Tooltip>
       </nav>
 
-      <!-- Explicit, remembered collapse toggle (issue #3) -->
-      <button
-        class="mb-1 flex w-full shrink-0 items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-6 transition-colors hover:bg-surface-gray-2"
-        :class="collapsed && 'justify-center'"
-        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-        @click="collapsed = !collapsed"
-      >
-        <span class="size-4 shrink-0" :class="collapsed ? 'lucide-panel-left-open' : 'lucide-panel-left-close'" />
-        <span v-if="!collapsed" class="truncate">Collapse</span>
-      </button>
-
+      <!-- Collapsing is handled by clicking the rail edge (the strip below) — no
+           separate toggle button needed. -->
       <Dropdown :options="userOptions" placement="top-start">
         <button class="flex w-full shrink-0 items-center gap-2 rounded-[8px] p-1.5 hover:bg-surface-gray-2" :class="collapsed && 'justify-center'">
           <Avatar :label="store.user.name || 'You'" size="sm" />
@@ -223,12 +185,6 @@ const devItems = computed(() => {
     { label: 'Tasks', icon: 'lucide-list-checks', to: `${b}/developer/tasks`, active: route.path.startsWith(`${b}/developer/tasks`) },
   ]
 })
-const devActive = computed(() => route.path.startsWith(`${base.value}/developer`) || route.path.startsWith(`${base.value}/analytics`))
-const devOpen = ref(devActive.value)
-watch(devActive, (on) => {
-  if (on) devOpen.value = true
-})
-
 // Brand dropdown — the quick, low-stakes menu for this server: jump back to
 // Central, open read-only System info, switch theme. Anything that *changes*
 // the server (version, firewall, workers) lives on the Settings page, not here.

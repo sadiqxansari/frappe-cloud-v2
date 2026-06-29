@@ -5,9 +5,9 @@
       <Button variant="solid" size="sm" :label="`Deploy server — ${inr(price)}/mo`" @click="deploy" />
     </template>
 
-    <div class="flex min-h-0 flex-col-reverse lg:h-[calc(100vh-50px)] lg:flex-row">
-      <!-- Map (left) -->
-      <div class="border-t border-outline-alpha-gray-1 p-4 lg:flex-1 lg:border-r lg:border-t-0">
+    <div class="flex min-h-0 flex-col-reverse lg:h-[calc(100vh-50px)] lg:flex-row-reverse">
+      <!-- Map (right) -->
+      <div class="border-t border-outline-alpha-gray-1 p-4 lg:flex-1 lg:border-l lg:border-t-0">
         <div class="relative h-72 w-full overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-gray-1 lg:h-full">
           <WorldMap
             :pins="pins"
@@ -55,7 +55,7 @@
                     :aria-disabled="providerDown(p.id)"
                     @click="selectProvider(p.id)"
                   >
-                    <span class="grid size-8 place-items-center rounded-md text-[11px] font-semibold" :class="p.tile">{{ p.mono }}</span>
+                    <ProviderIcon :provider="p" :size="32" class="rounded-md" />
                     <span class="truncate text-xs text-ink-gray-7">{{ p.short }}</span>
                   </button>
                 </Tooltip>
@@ -73,18 +73,20 @@
               <div class="text-sm font-medium text-ink-gray-7">Select a region</div>
               <div class="mt-2 flex flex-wrap gap-2">
                 <Tooltip v-for="r in regions" :key="r.id" :text="regionDown(r.id) ? `${r.name} is at capacity` : ''">
-                  <button
-                    class="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors"
-                    :class="regionDown(r.id)
-                      ? 'cursor-not-allowed border-outline-gray-2 text-ink-gray-7 opacity-40'
-                      : r.id === regionId ? 'border-outline-gray-4 bg-surface-gray-2 text-ink-gray-9' : 'border-outline-gray-2 text-ink-gray-7 hover:bg-surface-gray-1'"
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    :class="[
+                      regionDown(r.id) ? 'cursor-not-allowed opacity-40' : '',
+                      r.id === regionId ? '!border-outline-gray-5 font-medium !text-ink-gray-9' : '',
+                    ]"
                     :aria-disabled="regionDown(r.id)"
                     @click="selectRegion(r.id)"
                   >
-                    <span>{{ r.flag }}</span>
+                    <span class="mr-0.5 text-sm leading-none">{{ r.flag }}</span>
                     {{ r.name }}
-                    <Badge v-if="r.beta" theme="gray" variant="subtle" label="Beta" />
-                  </button>
+                    <Badge v-if="r.beta" theme="gray" variant="subtle" label="Beta" class="ml-1" />
+                  </Button>
                 </Tooltip>
               </div>
             </div>
@@ -97,35 +99,14 @@
               <span class="mt-1.5 w-px grow bg-[var(--outline-gray-2)]" />
             </div>
             <div class="min-w-0 flex-1 pb-6">
-              <div class="flex items-center justify-between">
-                <div class="text-sm font-medium text-ink-gray-7">Select a plan</div>
-                <button class="text-xs text-ink-gray-5 hover:text-ink-gray-7" @click="showSpecs = !showSpecs">
-                  {{ showSpecs ? 'Hide specs' : 'Show specs' }}
-                </button>
-              </div>
-              <div class="mt-1 divide-y divide-outline-alpha-gray-1">
-                <button
-                  v-for="p in PLANS"
-                  :key="p.id"
-                  class="flex w-full items-center gap-3 py-2 text-left"
-                  @click="planId = p.id"
-                >
-                  <span
-                    class="grid size-4 shrink-0 place-items-center rounded-full border"
-                    :class="p.id === planId ? 'border-outline-gray-4' : 'border-outline-gray-2'"
-                  >
-                    <span v-if="p.id === planId" class="size-2 rounded-full bg-[var(--ink-gray-8)]" />
-                  </span>
-                  <span class="flex min-w-0 flex-1 items-center gap-1.5">
-                    <span class="text-sm font-medium text-ink-gray-9">{{ p.name }}</span>
-                    <span v-if="p.recommended" class="lucide-star size-3 shrink-0 text-ink-amber-8" />
-                    <span v-if="showSpecs" class="truncate text-xs text-ink-gray-5">· {{ p.specs.database }} RAM · {{ p.specs.disk }}</span>
-                  </span>
-                  <span class="shrink-0 text-sm font-semibold tabular-nums text-ink-gray-9">
-                    {{ inr(priceFor(p.id, regionId)) }}<span class="text-[11px] font-normal text-ink-gray-5">/mo</span>
-                  </span>
-                </button>
-              </div>
+              <div class="mb-2 text-sm font-medium text-ink-gray-7">Select a plan</div>
+              <PlanPicker
+                v-model:plan-id="planId"
+                v-model:custom-spec="customSpec"
+                :region-id="regionId"
+                compact
+                refined
+              />
             </div>
           </div>
 
@@ -154,7 +135,9 @@ import { useRouter } from 'vue-router'
 import { Badge, Button, FormControl, Tooltip, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
 import WorldMap from '../../components/WorldMap.vue'
-import { PLANS, PROVIDERS, VERSIONS, priceFor, regionById, regionsOf } from '../../data/catalog'
+import PlanPicker from '../../components/PlanPicker.vue'
+import ProviderIcon from '../../components/ProviderIcon.vue'
+import { PROVIDERS, VERSIONS, priceFor, regionById, regionsOf } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 import { inr } from '../../utils/format'
 
@@ -164,8 +147,8 @@ const router = useRouter()
 const providerId = ref('aws')
 const regionId = ref('aws-mumbai')
 const planId = ref('business')
+const customSpec = ref(null)
 const version = ref('v15')
-const showSpecs = ref(false)
 const hoverRegion = ref(null)
 const mapScale = ref(1)
 
@@ -186,7 +169,7 @@ function providerDown(id) {
 function regionDown(id) {
   return downRegions.value.has(id)
 }
-const price = computed(() => priceFor(planId.value, regionId.value))
+const price = computed(() => priceFor(planId.value, regionId.value, customSpec.value))
 const versionOptions = computed(() => VERSIONS.map((v) => ({ label: `${v.label} — ${v.note}`, value: v.id })))
 
 // The map zooms to the provider's coverage only. Picking a region within that
@@ -214,7 +197,7 @@ function selectRegion(id) {
 }
 
 function deploy() {
-  const srv = store.addServer({ planId: planId.value, regionId: regionId.value, version: version.value })
+  const srv = store.addServer({ planId: planId.value, customSpec: customSpec.value, regionId: regionId.value, version: version.value })
   toast.success(`${srv.name} is being set up in ${regionName.value}`)
   // Just graduated to a 2nd server? Land in Central — their new home — where a
   // one-time note explains the change (decision 9). Otherwise go to the server.

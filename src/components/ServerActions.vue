@@ -40,6 +40,12 @@
     :confirm-label="confirm.label"
     @confirm="onConfirm"
   />
+
+  <!-- Central-only: quick overview + the plan/migration flow live in this menu. -->
+  <template v-if="central">
+    <ServerOverviewModal v-model:open="overviewOpen" :server="server" />
+    <ChangePlanDialog v-model:open="changePlanOpen" :server="server" />
+  </template>
 </template>
 
 <script setup>
@@ -47,10 +53,15 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Dialog, Dropdown, FormControl, toast } from 'frappe-ui'
 import ConfirmDialog from './ConfirmDialog.vue'
+import ServerOverviewModal from './ServerOverviewModal.vue'
+import ChangePlanDialog from './ChangePlanDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 
 const props = defineProps({
   server: { type: Object, required: true },
+  // In Central the dropdown also carries the overview and the plan/migration
+  // flow; inside a server workspace it stays to lifecycle actions only.
+  central: { type: Boolean, default: false },
 })
 
 const store = useCloudStore()
@@ -59,6 +70,8 @@ const router = useRouter()
 const renameOpen = ref(false)
 const dropOpen = ref(false)
 const confirmOpen = ref(false)
+const overviewOpen = ref(false)
+const changePlanOpen = ref(false)
 
 const newName = ref('')
 const dropTyped = ref('')
@@ -67,9 +80,12 @@ const confirm = ref({ title: '', message: '', theme: 'gray', label: 'Confirm' })
 
 const dropMatches = computed(() => dropTyped.value.trim().toLowerCase() === props.server.name.toLowerCase())
 
-const options = computed(() => [
+// Restart is the everyday lifecycle action, so it sits at the top level.
+const restartOption = { label: 'Restart', icon: 'lucide-rotate-cw', onClick: () => ask('restart') }
+
+// The rest — occasional or destructive — live under "More".
+const moreOptions = computed(() => [
   { label: 'Rename', icon: 'lucide-pencil', onClick: openRename },
-  { label: 'Restart', icon: 'lucide-rotate-cw', onClick: () => ask('restart') },
   {
     label: props.server.status === 'suspended' ? 'Resume' : 'Suspend',
     icon: props.server.status === 'suspended' ? 'lucide-play' : 'lucide-pause',
@@ -78,6 +94,19 @@ const options = computed(() => [
   { label: 'Duplicate', icon: 'lucide-copy', onClick: () => ask('duplicate') },
   { label: 'Drop server', icon: 'lucide-trash-2', onClick: () => { dropTyped.value = ''; dropOpen.value = true } },
 ])
+
+const options = computed(() =>
+  // In Central the menu leads with the common moves — overview, plan, restart —
+  // and tucks the rest into "More" so the top level stays short.
+  props.central
+    ? [
+        { label: 'Overview', icon: 'lucide-gauge', onClick: () => { overviewOpen.value = true } },
+        { label: 'Change plan', icon: 'lucide-scaling', onClick: () => { changePlanOpen.value = true } },
+        restartOption,
+        { label: 'More', icon: 'lucide-ellipsis', submenu: moreOptions.value },
+      ]
+    : [restartOption, ...moreOptions.value],
+)
 
 function openRename() {
   newName.value = props.server.name

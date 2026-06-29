@@ -102,9 +102,9 @@ const statusBadge = computed(() => {
   return map[props.server?.status] || { label: 'Running', theme: 'green' }
 })
 
-// Disk usage — total comes from the plan spec ("25 GB"), the fraction from the
-// server's live health reading.
-const totalGb = computed(() => parseInt(plan.value?.specs?.disk, 10) || 0)
+// Disk usage — total comes from the resolved specs (custom or plan), the
+// fraction from the server's live health reading.
+const totalGb = computed(() => (props.server ? store.specsOf(props.server)?.disk || 0 : 0))
 const diskFrac = computed(() => props.server?.health?.diskFrac || 0)
 const usedGb = computed(() => (totalGb.value * diskFrac.value).toFixed(1))
 const diskPct = computed(() => Math.round(diskFrac.value * 100))

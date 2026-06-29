@@ -869,12 +869,13 @@ function toggleServerBilling(srv, suspend) {
   )
 }
 function subMenu(srv) {
-  return [
-    { label: 'Open server', icon: 'lucide-arrow-up-right', onClick: () => goServer(srv.id) },
-    srv.status === 'suspended'
-      ? { label: 'Resume billing', icon: 'lucide-play', onClick: () => toggleServerBilling(srv, false) }
-      : { label: 'Pause billing', icon: 'lucide-pause', onClick: () => toggleServerBilling(srv, true) },
-  ]
+  const opts = [{ label: 'Open server', icon: 'lucide-arrow-up-right', onClick: () => goServer(srv.id) }]
+  // Pausing billing per-server was removed; a suspended server can still be
+  // brought back so it never gets stranded.
+  if (srv.status === 'suspended') {
+    opts.push({ label: 'Resume billing', icon: 'lucide-play', onClick: () => toggleServerBilling(srv, false) })
+  }
+  return opts
 }
 
 // — Stop / resume billing (suspend all, never delete)

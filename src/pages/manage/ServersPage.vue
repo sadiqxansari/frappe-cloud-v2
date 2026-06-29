@@ -17,8 +17,8 @@
         <template #description>This is your home for managing them. Your bill now combines both servers into one — nothing else changed.</template>
       </Alert>
 
-      <div class="flex min-h-0 flex-1 lg:flex-row">
-      <!-- Map (left) -->
+      <div class="flex min-h-0 flex-1 lg:flex-row-reverse">
+      <!-- Map (right) -->
       <section class="hidden min-w-0 flex-1 p-4 lg:block">
         <div class="relative h-full w-full overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-gray-1">
           <WorldMap
@@ -43,7 +43,7 @@
       </section>
 
       <!-- List (left) -->
-      <section class="flex h-full w-full flex-col lg:w-[40rem] lg:shrink-0 lg:border-l lg:border-outline-alpha-gray-1">
+      <section class="flex h-full w-full flex-col lg:w-[40rem] lg:shrink-0 lg:border-r lg:border-outline-alpha-gray-1">
         <div class="shrink-0 px-6 pb-3 pt-6">
           <h2 class="text-lg font-semibold text-ink-gray-9">Your servers</h2>
           <div class="mt-3 flex items-center gap-2">
@@ -81,9 +81,7 @@
             </button>
 
             <button class="flex min-w-0 items-center gap-2 text-left" @click="goServer(srv.id)">
-              <span class="grid size-5 shrink-0 place-items-center rounded text-[9px] font-bold" :class="provOf(srv).tile">
-                {{ provOf(srv).mono }}
-              </span>
+              <ProviderIcon :provider="provOf(srv)" :size="20" class="rounded" />
               <span class="truncate text-sm text-ink-gray-8">{{ city(srv) }}</span>
             </button>
 
@@ -120,7 +118,7 @@
               </template>
             </div>
 
-            <ServerActions :server="srv" />
+            <ServerActions :server="srv" central />
           </div>
 
           <MigrationScheduledModal v-model:open="scheduledModalOpen" :server="scheduledServer" />
@@ -151,6 +149,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import MigrationScheduledModal from '../../components/MigrationScheduledModal.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import WorldMap from '../../components/WorldMap.vue'
+import ProviderIcon from '../../components/ProviderIcon.vue'
 import { PROVIDERS, providerById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 import { inr } from '../../utils/format'
@@ -207,7 +206,8 @@ const mapPins = computed(() =>
   }),
 )
 
-// Each server is its own workspace — open it in a new browser tab.
+// Each server is its own workspace — open it in a new browser tab. The quick
+// overview and plan/migration flow live in the row's ⋯ menu (ServerActions).
 function goServer(id) {
   window.open(`/manage/${id}`, '_blank', 'noopener')
 }

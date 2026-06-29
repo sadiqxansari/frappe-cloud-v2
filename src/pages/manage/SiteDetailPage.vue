@@ -2,7 +2,7 @@
   <ServerShell v-if="site" :server="server" :crumbs="crumbs">
     <!-- Open site lives in the top nav bar (right-most action slot). -->
     <template #actions>
-      <Button variant="solid" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
+      <Button variant="subtle" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
     </template>
 
     <!-- Site header — the identity sits over a faded dot field that anchors the
@@ -57,7 +57,7 @@
               <div class="truncate text-p-sm text-ink-gray-5">{{ taglineOf(app.key) }}</div>
             </div>
             <div class="flex shrink-0 items-center gap-2">
-              <Button v-if="store.appUpdate(app)" size="sm" variant="solid" label="Update" @click="updateApp(app)" />
+              <Button v-if="store.appUpdate(app)" size="sm" variant="subtle" label="Update" @click="updateApp(app)" />
               <Dropdown :options="appMenu(app)" placement="bottom-end">
                 <Button size="sm" variant="ghost" icon="lucide-more-vertical" aria-label="More" />
               </Dropdown>
@@ -199,7 +199,7 @@
                 <div v-else class="mt-0.5 text-sm text-ink-gray-5">SSL is issued once DNS checks out</div>
               </div>
               <Button v-if="d.status === 'verifying'" variant="subtle" size="sm" label="Verifying…" loading disabled />
-              <Button v-else-if="d.status === 'pending'" variant="solid" size="sm" label="Verify" icon-left="lucide-check" @click="verifyDomain(d)" />
+              <Button v-else-if="d.status === 'pending'" variant="subtle" size="sm" label="Verify" icon-left="lucide-check" @click="verifyDomain(d)" />
               <Button v-else-if="d.status === 'failed'" variant="subtle" size="sm" label="Retry" icon-left="lucide-refresh-cw" @click="verifyDomain(d)" />
             </div>
 
@@ -269,7 +269,7 @@
               <div class="text-sm font-medium text-ink-red-8">Drop this site</div>
               <div class="mt-0.5 text-sm text-ink-gray-5">Permanently deletes {{ site.name }} and all its data. Backups are kept for 30 days after.</div>
             </div>
-            <Button variant="solid" theme="red" label="Drop site" @click="dropOpen = true" />
+            <Button variant="subtle" theme="red" label="Drop site" @click="dropOpen = true" />
           </div>
         </div>
       </div>
@@ -285,7 +285,10 @@
       <div class="space-y-4">
         <FormControl v-model="custom.frequency" type="select" label="Frequency" :options="frequencyOptions" />
         <FormControl v-if="custom.frequency === 'weekly'" v-model="custom.day" type="select" label="Day of week" :options="dayOptions" />
-        <FormControl v-model="custom.hour" type="select" label="Time" :options="hourOptions" />
+        <div>
+          <label class="mb-1.5 block text-p-sm text-ink-gray-5">Time</label>
+          <TimePicker v-model="customTime" placeholder="Select time" />
+        </div>
         <p class="text-p-xs text-ink-gray-5">Kept 30 days. Times shown in your timezone.</p>
       </div>
       <template #actions>
@@ -332,7 +335,7 @@
 <script setup>
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Dropdown, FormControl, ListView, Switch, TabButtons, toast } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, FormControl, ListView, Switch, TabButtons, TimePicker, toast } from 'frappe-ui'
 import AddDomainDialog from '../../components/AddDomainDialog.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
@@ -493,10 +496,13 @@ const dayOptions = [
   { label: 'Wednesday', value: 3 }, { label: 'Thursday', value: 4 }, { label: 'Friday', value: 5 },
   { label: 'Saturday', value: 6 },
 ]
-const hourOptions = Array.from({ length: 24 }, (_, h) => ({
-  label: `${String(h).padStart(2, '0')}:00`,
-  value: h,
-}))
+// TimePicker speaks 'HH:mm'; the backup model stores a whole-hour integer.
+const customTime = computed({
+  get: () => `${String(custom.hour).padStart(2, '0')}:00`,
+  set: (v) => {
+    custom.hour = v ? Number(v.split(':')[0]) : 0
+  },
+})
 function saveCustomSchedule() {
   const payload = {
     frequency: custom.frequency,

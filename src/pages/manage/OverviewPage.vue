@@ -141,7 +141,6 @@
             <Badge theme="gray" variant="subtle" :label="server.version" class="shrink-0" />
           </div>
           <div class="mt-2 flex items-center gap-1">
-            <Button variant="subtle" size="sm" label="Change plan" class="flex-1" @click="resizeOpen = true" />
             <Button variant="subtle" size="sm" label="Change version" class="flex-1" @click="versionOpen = true" />
             <ServerActions :server="server" />
           </div>
@@ -152,7 +151,7 @@
             <div class="grid grid-cols-[7rem_1fr] gap-2">
               <dt class="text-ink-gray-5 text-p-sm">Provider</dt>
               <dd class="flex items-center gap-1.5 text-ink-gray-8 text-p-sm">
-                <span class="grid size-4 shrink-0 place-items-center rounded text-[8px] font-bold" :class="prov.tile">{{ prov.mono }}</span>
+                <ProviderIcon :provider="prov" :size="16" class="rounded" />
                 {{ region.provider }}
               </dd>
             </div>
@@ -204,7 +203,6 @@
       </aside>
     </div>
 
-    <ChangePlanDialog v-model:open="resizeOpen" :server="server" />
     <ChangeVersionDialog v-model:open="versionOpen" :server="server" />
     <AddCardDialog v-model:open="addCardOpen" />
     <NewSiteDialog v-model:open="newSiteOpen" :server="server" />
@@ -229,7 +227,7 @@ import ChangeVersionDialog from '../../components/ChangeVersionDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import NewSiteDialog from '../../components/NewSiteDialog.vue'
 import WorldMap from '../../components/WorldMap.vue'
-import ChangePlanDialog from '../../components/ChangePlanDialog.vue'
+import ProviderIcon from '../../components/ProviderIcon.vue'
 import RailAccordion from '../../components/RailAccordion.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import ServerShell from '../../components/ServerShell.vue'
@@ -339,7 +337,6 @@ function siteOptions(site) {
   ]
 }
 
-const resizeOpen = ref(false)
 const versionOpen = ref(false)
 const addCardOpen = ref(false)
 const newSiteOpen = ref(false)

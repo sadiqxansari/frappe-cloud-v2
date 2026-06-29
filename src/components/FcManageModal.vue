@@ -232,9 +232,9 @@
               <div class="min-w-0">
                 <div class="text-sm text-ink-gray-5">Plan</div>
                 <div class="mt-1 truncate text-base font-semibold text-ink-gray-9">{{ planName }}</div>
-                <div v-if="planSpecs" class="mt-0.5 truncate text-xs text-ink-gray-5">{{ planSpecs.database }} database</div>
+                <div v-if="planSpecs" class="mt-0.5 truncate text-xs text-ink-gray-5">{{ fmtSpec('vcpu', planSpecs.vcpu) }} · {{ fmtSpec('memory', planSpecs.memory) }} · {{ fmtSpec('disk', planSpecs.disk) }}</div>
               </div>
-              <Button variant="subtle" size="sm" label="Change plan" @click="upgrade" />
+              <Button variant="subtle" size="sm" label="Change plan" @click="changePlanOpen = true" />
             </div>
             <div class="mt-5 grid grid-cols-3 gap-4">
               <div v-for="m in meters" :key="m.label">
@@ -255,7 +255,7 @@
             v-if="!health.ok"
             theme="yellow"
             title="Server nearly full"
-            :action="{ label: 'Upgrade', onClick: upgrade }"
+            :action="{ label: 'Open server', onClick: openServer }"
           />
 
           <!-- Same two cards as Central billing (minus the wallet-history chevron).
@@ -338,6 +338,7 @@
   <!-- The batch Updates dialog, shared with the server shell (select / schedule
        / skip failing patches). Scoped to this owner's single server. -->
   <UpdateServerDialog v-model:open="updatesOpen" :server="server" />
+  <ChangePlanDialog v-model:open="changePlanOpen" :server="server" />
 
   <!-- The billing first-time-setup, in-modal (shared with the Central billing
        page). On completion the Billing tab flips to its set-up state. -->
@@ -421,9 +422,10 @@ import AppIcon from './AppIcon.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import PaymentSetupDialog from './PaymentSetupDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
+import ChangePlanDialog from './ChangePlanDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { money as fmtMoney } from '../utils/format'
-import { APP_CATALOG, APP_CATEGORIES, categoryOf, planById, versionById } from '../data/catalog'
+import { APP_CATALOG, APP_CATEGORIES, categoryOf, fmtSpec, planById, versionById } from '../data/catalog'
 
 const open = defineModel('open', { type: Boolean, default: false })
 const props = defineProps({ initialTab: { type: String, default: 'Billing' } })
@@ -480,6 +482,9 @@ const budgetStateText = computed(() => {
   if (budgetNear.value) return `Nearing your ${money(store.budgetAlert)} alert`
   return `Budget alert at ${money(store.budgetAlert)}`
 })
+
+// The plan/migration flow opens right here in the Desk modal — no redirect.
+const changePlanOpen = ref(false)
 
 // Add credit + budget alert, both opened as dialogs right here in the Desk.
 const creditOpen = ref(false)
@@ -729,14 +734,14 @@ function doUninstall() {
 // — Server health: the meters render in Billing; "ok" gates the amber nudge.
 const health = computed(() => store.healthOf(server.value))
 const planName = computed(() => planById(server.value?.planId)?.name || '')
-const planSpecs = computed(() => planById(server.value?.planId)?.specs || null)
+const planSpecs = computed(() => (server.value ? store.specsOf(server.value) : null))
 const meters = computed(() => {
   const h = health.value
   const s = planSpecs.value || {}
   return [
-    { label: 'CPU', pct: h.cpuPct, cap: s.cpu },
-    { label: 'Memory', pct: h.memPct, cap: s.memory },
-    { label: 'Storage', pct: h.diskPct, cap: s.disk },
+    { label: 'CPU', pct: h.cpuPct, cap: fmtSpec('vcpu', s.vcpu) },
+    { label: 'Memory', pct: h.memPct, cap: fmtSpec('memory', s.memory) },
+    { label: 'Storage', pct: h.diskPct, cap: fmtSpec('disk', s.disk) },
   ]
 })
 function barClass(pct) {
@@ -769,10 +774,6 @@ function addCredit() {
   // than leaving the Desk. The credit lands in the shared wallet.
   creditAmount.value = '5000'
   creditOpen.value = true
-}
-function upgrade() {
-  open.value = false
-  store.redirectWithReturn(router, `/manage/${server.value.id}`, origin())
 }
 function openServer() {
   open.value = false

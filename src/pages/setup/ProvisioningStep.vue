@@ -75,8 +75,9 @@ const pins = computed(() => {
       id: server.value.id,
       lat: region.value.lat,
       lng: region.value.lng,
-      status: server.value.status, // 'provisioning' → amber, 'active' → green
-      pulse: true, // breathing halo so the hero pin reads as alive
+      // Intentionally no status: the pin stays neutral (near-black) and pulses the
+      // whole time — a single steady "being born here" beat, no amber→green flip.
+      pulse: true,
     },
   ]
 })

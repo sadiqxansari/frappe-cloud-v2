@@ -61,69 +61,39 @@
     </template>
   </OnboardingShell>
 
-  <Dialog v-model:open="compareOpen" size="4xl">
+  <Dialog v-model:open="compareOpen" size="2xl">
     <template #title>
-      <div class="flex w-full items-center justify-between gap-4 pr-6">
-        <span class="text-xl font-semibold text-ink-gray-9">All plans</span>
-        <Switch v-model="rawSpecs" label="Show raw specs" size="sm" />
+      <span class="text-xl font-semibold text-ink-gray-9">Choose a plan</span>
+    </template>
+    <div class="mb-4">
+      <ProviderRegionPicker v-model="regionId" />
+    </div>
+    <PlanPicker
+      v-model:plan-id="draftPlanId"
+      v-model:custom-spec="draftSpec"
+      :region-id="regionId"
+      :current-plan-id="store.onboarding.planId"
+      :current-spec="store.onboarding.customSpec"
+      refined
+    />
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <Button label="Cancel" @click="compareOpen = false" />
+        <Button variant="solid" label="Use this plan" @click="commitPlan" />
       </div>
     </template>
-    <div class="mb-4 rounded-lg border border-outline-gray-2 p-3">
-      <ProviderRegionPicker v-model="regionId" />
-      <p class="mt-2 text-p-xs text-ink-gray-5">Provider &amp; region — prices below update with your choice.</p>
-    </div>
-    <div class="grid gap-4 sm:grid-cols-3">
-      <div
-        v-for="p in visiblePlans"
-        :key="p.id"
-        class="flex flex-col rounded-xl border p-4"
-        :class="p.id === selectedId ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
-      >
-        <div class="flex items-center justify-between">
-          <div class="font-semibold text-ink-gray-9">{{ p.name }}</div>
-          <Badge v-if="p.id === store.recommendedPlanId" theme="blue" variant="subtle" label="Recommended" />
-        </div>
-        <div class="mt-2 flex items-baseline gap-1">
-          <span class="text-xl font-semibold text-ink-gray-9">{{ inr(priceFor(p.id, regionId)) }}</span>
-          <span class="text-xs text-ink-gray-5">/month</span>
-        </div>
-        <div class="text-xs text-ink-gray-5">≈{{ inr(Math.round(priceFor(p.id, regionId) / 30)) }}/day</div>
-        <ul class="mt-3 flex-1 space-y-1.5">
-          <li v-for="f in p.features" :key="f" class="flex items-start gap-1.5 text-sm text-ink-gray-7">
-            <span class="lucide-check mt-0.5 size-3.5 shrink-0 text-ink-green-6" />
-            {{ f }}
-          </li>
-        </ul>
-        <div v-if="rawSpecs" class="mt-3 space-y-1 rounded-lg bg-surface-gray-1 p-2.5 text-xs">
-          <div class="flex justify-between"><span class="text-ink-gray-5">Database</span><span class="text-ink-gray-8">{{ p.specs.database }}</span></div>
-          <div class="flex justify-between"><span class="text-ink-gray-5">Disk</span><span class="text-ink-gray-8">{{ p.specs.disk }}</span></div>
-        </div>
-        <Button
-          class="mt-4 w-full"
-          :variant="p.id === selectedId ? 'solid' : 'subtle'"
-          :label="p.id === selectedId ? 'Selected' : 'Choose ' + p.name"
-          @click="choose(p.id)"
-        />
-      </div>
-    </div>
-    <div class="mt-4 flex items-center justify-center gap-3 text-sm">
-      <button class="text-ink-gray-6 underline-offset-2 hover:underline" @click="allSizes = !allSizes">
-        {{ allSizes ? 'Show fewer sizes' : `Show all ${PLANS.length} sizes` }}
-      </button>
-      <span class="text-ink-gray-4">·</span>
-      <span class="text-ink-gray-5">Resize anytime.</span>
-    </div>
   </Dialog>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Switch } from 'frappe-ui'
+import { Badge, Button, Dialog } from 'frappe-ui'
 import AppIcon from '../../components/AppIcon.vue'
 import OnboardingShell from '../../components/OnboardingShell.vue'
 import ProviderRegionPicker from '../../components/ProviderRegionPicker.vue'
-import { FEATURED_PLANS, PLANS, appByKey, planById, priceFor, regionById } from '../../data/catalog'
+import PlanPicker from '../../components/PlanPicker.vue'
+import { CUSTOM_DEFAULT, appByKey, fmtSpec, planById, priceFor, regionById } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 import { inr } from '../../utils/format'
 
@@ -134,12 +104,13 @@ const appName = computed(() => appByKey(store.onboarding.appKey)?.name || 'your 
 
 const showSpecs = ref(false)
 const compareOpen = ref(false)
-const rawSpecs = ref(false)
-const allSizes = ref(false)
+
+// Draft selection inside the compare dialog — only committed on "Use this plan".
+const draftPlanId = ref(store.onboarding.planId)
+const draftSpec = ref(store.onboarding.customSpec ? { ...store.onboarding.customSpec } : null)
 
 const selectedId = computed(() => store.onboarding.planId)
 const plan = computed(() => planById(selectedId.value))
-const visiblePlans = computed(() => (allSizes.value ? PLANS : FEATURED_PLANS))
 
 const regionId = computed({
   get: () => store.onboarding.regionId,
@@ -147,15 +118,29 @@ const regionId = computed({
 })
 const region = computed(() => regionById(regionId.value))
 
-const price = computed(() => priceFor(selectedId.value, regionId.value))
+const price = computed(() => priceFor(selectedId.value, regionId.value, store.onboarding.customSpec))
 
+// Resolved resource picture: custom config when chosen, else the plan's specs.
+const resolvedSpecs = computed(() =>
+  selectedId.value === 'custom'
+    ? store.onboarding.customSpec || CUSTOM_DEFAULT
+    : plan.value?.specs,
+)
 const specRows = computed(() => [
-  { label: 'Database', value: plan.value.specs.database },
-  { label: 'Disk', value: plan.value.specs.disk },
+  { label: 'CPU', value: fmtSpec('vcpu', resolvedSpecs.value?.vcpu) },
+  { label: 'Memory', value: fmtSpec('memory', resolvedSpecs.value?.memory) },
+  { label: 'Storage', value: fmtSpec('disk', resolvedSpecs.value?.disk) },
 ])
 
-function choose(planId) {
-  store.choosePlan(planId)
+watch(compareOpen, (isOpen) => {
+  if (isOpen) {
+    draftPlanId.value = store.onboarding.planId
+    draftSpec.value = store.onboarding.customSpec ? { ...store.onboarding.customSpec } : null
+  }
+})
+
+function commitPlan() {
+  store.choosePlan(draftPlanId.value, draftSpec.value)
   compareOpen.value = false
 }
 
