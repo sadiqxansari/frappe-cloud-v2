@@ -67,7 +67,7 @@
         @click="collapsed = !collapsed"
       />
 
-      <ProfileDialog v-model:open="profileOpen" />
+      <SettingsDialog v-model:open="profileOpen" />
       <SystemInfoDialog v-model:open="systemInfoOpen" :server="server" />
       <ServerSettingsDialog v-model:open="settingsOpen" :server="server" />
       <UpdateServerDialog v-model:open="updateOpen" :server="server" />
@@ -111,7 +111,7 @@ import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dropdown, Tooltip } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
-import ProfileDialog from './ProfileDialog.vue'
+import SettingsDialog from './SettingsDialog.vue'
 import SystemInfoDialog from './SystemInfoDialog.vue'
 import ServerSettingsDialog from './ServerSettingsDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
@@ -248,8 +248,8 @@ const serverMenu = computed(() => [
 const profileOpen = ref(false)
 const userOptions = computed(() => [
   {
-    label: 'Profile',
-    icon: 'lucide-circle-user',
+    label: 'Settings',
+    icon: 'lucide-settings',
     onClick: () => { profileOpen.value = true },
   },
   {

@@ -125,7 +125,7 @@
       </main>
     </div>
 
-    <ProfileDialog v-model:open="profileOpen" />
+    <SettingsDialog v-model:open="profileOpen" />
 
     <!-- Change team -->
     <Dialog v-model:open="switchTeamOpen" size="sm">
@@ -177,7 +177,7 @@ import { computed, h, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
-import ProfileDialog from './ProfileDialog.vue'
+import SettingsDialog from './SettingsDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -266,8 +266,8 @@ const brandOptions = computed(() => [
 const profileOpen = ref(false)
 const userOptions = computed(() => [
   {
-    label: 'Profile',
-    icon: 'lucide-circle-user',
+    label: 'Settings',
+    icon: 'lucide-settings',
     onClick: () => { profileOpen.value = true },
   },
   {

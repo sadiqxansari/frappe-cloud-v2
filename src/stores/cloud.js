@@ -222,6 +222,9 @@ function baseState() {
     referralCode: '917eaaa5',
     // Linked Frappe Partner referral code, or '' when none.
     partnerCode: '',
+    // Account settings (the user Settings modal).
+    twoFactorEnabled: false,
+    notificationPrefs: { product: false, billing: false, security: false },
     creditExpired: false,
     // Edge mode — a single demo toggle that pushes the whole account onto the
     // unhappy path: every action fails (see `_work`) and the data overlay
