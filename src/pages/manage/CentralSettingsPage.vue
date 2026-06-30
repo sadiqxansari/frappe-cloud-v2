@@ -1,58 +1,60 @@
 <template>
   <CentralShell :crumbs="[{ label: 'Teams', route: '/settings' }]">
-    <h1 class="text-xl font-semibold text-ink-gray-9">Teams</h1>
-
-    <TabButtons v-model="tab" :buttons="tabs" class="mt-4" />
-
-    <!-- ── Team ──────────────────────────────────────────────── -->
-    <div v-if="tab === 'team'" class="mt-5">
-      <!-- Team identity card -->
-      <div class="flex items-center gap-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
-        <div class="relative shrink-0" :class="isAdminOrOwner ? 'cursor-pointer' : ''" @click="isAdminOrOwner && avatarInput && avatarInput.click()">
-          <img v-if="store.team.avatar" :src="store.team.avatar" class="size-12 rounded-full object-cover" />
-          <div v-else class="grid size-12 place-items-center rounded-full bg-surface-gray-3 text-lg font-semibold text-ink-gray-7">
-            {{ teamInitial }}
-          </div>
-          <div v-if="isAdminOrOwner" class="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-surface-elevation-1 ring-1 ring-outline-gray-2">
-            <span class="lucide-camera size-3 text-ink-gray-5" />
-          </div>
+    <!-- Header: the team is the title — avatar, name, and member count -->
+    <div class="flex items-center gap-4">
+      <div class="relative shrink-0" :class="isAdminOrOwner ? 'cursor-pointer' : ''" @click="isAdminOrOwner && avatarInput && avatarInput.click()">
+        <img v-if="store.team.avatar" :src="store.team.avatar" class="size-12 rounded-full object-cover" />
+        <div v-else class="grid size-12 place-items-center rounded-full bg-surface-gray-3 text-lg font-semibold text-ink-gray-7">
+          {{ teamInitial }}
         </div>
-        <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
-
-        <div class="min-w-0 flex-1">
-          <div v-if="!editingTeamName" class="group flex items-center gap-2">
-            <span class="text-lg font-medium text-ink-gray-9">{{ store.team.name }}</span>
-            <button v-if="isAdminOrOwner" class="opacity-0 transition-opacity group-hover:opacity-100" @click="startEditTeamName">
-              <span class="lucide-pencil size-3.5 text-ink-gray-4 hover:text-ink-gray-7" />
-            </button>
-          </div>
-          <div v-else class="flex items-center gap-2">
-            <input
-              ref="teamNameInput"
-              v-model="teamNameDraft"
-              class="rounded-md border border-outline-gray-3 bg-surface-elevation-1 px-2 py-1 text-lg font-medium text-ink-gray-9 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-              @keydown.enter="saveTeamName"
-              @keydown.escape="cancelEditTeamName"
-            />
-            <Button size="sm" variant="solid" icon="lucide-check" aria-label="Save" @click="saveTeamName" />
-            <Button size="sm" icon="lucide-x" aria-label="Cancel" @click="cancelEditTeamName" />
-          </div>
+        <div v-if="isAdminOrOwner" class="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-surface-elevation-1 ring-1 ring-outline-gray-2">
+          <span class="lucide-camera size-3 text-ink-gray-5" />
         </div>
-
-        <Button variant="subtle" size="sm" label="Invite" icon-left="lucide-plus" @click="openInvite" />
       </div>
+      <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
 
-      <!-- Search across name / email / role (issue #12) -->
+      <div class="min-w-0 flex-1">
+        <div v-if="!editingTeamName" class="group flex items-center gap-2">
+          <h1 class="truncate text-xl font-semibold text-ink-gray-9">{{ store.team.name }}</h1>
+          <button v-if="isAdminOrOwner" class="opacity-0 transition-opacity group-hover:opacity-100" @click="startEditTeamName">
+            <span class="lucide-pencil size-3.5 text-ink-gray-4 hover:text-ink-gray-7" />
+          </button>
+        </div>
+        <div v-else class="flex items-center gap-2">
+          <input
+            ref="teamNameInput"
+            v-model="teamNameDraft"
+            class="rounded-md border border-outline-gray-3 bg-surface-elevation-1 px-2 py-1 text-xl font-semibold text-ink-gray-9 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+            @keydown.enter="saveTeamName"
+            @keydown.escape="cancelEditTeamName"
+          />
+          <Button size="sm" variant="solid" icon="lucide-check" aria-label="Save" @click="saveTeamName" />
+          <Button size="sm" icon="lucide-x" aria-label="Cancel" @click="cancelEditTeamName" />
+        </div>
+        <div class="mt-0.5 text-sm text-ink-gray-5">{{ memberCountLabel }}</div>
+      </div>
+    </div>
+
+    <!-- One row: search on the left, then a gap, then tabs + primary action -->
+    <div class="mt-4 flex items-center justify-between gap-3">
       <FormControl
-        v-if="store.members.length > 4"
-        v-model="memberQuery"
-        class="mt-4"
+        v-model="searchQuery"
+        class="w-64 shrink-0 [&_input]:w-full"
         type="text"
         size="sm"
-        placeholder="Search members by name, email or role…"
+        :placeholder="searchPlaceholder"
       >
         <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
       </FormControl>
+      <div class="flex shrink-0 items-center gap-3">
+        <TabButtons v-model="tab" :buttons="tabs" />
+        <Button v-if="tab === 'team'" variant="subtle" size="sm" label="Invite" icon-left="lucide-plus" @click="openInvite" />
+        <Button v-else variant="subtle" size="sm" label="New role" icon-left="lucide-plus" @click="openRole" />
+      </div>
+    </div>
+
+    <!-- ── Team ──────────────────────────────────────────────── -->
+    <div v-if="tab === 'team'" class="mt-4">
 
       <!-- Member list — frappe-ui ListView; full row opens the member dialog. -->
       <ListView
@@ -132,26 +134,8 @@
     </div>
 
     <!-- ── Roles ──────────────────────────────────────────────── -->
-    <div v-else-if="tab === 'roles'" class="mt-5">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-base font-semibold text-ink-gray-8">Roles</h2>
-          <p class="text-p-sm text-ink-gray-5">Define roles here, then assign them to people on the Team tab.</p>
-        </div>
-        <Button variant="subtle" size="sm" label="New role" icon-left="lucide-plus" @click="openRole" />
-      </div>
-
-      <!-- Search roles (issue #12) -->
-      <FormControl
-        v-if="store.roles.length > 4"
-        v-model="roleQuery"
-        class="mt-4"
-        type="text"
-        size="sm"
-        placeholder="Search roles…"
-      >
-        <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
-      </FormControl>
+    <div v-else-if="tab === 'roles'" class="mt-4">
+      <p class="text-p-sm text-ink-gray-5">Define roles here, then assign them to people on the Team tab.</p>
 
       <ListView
         class="mt-3 fc-listview"
@@ -562,6 +546,24 @@ const tab = ref('team')
 // ── Search (issue #12) ───────────────────────────────────────
 const memberQuery = ref('')
 const roleQuery = ref('')
+
+// One header search box, bound to whichever tab is active.
+const searchQuery = computed({
+  get: () => (tab.value === 'team' ? memberQuery.value : roleQuery.value),
+  set: (v) => {
+    if (tab.value === 'team') memberQuery.value = v
+    else roleQuery.value = v
+  },
+})
+const searchPlaceholder = computed(() =>
+  tab.value === 'team' ? 'Search members by name, email or role…' : 'Search roles…',
+)
+
+// Member count shown under the team name in the header.
+const memberCountLabel = computed(() => {
+  const n = store.members.length
+  return `${n} ${n === 1 ? 'member' : 'members'}`
+})
 
 const filteredMembers = computed(() => {
   const q = memberQuery.value.trim().toLowerCase()

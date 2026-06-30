@@ -48,7 +48,7 @@
               <span class="flex items-center gap-2 text-ink-gray-6">
                 Storage
                 <Tooltip text="Add storage">
-                  <Button variant="subtle" size="sm" icon="lucide-plus" aria-label="Add storage" @click="openAddStorage" />
+                  <Button variant="ghost" size="sm" icon="lucide-plus" aria-label="Add storage" @click="openAddStorage" />
                 </Tooltip>
               </span>
               <span class="font-medium tabular-nums text-ink-gray-8">{{ health.diskUsed }} GB of {{ health.diskTotal }} GB</span>

@@ -153,18 +153,27 @@
           </Popover>
         </div>
 
-        <!-- Storage — the one independent dimension, a number stepper -->
-        <div class="flex items-center justify-between gap-4">
-          <span class="text-sm font-medium text-ink-gray-8">{{ CUSTOM_LIMITS.disk.label }}</span>
-          <div class="flex items-center gap-1.5">
+        <!-- Storage — the one independent dimension; the slider rides the full
+             range, the stepper nudges by one step, and the value doubles as a
+             quick-pick dropdown for common sizes. -->
+        <div class="flex items-center gap-3">
+          <span class="shrink-0 text-sm font-medium text-ink-gray-8">{{ CUSTOM_LIMITS.disk.label }}</span>
+          <Slider
+            class="min-w-0 flex-1"
+            :model-value="[spec.disk]"
+            :min="CUSTOM_LIMITS.disk.min"
+            :max="CUSTOM_LIMITS.disk.max"
+            :step="CUSTOM_LIMITS.disk.step"
+            @update:model-value="(v) => setSpec('disk', v[0])"
+          />
+          <div class="flex shrink-0 items-center gap-1.5">
             <Button
               icon="lucide-minus"
               :disabled="spec.disk <= CUSTOM_LIMITS.disk.min"
               aria-label="Decrease storage"
               @click="stepDisk(-1)"
             />
-            <!-- Value doubles as a quick-pick dropdown for common sizes -->
-            <Popover class="shrink-0" placement="bottom">
+            <Popover class="shrink-0" placement="bottom-end">
               <template #target="{ togglePopover }">
                 <Button class="min-w-[4.5rem] tabular-nums" :label="`${spec.disk} GB`" @click="togglePopover" />
               </template>
