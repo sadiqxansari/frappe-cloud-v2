@@ -38,6 +38,7 @@ declare module 'vue' {
     PaymentSetupDialog: typeof import('./src/components/PaymentSetupDialog.vue')['default']
     PlanPicker: typeof import('./src/components/PlanPicker.vue')['default']
     ProfileDialog: typeof import('./src/components/ProfileDialog.vue')['default']
+    ProviderAvatar: typeof import('./src/components/ProviderAvatar.vue')['default']
     ProviderIcon: typeof import('./src/components/ProviderIcon.vue')['default']
     ProviderRegionPicker: typeof import('./src/components/ProviderRegionPicker.vue')['default']
     RailAccordion: typeof import('./src/components/RailAccordion.vue')['default']
@@ -48,6 +49,7 @@ declare module 'vue' {
     ScheduleField: typeof import('./src/components/ScheduleField.vue')['default']
     ServerActions: typeof import('./src/components/ServerActions.vue')['default']
     ServerHealth: typeof import('./src/components/ServerHealth.vue')['default']
+    ServerMap: typeof import('./src/components/ServerMap.vue')['default']
     ServerOverviewModal: typeof import('./src/components/ServerOverviewModal.vue')['default']
     ServerSettingsDialog: typeof import('./src/components/ServerSettingsDialog.vue')['default']
     ServerShell: typeof import('./src/components/ServerShell.vue')['default']
@@ -55,6 +57,7 @@ declare module 'vue' {
     SiteIcon: typeof import('./src/components/SiteIcon.vue')['default']
     SystemInfoDialog: typeof import('./src/components/SystemInfoDialog.vue')['default']
     UpdateServerDialog: typeof import('./src/components/UpdateServerDialog.vue')['default']
+    WorldDots: typeof import('./src/components/WorldDots.vue')['default']
     WorldMap: typeof import('./src/components/WorldMap.vue')['default']
   }
 }

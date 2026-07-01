@@ -7,8 +7,14 @@ const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly
 import { BACKGROUND_JOBS, makeProcesses } from '../data/system'
 import { fmtDateTime, slugify, usdToDisplay } from '../utils/format'
 
-let n = 1000
-const uid = (prefix) => `${prefix}-${n++}`
+// The store persists to localStorage (see main.js), so the id counter must
+// survive reloads too — a fresh counter would mint ids that collide with
+// saved entities (two different servers both named srv-1000).
+let n = Number(typeof localStorage !== 'undefined' && localStorage.getItem('fc.uid')) || 1000
+const uid = (prefix) => {
+  if (typeof localStorage !== 'undefined') localStorage.setItem('fc.uid', String(n + 1))
+  return `${prefix}-${n++}`
+}
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
