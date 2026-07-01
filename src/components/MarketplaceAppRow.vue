@@ -41,10 +41,9 @@
         <Button size="sm" variant="subtle" label="Retry" @click="$emit('retry')" />
       </div>
 
-      <!-- Already installed on the site we arrived from — status, not a control. -->
-      <span v-else-if="app.installedHere" class="flex shrink-0 items-center gap-1 text-p-sm text-ink-gray-5">
-        <span class="lucide-check size-4 text-ink-green-6" /> Installed
-      </span>
+      <!-- Already installed on the site we arrived from — a disabled button, so it
+           reads as a resolved state rather than an available action. -->
+      <Button v-else-if="app.installedHere" size="sm" label="Installed" disabled class="shrink-0 pointer-events-none" />
 
       <!-- Not installed, version-locked: a disabled Install, with the reason on
            hover. -->

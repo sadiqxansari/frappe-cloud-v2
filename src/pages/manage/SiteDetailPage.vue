@@ -3,6 +3,9 @@
     <!-- Open site lives in the top nav bar (right-most action slot). -->
     <template #actions>
       <Button variant="subtle" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
+      <Dropdown :options="siteMenu" placement="bottom-end">
+        <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" aria-label="More actions" />
+      </Dropdown>
     </template>
 
     <!-- Site header — the identity sits over a faded dot field that anchors the
@@ -29,9 +32,6 @@
         </div>
         <div class="flex shrink-0 items-center gap-2">
           <Button variant="subtle" size="sm" label="Install app" icon-left="lucide-plus" @click="installApp" />
-          <Dropdown :options="siteMenu" placement="bottom-end">
-            <Button variant="subtle" size="sm" icon="lucide-ellipsis" aria-label="More actions" />
-          </Dropdown>
         </div>
       </div>
     </div>
@@ -54,7 +54,6 @@
                   <span class="shrink-0 text-p-xs font-medium text-ink-green-6">{{ store.appUpdate(app) }}</span>
                 </template>
               </div>
-              <div class="truncate text-p-sm text-ink-gray-5">{{ taglineOf(app.key) }}</div>
             </div>
             <div class="flex shrink-0 items-center gap-2">
               <Button v-if="store.appUpdate(app)" size="sm" variant="subtle" label="Update" @click="updateApp(app)" />
@@ -344,7 +343,7 @@ import ServerShell from '../../components/ServerShell.vue'
 import SiteIcon from '../../components/SiteIcon.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
 import MoveSiteDialog from '../../components/MoveSiteDialog.vue'
-import { appByKey, versionById } from '../../data/catalog'
+import { versionById } from '../../data/catalog'
 import { backupCustomLabel, useCloudStore } from '../../stores/cloud'
 import { fmtDateTime } from '../../utils/format'
 
@@ -412,7 +411,6 @@ const siteMenu = computed(() => [
 ])
 
 // — Apps (installed on this site). Tagline comes from the catalog by key.
-const taglineOf = (key) => appByKey(key)?.tagline || ''
 const uninstallOpen = ref(false)
 const pendingApp = ref(null)
 function updateApp(app) {
