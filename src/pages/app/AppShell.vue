@@ -3,7 +3,7 @@
        this same URL instead (decision 11). Flips reactively the moment credit
        runs out or comes back. -->
   <SitePausedPage v-if="siteSuspended" />
-  <div v-else-if="site" class="min-h-screen bg-surface-elevation-1">
+  <div v-else-if="site" class="min-h-screen bg-surface-base">
     <!-- Minimal Desk top bar: Frappe mark · search · notifications · account -->
     <header class="sticky top-0 z-10 border-b border-outline-gray-2 bg-surface-elevation-1">
       <div class="flex h-14 items-center gap-3 px-4">

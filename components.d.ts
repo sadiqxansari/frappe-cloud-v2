@@ -27,6 +27,7 @@ declare module 'vue' {
     EmptyState: typeof import('./src/components/EmptyState.vue')['default']
     ErrorState: typeof import('./src/components/ErrorState.vue')['default']
     FcManageModal: typeof import('./src/components/FcManageModal.vue')['default']
+    MarketplaceAppRow: typeof import('./src/components/MarketplaceAppRow.vue')['default']
     MigrationScheduledModal: typeof import('./src/components/MigrationScheduledModal.vue')['default']
     MoveSiteDialog: typeof import('./src/components/MoveSiteDialog.vue')['default']
     NewSiteDialog: typeof import('./src/components/NewSiteDialog.vue')['default']

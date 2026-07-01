@@ -2,7 +2,12 @@
   <!-- Choose which app updates to run across the server's sites — now or on a
        schedule, with an option to skip failing patches (issue #42). -->
   <Dialog v-model:open="open" size="lg">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Updates</span></template>
+    <template #title>
+      <div>
+        <span class="text-xl font-semibold text-ink-gray-9">Updates</span>
+        <p v-if="appUpdates.length" class="mt-0.5 text-p-sm font-normal text-ink-gray-5">We back up first — brief downtime.</p>
+      </div>
+    </template>
 
     <!-- Already scheduled — surface it, with a way to cancel. -->
     <div v-if="scheduled" class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
@@ -14,19 +19,13 @@
     </div>
 
     <template v-if="appUpdates.length">
-      <div class="flex items-center justify-between gap-3">
-        <p class="text-p-sm text-ink-gray-5">We back up first — brief downtime.</p>
-        <button class="shrink-0 text-p-sm font-medium text-ink-gray-6 hover:text-ink-gray-8" @click="allSelected ? clear() : selectAll()">
-          {{ allSelected ? 'Clear' : 'Select all' }}
-        </button>
-      </div>
-
-      <div class="mt-3 max-h-60 space-y-2 overflow-y-auto">
+      <!-- Pull up against the dialog header's fixed mb-6 so the subtitle sits
+           closer to the list. -->
+      <div class="-mt-3 max-h-60 divide-y divide-outline-gray-1 overflow-y-auto">
         <button
           v-for="u in appUpdates"
           :key="u.key"
-          class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors"
-          :class="selected.has(u.key) ? 'border-outline-gray-3 bg-surface-gray-1' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+          class="flex w-full items-center gap-3 py-2.5 text-left"
           @click="toggle(u.key)"
         >
           <AppIcon :app-key="u.appKey" size="md" />
@@ -52,10 +51,11 @@
     </p>
 
     <template #actions>
-      <div class="flex justify-end gap-2">
-        <Button label="Cancel" @click="open = false" />
+      <!-- No Cancel — the dialog's own close (×) dismisses. Select all / Clear
+           takes the secondary slot. -->
+      <div v-if="appUpdates.length" class="flex justify-end gap-2">
+        <Button :label="allSelected ? 'Clear' : 'Select all'" @click="allSelected ? clear() : selectAll()" />
         <Button
-          v-if="appUpdates.length"
           variant="solid"
           :label="actionLabel"
           :disabled="!selected.size || (later && !scheduleAt)"

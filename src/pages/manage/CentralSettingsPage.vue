@@ -96,27 +96,29 @@
             <template v-else>
               <template v-for="chip in roleChipsFor(row._m)" :key="chip.roleId">
                 <Badge v-if="chip.roleId === 'role-admin'" theme="orange" variant="subtle">
-                  <template #prefix><span class="lucide-shield size-3" /></template>
-                  Admin
-                  <template v-if="chip.serverCount !== null" #suffix>
-                    <Tooltip :text="chip.serverNames.join(', ')">
-                      <span class="inline-flex min-w-[14px] items-center justify-center rounded-full bg-orange-200 px-0.5 text-[9px] font-semibold text-orange-900">{{ chip.serverCount }}</span>
-                    </Tooltip>
+                  <template #prefix>
+                    <span class="flex items-center gap-1">
+                      <span class="lucide-shield size-3" />
+                      <Tooltip v-if="chip.serverCount !== null" :text="chip.serverNames.join(', ')">
+                        <span class="inline-flex min-w-[14px] items-center justify-center rounded-full bg-orange-200 px-0.5 text-[9px] font-semibold text-orange-900">{{ chip.serverCount }}</span>
+                      </Tooltip>
+                    </span>
                   </template>
+                  Admin
                 </Badge>
                 <span
                   v-else
-                  class="inline-flex items-center rounded-md bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-7"
+                  class="inline-flex items-center gap-1 rounded-md bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-7"
                 >
-                  {{ chip.roleName }}
                   <Tooltip v-if="chip.serverCount !== null" :text="chip.serverNames.join(', ')">
-                    <span class="ml-1 inline-flex size-4 items-center justify-center rounded-full bg-surface-gray-4 text-[10px] font-semibold text-ink-gray-7">
+                    <span class="inline-flex size-4 items-center justify-center rounded-full bg-surface-gray-4 text-[10px] font-semibold text-ink-gray-7">
                       {{ chip.serverCount }}
                     </span>
                   </Tooltip>
                   <Tooltip v-else-if="chip.isGlobal" text="Applies to all servers">
-                    <span class="lucide-globe size-3 ml-1 text-ink-gray-4" />
+                    <span class="lucide-globe size-3 text-ink-gray-4" />
                   </Tooltip>
+                  {{ chip.roleName }}
                 </span>
               </template>
             </template>
@@ -135,7 +137,6 @@
 
     <!-- ── Roles ──────────────────────────────────────────────── -->
     <div v-else-if="tab === 'roles'" class="mt-4">
-      <p class="text-p-sm text-ink-gray-5">Define roles here, then assign them to people on the Team tab.</p>
 
       <ListView
         class="mt-3 fc-listview"
@@ -414,11 +415,10 @@
 
       <!-- Manage mode: role assignment editor -->
       <div v-else-if="memberDialogMode === 'manage'" class="space-y-3">
-        <Alert v-if="draftHasExclusive" theme="yellow" title="Admin for all resources already covers every permission">
-          <template #description>
-            The roles below stay saved but inactive while this is on. Remove the Admin (all resources) or Owner role to use them again.
-          </template>
-        </Alert>
+        <p v-if="draftHasExclusive" class="flex items-start gap-2 text-p-sm text-ink-gray-5">
+          <span class="lucide-info mt-0.5 size-3.5 shrink-0 text-ink-gray-4" />
+          <span>Admin already covers everything, so the roles below stay inactive until you remove it.</span>
+        </p>
         <div v-for="(dr, i) in draftRoles" :key="i" class="flex items-center gap-2" :class="isRowCovered(i) ? 'opacity-50' : ''">
           <div class="flex-1">
             <FormControl type="select" :modelValue="dr.roleId" :options="roleSelectOptions" :disabled="isRowCovered(i)" @update:modelValue="(v) => setDraftRoleId(i, v)" />
@@ -529,7 +529,6 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { Avatar, Badge, Button, Dialog, Dropdown, FormControl, ListView, Switch, TabButtons, toast, Tooltip } from 'frappe-ui'
-import Alert from '../../components/Alert.vue'
 import ProviderIcon from '../../components/ProviderIcon.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import { useCloudStore } from '../../stores/cloud'

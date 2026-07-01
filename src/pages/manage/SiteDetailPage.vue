@@ -10,7 +10,7 @@
          menu sit here; Open site is up in the nav bar. -->
     <div class="relative -mx-4 -mt-8 overflow-hidden px-4 pb-7 pt-8 sm:-mx-8 sm:px-8">
       <div class="dot-field pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div class="relative flex items-start justify-between gap-4 rounded-xl border border-outline-gray-2 bg-surface-base p-4">
+      <div class="relative flex items-start justify-between gap-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="flex min-w-0 items-center gap-3">
           <SiteIcon size="lg" />
           <div class="min-w-0">
@@ -20,7 +20,7 @@
               <Badge v-else-if="site.status === 'restoring'" theme="blue" variant="subtle" label="Restoring…" />
               <Badge v-else-if="site.status === 'moving'" theme="blue" variant="subtle" label="Moving…" />
               <Badge v-else-if="site.status === 'suspended'" theme="orange" variant="subtle" label="Paused" />
-              <Badge v-else theme="green" variant="subtle" label="Live" />
+              <Badge v-else theme="green" variant="subtle" label="Active" />
             </div>
             <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-p-sm text-ink-gray-5">
               <span class="inline-flex items-center gap-1.5"><span class="lucide-box size-3.5" /> {{ versionLabel }}</span>
@@ -42,9 +42,9 @@
          style: icon, name + version (+ update target), tagline, manage action. -->
     <section v-if="tab === 'apps'" class="mt-2">
       <div class="grid gap-x-8" :class="site.apps.length > 1 ? 'sm:grid-cols-2' : ''">
-        <div v-for="app in site.apps" :key="app.id" class="flex items-center gap-2.5">
+        <div v-for="app in site.apps" :key="app.id" class="flex items-center gap-2.5 border-b border-outline-alpha-gray-1 py-4">
           <AppIcon :app-key="app.key" size="md" class="shrink-0" />
-          <div class="flex min-w-0 flex-1 items-center justify-between gap-2 border-b border-outline-alpha-gray-1 py-4">
+          <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
             <div class="min-w-0">
               <div class="flex items-center gap-1.5">
                 <span class="truncate text-base font-medium text-ink-gray-8">{{ app.name }}</span>
@@ -617,10 +617,12 @@ function resetSite() {
 /* Faded dot field behind the header — anchors the page, then dissolves into
    the background. The dot colour and the mask both adapt to dark mode. */
 .dot-field {
-  background-image: radial-gradient(var(--outline-gray-3) 1.1px, transparent 1.3px);
-  background-size: 16px 16px;
-  background-position: -8px -8px;
-  -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.95), transparent 90%);
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.95), transparent 90%);
+  background-image: radial-gradient(var(--outline-gray-4) 1.1px, transparent 1.3px);
+  background-size: 12px 12px;
+  background-position: -6px -6px;
+  /* Wide radial mask anchored top-centre: the dots stay dense behind the card
+     and spread out to the left and right before dissolving into the page. */
+  -webkit-mask-image: radial-gradient(135% 120% at 50% 22%, rgb(0 0 0 / 0.95) 0%, transparent 72%);
+  mask-image: radial-gradient(135% 120% at 50% 22%, rgb(0 0 0 / 0.95) 0%, transparent 72%);
 }
 </style>

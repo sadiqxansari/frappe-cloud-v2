@@ -1,117 +1,136 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs">
-    <!-- Title + tagline as one block; the version sits beside it as a quiet
-         context chip, not a third sentence. It's informational only — you don't
-         upgrade a whole server (risking every site on it) to install one app, so
-         there's no "change" here. That lives in the server's own upgrade flow. -->
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-semibold text-ink-gray-9">Marketplace</h1>
-        <p class="mt-1 text-p-base text-ink-gray-5">
-          Apps built by developers worldwide, ready to install on {{ server.name }}'s sites.
-        </p>
-      </div>
-      <Tooltip :text="`This server runs ${versionLabel}. Only apps that support it can be installed.`">
-        <span class="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-outline-gray-2 bg-surface-gray-1 px-2.5 py-1 text-p-sm text-ink-gray-6">
-          <span class="lucide-box size-3.5" />
-          {{ versionLabel }}
-        </span>
-      </Tooltip>
-    </div>
-
-    <!-- Arriving from a site preselects it; that's the only banner. Direct entry
-         shows nothing — you browse first and pick where to install on commit. -->
-    <div v-if="preselectedSite" class="mt-4 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-2">
-      <SiteIcon size="sm" />
-      <span class="text-sm text-ink-gray-7">Installing onto <span class="font-medium text-ink-gray-9">{{ preselectedSite.name }}</span></span>
-      <button v-if="liveSites.length > 1" class="ml-auto text-sm text-ink-gray-5 underline-offset-2 hover:underline" @click="siteSelectOpen = true">Choose a different site</button>
-    </div>
-    <Alert
-      v-else-if="!liveSites.length"
-      theme="yellow"
-      class="mt-4"
-      :title="`${server.name} has no live site yet — create one first, then install apps on it.`"
-    />
-
-    <!-- Search + category filter. -->
-    <div class="mt-5 flex flex-col gap-2 sm:flex-row">
-      <FormControl v-model="search" type="text" placeholder="Search for any app" autocomplete="off" class="flex-1" />
-      <FormControl v-model="category" type="select" :options="categoryOptions" class="sm:w-48" />
-    </div>
-
-    <div class="mt-5 text-xs font-medium uppercase tracking-wide text-ink-gray-5">From Frappe</div>
-
-    <!-- App rows — one tappable list. Marketplace is a catalog: it installs and
-         shows status, but managing an installed app (update, uninstall) happens
-         on the site that owns it, so there's a single source of truth. -->
-    <div class="app-grid mt-2 grid gap-x-8 sm:grid-cols-2">
-      <div v-for="app in marketApps" :key="app.key" class="flex items-center gap-2.5">
-        <AppIcon :app-key="app.key" size="md" class="shrink-0" />
-        <div class="flex min-w-0 flex-1 items-center justify-between gap-2 border-b border-outline-gray-2 py-4">
-          <div class="min-w-0">
-            <div class="flex items-center gap-1.5">
-              <span class="truncate text-base font-medium text-ink-gray-8">{{ app.name }}</span>
-              <span class="shrink-0 text-p-xs text-ink-gray-5">{{ app.version }}</span>
-            </div>
-            <div v-if="isFailed(app.key)" class="truncate text-p-sm text-ink-red-6">Install failed — build error</div>
-            <div v-else class="truncate text-p-sm text-ink-gray-5">{{ app.tagline }}</div>
-          </div>
-
-          <!-- Installing: a determinate ring that fills over ~30s, with a stop
-               control in the center to cancel mid-flight. -->
-          <div v-if="isInstalling(app.key)" class="relative grid size-7 shrink-0 place-items-center">
-            <svg class="size-7 -rotate-90" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" stroke="var(--surface-gray-3)" stroke-width="2.5" />
-              <circle
-                cx="12" cy="12" r="9"
-                stroke="var(--ink-gray-8)" stroke-width="2.5" stroke-linecap="round"
-                :stroke-dasharray="RING_C"
-                :stroke-dashoffset="RING_C * (1 - (installProgress[app.key] || 0) / 100)"
-                class="transition-[stroke-dashoffset] duration-200 ease-linear"
-              />
-            </svg>
-            <Tooltip text="Cancel install">
-              <button class="absolute inset-0 grid place-items-center text-ink-gray-6 hover:text-ink-gray-9" aria-label="Cancel install" @click="cancelInstall(app.key)">
-                <span class="lucide-x size-3" />
-              </button>
-            </Tooltip>
-          </div>
-
-          <!-- Failed: name turns red above; offer a retry and the log. -->
-          <div v-else-if="isFailed(app.key)" class="flex shrink-0 items-center gap-1">
-            <Button size="xs" variant="ghost" label="View log" @click="viewLog" />
-            <Button size="sm" variant="subtle" label="Retry" @click="retryInstall(app)" />
-          </div>
-
-          <!-- Already on the site we arrived from — status, not a control.
-               Updating or removing it happens on that site's Apps page. -->
-          <span v-else-if="app.installedHere" class="flex shrink-0 items-center gap-1 text-p-sm text-ink-gray-5">
-            <span class="lucide-check size-4 text-ink-green-6" /> Installed
-          </span>
-
-          <!-- Not installed, version-locked: explain what it needs. -->
-          <Tooltip v-else-if="!app.compatible" :text="`Needs ${app.needs} — this server runs ${versionLabel}`">
-            <span class="inline-flex shrink-0">
-              <Button variant="ghost" size="xs" :label="`Needs ${app.needs}`" disabled class="pointer-events-none" />
-            </span>
-          </Tooltip>
-
-          <!-- Not installed, installable. -->
-          <Button v-else size="sm" label="Install" class="shrink-0" @click="onInstall(app)" />
+    <!-- ── Header ─────────────────────────────────────────────────────────
+         Browsing shows the Marketplace title + version context. Inside a
+         category ("See all"), it swaps to a Back link + the category title,
+         App Store style. -->
+    <template v-if="!activeCategory">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-semibold text-ink-gray-9">Marketplace</h1>
+          <p class="mt-1 text-p-base text-ink-gray-5">
+            Apps built by developers worldwide, ready to install on {{ server.name }}'s sites.
+          </p>
         </div>
+        <Tooltip :text="`This server runs ${versionLabel}. Only apps that support it can be installed.`">
+          <span class="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-outline-gray-2 bg-surface-gray-1 px-2.5 py-1 text-p-sm text-ink-gray-6">
+            <span class="lucide-box size-3.5" />
+            {{ versionLabel }}
+          </span>
+        </Tooltip>
       </div>
-    </div>
-    <p v-if="!marketApps.length" class="py-3 text-p-sm text-ink-gray-5">No apps match{{ search ? ` “${search}”` : '' }}.</p>
 
-    <!-- Install from a GitHub repo (marketplace-only path). -->
-    <div class="mt-4 border-t border-outline-alpha-gray-1 pt-4">
-      <button v-if="!ghOpen" class="text-sm text-ink-gray-6 underline-offset-2 hover:underline" @click="ghOpen = true">
-        Building your own? Install from GitHub
-      </button>
-      <div v-else class="grid gap-3 sm:grid-cols-[1fr,8rem,auto] sm:items-end">
-        <FormControl v-model="ghRepo" type="text" label="GitHub repository" placeholder="github.com/you/your-app" />
-        <FormControl v-model="ghBranch" type="text" label="Branch" placeholder="develop" />
-        <Button variant="subtle" label="Install" :disabled="!ghRepo.trim()" @click="onInstallGitHub" />
+      <!-- Arriving from a site preselects it; that's the only banner. Direct entry
+           shows nothing — you browse first and pick where to install on commit. -->
+      <div v-if="preselectedSite" class="mt-4 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-2">
+        <SiteIcon size="sm" />
+        <span class="text-sm text-ink-gray-7">Installing onto <span class="font-medium text-ink-gray-9">{{ preselectedSite.name }}</span></span>
+        <button v-if="liveSites.length > 1" class="ml-auto text-sm text-ink-gray-5 underline-offset-2 hover:underline" @click="siteSelectOpen = true">Choose a different site</button>
+      </div>
+      <Alert
+        v-else-if="!liveSites.length"
+        theme="yellow"
+        class="mt-4"
+        :title="`${server.name} has no live site yet — create one first, then install apps on it.`"
+      />
+    </template>
+
+    <template v-else>
+      <h1 class="text-2xl font-semibold text-ink-gray-9">{{ detail.label }}</h1>
+      <p class="mt-1 text-p-base text-ink-gray-5">{{ detail.tagline }}</p>
+    </template>
+
+    <!-- Search. On the marketplace it collapses the sections into a flat result
+         list; inside a category it sits alongside the Categories / Works-with
+         filters. -->
+    <FormControl v-if="!activeCategory" v-model="search" type="text" placeholder="Search for any app" autocomplete="off" class="mt-5 [&_input]:w-full" />
+    <div v-else class="mt-5 flex flex-col gap-2 sm:flex-row">
+      <FormControl v-model="search" type="text" placeholder="Search for any app" autocomplete="off" class="flex-1 [&_input]:w-full" />
+      <FormControl v-model="categoryFilter" type="select" :options="categoryFilterOptions" class="sm:w-44" />
+      <FormControl v-model="worksWith" type="select" :options="worksWithOptions" class="sm:w-44" />
+    </div>
+
+    <!-- ── Category detail ("See all") ──────────────────────────────────── -->
+    <div v-if="activeCategory" class="mt-4">
+      <div class="grid gap-x-8 sm:grid-cols-2">
+        <MarketplaceAppRow
+          v-for="app in detail.apps"
+          :key="app.key"
+          :app="app"
+          :version-label="versionLabel"
+          :installing="isInstalling(app.key)"
+          :progress="installProgress[app.key]"
+          :failed="isFailed(app.key)"
+          @install="onInstall(app)"
+          @cancel="cancelInstall(app.key)"
+          @retry="retryInstall(app)"
+          @view-log="viewLog"
+        />
+      </div>
+      <p v-if="!detail.apps.length" class="py-3 text-p-sm text-ink-gray-5">No apps match{{ search ? ` “${search}”` : '' }}.</p>
+    </div>
+
+    <!-- ── Search results (flat list) ───────────────────────────────────── -->
+    <div v-else-if="search.trim()" class="mt-4">
+      <div class="grid gap-x-8 sm:grid-cols-2">
+        <MarketplaceAppRow
+          v-for="app in searchResults"
+          :key="app.key"
+          :app="app"
+          :version-label="versionLabel"
+          :installing="isInstalling(app.key)"
+          :progress="installProgress[app.key]"
+          :failed="isFailed(app.key)"
+          @install="onInstall(app)"
+          @cancel="cancelInstall(app.key)"
+          @retry="retryInstall(app)"
+          @view-log="viewLog"
+        />
+      </div>
+      <p v-if="!searchResults.length" class="py-3 text-p-sm text-ink-gray-5">No apps match “{{ search }}”.</p>
+    </div>
+
+    <!-- ── Browse: Featured + a section per category + All apps ──────────── -->
+    <div v-else>
+      <section v-for="s in browseSections" :key="s.key" class="mt-8 first:mt-6">
+        <div class="mb-1 flex items-center justify-between">
+          <h2 class="text-base font-semibold text-ink-gray-9">{{ s.label }}</h2>
+          <button
+            v-if="s.apps.length > PREVIEW"
+            class="flex items-center gap-0.5 text-p-sm font-medium text-ink-gray-6 hover:text-ink-gray-9"
+            @click="openCategory(s.key)"
+          >
+            See all <span class="lucide-chevron-right size-4" />
+          </button>
+        </div>
+        <div class="grid gap-x-8 sm:grid-cols-2">
+          <MarketplaceAppRow
+            v-for="app in s.apps.slice(0, PREVIEW)"
+            :key="app.key"
+            :app="app"
+            :version-label="versionLabel"
+            :installing="isInstalling(app.key)"
+            :progress="installProgress[app.key]"
+            :failed="isFailed(app.key)"
+            @install="onInstall(app)"
+            @cancel="cancelInstall(app.key)"
+            @retry="retryInstall(app)"
+            @view-log="viewLog"
+          />
+        </div>
+      </section>
+
+      <!-- Install from a GitHub repo (marketplace-only path). The last app row's
+           own bottom border is the divider here, so no border-t. -->
+      <div class="mt-6">
+        <button v-if="!ghOpen" class="text-sm text-ink-gray-6 underline-offset-2 hover:underline" @click="ghOpen = true">
+          Building your own? Install from GitHub
+        </button>
+        <div v-else class="grid gap-3 sm:grid-cols-[1fr,8rem,auto] sm:items-end">
+          <FormControl v-model="ghRepo" type="text" label="GitHub repository" placeholder="github.com/you/your-app" />
+          <FormControl v-model="ghBranch" type="text" label="Branch" placeholder="develop" />
+          <Button variant="subtle" label="Install" :disabled="!ghRepo.trim()" @click="onInstallGitHub" />
+        </div>
       </div>
     </div>
 
@@ -189,14 +208,14 @@
 </template>
 
 <script setup>
-import { computed, onUnmounted, reactive, ref, watchEffect } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, Dialog, FormControl, Tooltip, toast } from 'frappe-ui'
 import Alert from '../../components/Alert.vue'
-import AppIcon from '../../components/AppIcon.vue'
+import MarketplaceAppRow from '../../components/MarketplaceAppRow.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import SiteIcon from '../../components/SiteIcon.vue'
-import { APP_CATALOG, APP_CATEGORIES, categoryOf, versionById } from '../../data/catalog'
+import { APP_CATALOG, APP_CATEGORIES, categoryOf, versionById, worksWithOf } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 
 const store = useCloudStore()
@@ -207,7 +226,16 @@ const server = computed(() => store.findServer(route.params.serverId) || store.c
 watchEffect(() => {
   if (!server.value) router.replace('/')
 })
-const crumbs = computed(() => [{ label: 'Marketplace' }])
+// Inside a category ("See all") the breadcrumb becomes the way back — the
+// clickable "Marketplace" crumb drops the ?category= param, and a browser/
+// trackpad back gesture pops that same history entry, landing here rather than
+// on wherever you came from before the marketplace.
+const marketplacePath = computed(() => `/manage/${server.value.id}/marketplace`)
+const crumbs = computed(() =>
+  activeCategory.value
+    ? [{ label: 'Marketplace', route: marketplacePath.value }, { label: detail.value.label }]
+    : [{ label: 'Marketplace' }],
+)
 
 const versionLabel = computed(() => versionById(server.value.version).label)
 const liveSites = computed(() => (server.value?.sites || []).filter((s) => s.status === 'live'))
@@ -223,34 +251,134 @@ function switchSite(site) {
 }
 
 const search = ref('')
-const category = ref('')
-const categoryOptions = [{ label: 'All categories', value: '' }, ...APP_CATEGORIES]
 
-// — Catalog: every app, filtered by search + category, ranked compatible-first
-// (locked apps sink), with installed-here status when we have a site context.
-const marketApps = computed(() => {
-  const q = search.value.trim().toLowerCase()
+// ── Catalog shaping ──────────────────────────────────────────────────────
+// Every browse view renders the same decorated app: compatibility with this
+// server, what it needs if locked, and whether it's already on the site we
+// arrived from.
+function decorate(a) {
   const ver = server.value?.version
-  const onSite = new Set((preselectedSite.value?.apps || []).map((a) => a.key))
-  const list = APP_CATALOG
-    .filter(
-      (a) =>
-        (!q || a.name.toLowerCase().includes(q) || a.tagline.toLowerCase().includes(q)) &&
-        (!category.value || categoryOf(a.key) === category.value),
-    )
-    .map((a) => ({
-      ...a,
-      compatible: a.compat.includes(ver),
-      needs: versionById(a.compat[0]).label,
-      installedHere: onSite.has(a.key),
-    }))
-  const rank = (x) => (x.installedHere ? 1 : x.compatible ? 0 : 2)
-  return list.sort((a, b) => rank(a) - rank(b))
+  const onSite = new Set((preselectedSite.value?.apps || []).map((x) => x.key))
+  return {
+    ...a,
+    compatible: a.compat.includes(ver),
+    needs: versionById(a.compat[0]).label,
+    installedHere: onSite.has(a.key),
+    worksWith: worksWithOf(a.key),
+  }
+}
+const allApps = computed(() => APP_CATALOG.map(decorate))
+
+function matches(app, q) {
+  return app.name.toLowerCase().includes(q) || app.tagline.toLowerCase().includes(q)
+}
+function installsNum(app) {
+  const s = String(app.installs || '').trim().toLowerCase()
+  if (s.endsWith('m')) return parseFloat(s) * 1e6
+  if (s.endsWith('k')) return parseFloat(s) * 1e3
+  return parseFloat(s) || 0
+}
+
+// — Featured = most installed, across the whole catalog.
+const featuredApps = computed(() => [...allApps.value].sort((a, b) => installsNum(b) - installsNum(a)))
+
+// — Section-per-category preview cap and the sentinel keys the "See all" links
+// route to (kept distinct from the site-picker's ALL constant).
+const PREVIEW = 6
+const FEATURED = 'featured'
+const ALL_APPS = 'all'
+const CATEGORY_TAGLINES = {
+  integrations: 'Sync, connect and extend your Frappe apps with external services',
+  utility: 'Everyday tools to get more out of your sites',
+  payments: 'Collect payments the way your customers prefer',
+  business: 'Run your operations end to end',
+  'dev-tools': 'Build, debug and ship on the Frappe framework',
+  localisation: 'Stay compliant, wherever you operate',
+}
+
+const browseSections = computed(() => {
+  const out = [{ key: FEATURED, label: 'Featured apps', apps: featuredApps.value }]
+  for (const c of APP_CATEGORIES) {
+    const apps = allApps.value.filter((a) => categoryOf(a.key) === c.value)
+    if (apps.length) out.push({ key: c.value, label: c.label, apps })
+  }
+  out.push({ key: ALL_APPS, label: 'All apps', apps: allApps.value })
+  return out
+})
+
+const searchResults = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return []
+  return allApps.value.filter((a) => matches(a, q))
+})
+
+// ── "See all" category detail ────────────────────────────────────────────
+// The active category lives in the URL (?category=), so it's a real history
+// entry: "See all" pushes, the breadcrumb pops, and the back gesture works.
+const activeCategory = computed(() => route.query.category || null)
+function openCategory(key) {
+  router.push({ path: marketplacePath.value, query: { ...route.query, category: key } })
+}
+// A fresh search + cleared filters whenever we cross into or out of a category.
+watch(activeCategory, () => {
+  search.value = ''
+  worksWith.value = ''
+})
+
+// The "Categories" dropdown doubles as a section switcher — picking one routes
+// to that view (so history/back stays consistent).
+const categoryFilter = computed({
+  get: () => activeCategory.value,
+  set: (v) => openCategory(v),
+})
+const categoryFilterOptions = [
+  { label: 'Featured', value: FEATURED },
+  { label: 'All apps', value: ALL_APPS },
+  ...APP_CATEGORIES,
+]
+
+// "Works with" — narrow to apps built for a given Frappe app (ERPNext, HR, …).
+const worksWith = ref('')
+
+// The set of apps for the current view, before search / works-with narrowing.
+const detailBaseApps = computed(() => {
+  const v = activeCategory.value
+  if (!v) return []
+  if (v === FEATURED) return featuredApps.value.slice(0, 12)
+  if (v === ALL_APPS) return allApps.value
+  return allApps.value.filter((a) => categoryOf(a.key) === v)
+})
+
+// Only offer "Works with" values that actually appear in this view.
+const worksWithOptions = computed(() => {
+  const seen = [...new Set(detailBaseApps.value.map((a) => a.worksWith))].sort()
+  return [{ label: 'Works with', value: '' }, ...seen.map((w) => ({ label: w, value: w }))]
+})
+
+const detail = computed(() => {
+  const v = activeCategory.value
+  let label
+  let tagline
+  if (v === FEATURED) {
+    label = 'Featured apps'
+    tagline = 'The most installed apps on Frappe Cloud'
+  } else if (v === ALL_APPS) {
+    label = 'All apps'
+    tagline = 'Every app in the marketplace'
+  } else {
+    const c = APP_CATEGORIES.find((x) => x.value === v)
+    label = c?.label || 'Apps'
+    tagline = CATEGORY_TAGLINES[v] || `${label} apps for your sites`
+  }
+  const q = search.value.trim().toLowerCase()
+  const apps = detailBaseApps.value.filter(
+    (a) => (!q || matches(a, q)) && (!worksWith.value || a.worksWith === worksWith.value),
+  )
+  return { label, tagline, apps }
 })
 
 // — Install ring: a real-feeling determinate ring that fills over ~30s against a
 // chosen site, then commits through the store (which can fail in edge mode).
-const RING_C = 2 * Math.PI * 9
 const INSTALL_MS = 30000
 const TICK_MS = 200
 const installProgress = reactive({})

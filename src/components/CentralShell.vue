@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen overflow-hidden bg-surface-elevation-1">
+  <div class="flex h-screen overflow-hidden bg-surface-base">
     <aside
       class="relative flex shrink-0 flex-col border-r border-outline-alpha-gray-1 bg-surface-sidebar p-2 transition-all duration-300 ease-in-out"
       :class="collapsed ? 'w-14' : 'w-60'"

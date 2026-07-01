@@ -38,11 +38,10 @@
 
           <!-- Toolbar -->
           <div class="mt-3 flex flex-wrap items-center gap-2">
-            <FormControl v-model="q" class="min-w-0 flex-1 [&_input]:w-full" type="text" placeholder="Search" autocomplete="off" />
+            <FormControl v-model="q" class="min-w-0 flex-1 [&_input]:w-full" type="text" placeholder="Search" autocomplete="off">
+              <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
+            </FormControl>
             <div class="w-32 shrink-0"><FormControl v-model="statusFilter" type="select" :options="statusOptions" /></div>
-            <Dropdown :options="sortOptions" placement="bottom-end">
-              <Button variant="subtle" size="sm" label="Sort" icon-left="lucide-arrow-up-down" />
-            </Dropdown>
             <TabButtons
               v-model="view"
               class="shrink-0"
@@ -51,6 +50,12 @@
                 { value: 'list', icon: 'lucide-list', tooltip: 'List view' },
               ]"
             />
+            <Dropdown :options="sortOptions" placement="bottom-end">
+              <Button variant="subtle" size="sm" label="Sort" icon-left="lucide-arrow-up-down" />
+            </Dropdown>
+            <Dropdown :options="siteListMenu" placement="bottom-end">
+              <Button variant="subtle" size="sm" icon="lucide-ellipsis" aria-label="More" />
+            </Dropdown>
           </div>
 
           <!-- Empty -->
@@ -75,23 +80,19 @@
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
             >
-              <SiteIcon size="md" class="shrink-0" />
+              <SiteIcon size="lg" class="shrink-0" />
               <div class="min-w-0 flex-1">
                 <div class="flex items-start justify-between gap-2">
                   <div class="flex min-w-0 items-center gap-2">
                     <span class="truncate text-base font-semibold text-ink-gray-9">{{ site.name }}</span>
-                    <span class="flex shrink-0 items-center gap-1.5 text-p-sm text-ink-gray-5">
-                      <span class="size-1.5 rounded-full" :class="statusDot(site)" />
-                      {{ statusLabel(site) }}
-                    </span>
+                    <Badge :theme="statusTheme(site)" variant="subtle" :label="statusLabel(site)" class="shrink-0" />
                   </div>
                   <Dropdown :options="siteOptions(site)" placement="bottom-end">
                     <button class="-mr-1 -mt-0.5 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${site.name}`" @click.stop><span class="lucide-ellipsis size-4" /></button>
                   </Dropdown>
                 </div>
-                <div class="mt-1 flex items-center gap-1.5 text-p-sm text-ink-gray-5">
-                  <span>{{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}</span>
-                  <Badge v-if="hasUpdate(site)" theme="orange" variant="ghost" label="Update available" />
+                <div class="text-p-sm text-ink-gray-5">
+                  {{ site.apps.length }} {{ site.apps.length === 1 ? 'app' : 'apps' }}
                 </div>
               </div>
             </div>
@@ -112,12 +113,8 @@
                 <SiteIcon size="sm" />
                 <span class="truncate text-base font-medium text-ink-gray-8">{{ row.name }}</span>
               </div>
-              <span v-else-if="column.key === 'status'" class="flex items-center gap-1.5 text-sm text-ink-gray-6">
-                <span class="size-1.5 shrink-0 rounded-full" :class="statusDot(row._site)" />
-                {{ statusLabel(row._site) }}
-              </span>
+              <Badge v-else-if="column.key === 'status'" :theme="statusTheme(row._site)" variant="subtle" :label="statusLabel(row._site)" />
               <span v-else-if="column.key === 'apps'" class="text-sm tabular-nums text-ink-gray-6">{{ row._site.apps.length }} {{ row._site.apps.length === 1 ? 'app' : 'apps' }}</span>
-              <Badge v-else-if="column.key === 'update' && hasUpdate(row._site)" theme="orange" variant="subtle" label="Update available" />
               <Dropdown v-else-if="column.key === 'actions'" :options="siteOptions(row._site)" placement="bottom-end">
                 <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${row.name}`" @click.stop><span class="lucide-ellipsis-vertical size-4" /></button>
               </Dropdown>
@@ -288,6 +285,11 @@ const sortOptions = [
   { label: 'Oldest first', icon: 'lucide-history', onClick: () => (sortBy.value = 'oldest') },
 ]
 
+// Overflow menu for the sites list. Export is a placeholder for now.
+const siteListMenu = [
+  { label: 'Export as CSV', icon: 'lucide-download', onClick: () => toast('Exported sites.csv') },
+]
+
 const filteredSites = computed(() => {
   const term = q.value.trim().toLowerCase()
   let out = server.value.sites.filter((s) => {
@@ -307,7 +309,6 @@ const listColumns = [
   { label: 'Site', key: 'name', width: 2 },
   { label: 'Status', key: 'status', width: 1 },
   { label: 'Apps', key: 'apps', width: '5rem' },
-  { label: '', key: 'update', width: 1 },
   { label: '', key: 'actions', width: '3rem', align: 'right' },
 ]
 const listRows = computed(() => filteredSites.value.map((s) => ({ id: s.id, name: s.name, _site: s })))
@@ -315,16 +316,13 @@ const listRows = computed(() => filteredSites.value.map((s) => ({ id: s.id, name
 function goSite(site) {
   router.push(`${base.value}/sites/${site.id}`)
 }
-function hasUpdate(site) {
-  return site.apps.some((a) => store.appUpdate(a))
-}
-function statusDot(site) {
-  if (site.status === 'suspended') return 'bg-[var(--ink-amber-7)]'
-  if (site.status === 'live') return 'bg-[var(--ink-green-7)]'
-  return 'bg-[var(--ink-amber-7)]'
-}
 function statusLabel(site) {
   return { live: 'Active', creating: 'Setting up…', restoring: 'Restoring…', moving: 'Moving…', suspended: 'Paused' }[site.status] || site.status
+}
+function statusTheme(site) {
+  if (site.status === 'live') return 'green'
+  if (site.status === 'broken') return 'red'
+  return 'orange'
 }
 function siteOptions(site) {
   return [

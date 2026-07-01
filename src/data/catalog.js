@@ -309,6 +309,53 @@ export const APP_CATALOG = [
     letter: 'S',
     tile: 'bg-surface-red-2 text-ink-red-8',
   },
+
+  // — Mock catalog (prototype only). These fill out the marketplace's category
+  // sections so the browse experience feels real; they install through the same
+  // flow as the apps above (letter-tile icons, no bundled logo asset).
+  { key: 'manufacturing', installs: '19k', name: 'Frappe Manufacturing', version: 'v15', latestVersion: 'v15', tagline: 'Production planning and the shop floor, connected', compat: ['v15', 'v16'], letter: 'M', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'nonprofit', installs: '6k', name: 'Frappe NonProfit', version: 'v15', latestVersion: 'v15', tagline: 'Donors, grants and members in one place', compat: ['v15'], letter: 'N', tile: 'bg-surface-green-2 text-ink-green-6' },
+  { key: 'healthcare', installs: '23k', name: 'Frappe Healthcare', version: 'v15', latestVersion: 'v15', tagline: 'Patients, appointments and records', compat: ['v15', 'v16'], letter: 'H', tile: 'bg-surface-red-2 text-ink-red-8' },
+  { key: 'agriculture', installs: '4k', name: 'Frappe Agriculture', version: 'v15', latestVersion: 'v15', tagline: 'Crops, land and harvest cycles, tracked', compat: ['v15'], letter: 'A', tile: 'bg-surface-green-2 text-ink-green-6' },
+
+  { key: 'gameplan', installs: '27k', name: 'Gameplan', version: 'v1.0', latestVersion: 'v1.0', tagline: "Team discussions that don't get lost", compat: ['v15', 'v16'], letter: 'G', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'wiki', installs: '14k', name: 'Frappe Wiki', version: 'v1.0', latestVersion: 'v1.0', tagline: 'A knowledge base your team will actually use', compat: ['v15', 'v16'], letter: 'W', tile: 'bg-surface-gray-2 text-ink-gray-7' },
+  { key: 'print-designer', installs: '15k', name: 'Print Designer', version: 'v1.2', latestVersion: 'v1.2', tagline: 'Design pixel-perfect invoices and forms', compat: ['v16'], letter: 'P', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'raven', installs: '22k', name: 'Raven', version: 'v1.6', latestVersion: 'v1.6', tagline: 'Team chat, right inside Frappe', compat: ['v15', 'v16'], letter: 'R', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'notes', installs: '9k', name: 'Frappe Notes', version: 'v0.4', latestVersion: 'v0.4', tagline: 'Quick notes and to-dos, synced', compat: ['v15', 'v16'], letter: 'N', tile: 'bg-surface-gray-2 text-ink-gray-7' },
+
+  { key: 'whatsapp', installs: '31k', name: 'WhatsApp Integration', version: 'v2.1', latestVersion: 'v2.1', tagline: 'Send and receive WhatsApp messages', compat: ['v15', 'v16'], letter: 'W', tile: 'bg-surface-green-2 text-ink-green-6' },
+  { key: 'twilio', installs: '13k', name: 'Twilio', version: 'v1.3', latestVersion: 'v1.3', tagline: 'SMS and voice from your workflows', compat: ['v15', 'v16'], letter: 'T', tile: 'bg-surface-red-2 text-ink-red-8' },
+  { key: 'slack', installs: '18k', name: 'Slack Notifications', version: 'v1.1', latestVersion: 'v1.1', tagline: 'Push alerts to your Slack channels', compat: ['v15', 'v16'], letter: 'S', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'shopify', installs: '16k', name: 'Shopify Connector', version: 'v2.0', latestVersion: 'v2.0', tagline: 'Sync orders and inventory with Shopify', compat: ['v15', 'v16'], letter: 'S', tile: 'bg-surface-green-2 text-ink-green-6' },
+  { key: 'google-workspace', installs: '20k', name: 'Google Workspace', version: 'v1.4', latestVersion: 'v1.4', tagline: 'Calendar, contacts and drive sync', compat: ['v15', 'v16'], letter: 'G', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'zapier', installs: '11k', name: 'Zapier', version: 'v1.0', latestVersion: 'v1.0', tagline: 'Connect Frappe to thousands of apps', compat: ['v15', 'v16'], letter: 'Z', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'webhooks-plus', installs: '7k', name: 'Webhooks Plus', version: 'v0.8', latestVersion: 'v0.8', tagline: 'Fire events to any external service', compat: ['v16'], letter: 'W', tile: 'bg-surface-gray-2 text-ink-gray-7' },
+
+  { key: 'razorpay', installs: '45k', name: 'Razorpay', version: 'v2.3', latestVersion: 'v2.3', tagline: 'Accept payments across India', compat: ['v15', 'v16'], letter: 'R', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'stripe', installs: '39k', name: 'Stripe Payments', version: 'v2.1', latestVersion: 'v2.1', tagline: 'Cards and wallets, worldwide', compat: ['v15', 'v16'], letter: 'S', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'paypal', installs: '26k', name: 'PayPal', version: 'v1.7', latestVersion: 'v1.7', tagline: 'The wallet your customers already have', compat: ['v15', 'v16'], letter: 'P', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'mpesa', installs: '10k', name: 'M-Pesa', version: 'v1.0', latestVersion: 'v1.0', tagline: 'Mobile money for East Africa', compat: ['v15'], letter: 'M', tile: 'bg-surface-green-2 text-ink-green-6' },
+  { key: 'gocardless', installs: '8k', name: 'GoCardless', version: 'v1.2', latestVersion: 'v1.2', tagline: 'Recurring bank debits, automated', compat: ['v15', 'v16'], letter: 'G', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'paytm', installs: '12k', name: 'Paytm', version: 'v1.5', latestVersion: 'v1.5', tagline: 'UPI and wallet payments', compat: ['v15'], letter: 'P', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'braintree', installs: '5k', name: 'Braintree', version: 'v1.0', latestVersion: 'v1.0', tagline: "PayPal's full-stack payments", compat: ['v16'], letter: 'B', tile: 'bg-surface-gray-2 text-ink-gray-7' },
+
+  { key: 'swagger', installs: '21k', name: 'Swagger UI', version: 'v1.1', latestVersion: 'v1.1', tagline: 'Explore your API interactively', compat: ['v15', 'v16'], letter: 'S', tile: 'bg-surface-green-2 text-ink-green-6' },
+  { key: 'press', installs: '9k', name: 'Frappe Press', version: 'v0.3', latestVersion: 'v0.3', tagline: 'Self-host the Frappe Cloud dashboard', compat: ['v16'], letter: 'P', tile: 'bg-surface-gray-2 text-ink-gray-7' },
+  { key: 'frappe-types', installs: '7k', name: 'Frappe Types', version: 'v0.6', latestVersion: 'v0.6', tagline: 'TypeScript types for your DocTypes', compat: ['v15', 'v16'], letter: 'T', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'data-migration', installs: '6k', name: 'Data Migration Tool', version: 'v1.0', latestVersion: 'v1.0', tagline: 'Move data between sites safely', compat: ['v15', 'v16'], letter: 'D', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'api-logs', installs: '5k', name: 'API Logger', version: 'v0.9', latestVersion: 'v0.9', tagline: 'Trace every request and response', compat: ['v15', 'v16'], letter: 'A', tile: 'bg-surface-red-2 text-ink-red-8' },
+  { key: 'webhook-tester', installs: '4k', name: 'Webhook Tester', version: 'v0.5', latestVersion: 'v0.5', tagline: 'Inspect incoming webhooks live', compat: ['v16'], letter: 'W', tile: 'bg-surface-gray-2 text-ink-gray-7' },
+  { key: 'sql-notebook', installs: '8k', name: 'SQL Notebook', version: 'v1.0', latestVersion: 'v1.0', tagline: 'Query your database in a notebook', compat: ['v15', 'v16'], letter: 'S', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+
+  { key: 'india-compliance', installs: '24k', name: 'India Compliance', version: 'v15', latestVersion: 'v15', tagline: 'GST, e-invoicing and returns', compat: ['v15', 'v16'], letter: 'I', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'kenya-csf', installs: '3k', name: 'Kenya CSF', version: 'v15', latestVersion: 'v15', tagline: 'Country-specific functions for Kenya', compat: ['v15'], letter: 'K', tile: 'bg-surface-red-2 text-ink-red-8' },
+  { key: 'uae-vat', installs: '7k', name: 'UAE VAT', version: 'v15', latestVersion: 'v15', tagline: 'VAT filing for the Emirates', compat: ['v15', 'v16'], letter: 'U', tile: 'bg-surface-green-2 text-ink-green-6' },
+  { key: 'ksa-zatca', installs: '6k', name: 'KSA ZATCA', version: 'v15', latestVersion: 'v15', tagline: 'ZATCA e-invoicing for Saudi Arabia', compat: ['v15', 'v16'], letter: 'K', tile: 'bg-surface-green-2 text-ink-green-6' },
+  { key: 'us-payroll', installs: '9k', name: 'US Payroll', version: 'v15', latestVersion: 'v15', tagline: 'Federal and state payroll tax', compat: ['v15'], letter: 'U', tile: 'bg-surface-blue-2 text-ink-blue-8' },
+  { key: 'germany-datev', installs: '4k', name: 'Germany DATEV', version: 'v16', latestVersion: 'v16', tagline: 'DATEV export for German accounting', compat: ['v16'], letter: 'G', tile: 'bg-surface-gray-2 text-ink-gray-7' },
+  { key: 'brazil-nfe', installs: '5k', name: 'Brazil NF-e', version: 'v15', latestVersion: 'v15', tagline: 'Electronic invoicing for Brazil', compat: ['v15'], letter: 'B', tile: 'bg-surface-amber-2 text-ink-amber-8' },
+  { key: 'nigeria-firs', installs: '3k', name: 'Nigeria FIRS', version: 'v15', latestVersion: 'v15', tagline: 'FIRS e-invoicing compliance', compat: ['v15', 'v16'], letter: 'N', tile: 'bg-surface-green-2 text-ink-green-6' },
 ]
 
 
@@ -335,10 +382,80 @@ const APP_CATEGORY = {
   lms: 'business',
   mail: 'integrations',
   school: 'business',
+  manufacturing: 'business',
+  nonprofit: 'business',
+  healthcare: 'business',
+  agriculture: 'business',
+  gameplan: 'utility',
+  wiki: 'utility',
+  'print-designer': 'utility',
+  raven: 'utility',
+  notes: 'utility',
+  whatsapp: 'integrations',
+  twilio: 'integrations',
+  slack: 'integrations',
+  shopify: 'integrations',
+  'google-workspace': 'integrations',
+  zapier: 'integrations',
+  'webhooks-plus': 'integrations',
+  razorpay: 'payments',
+  stripe: 'payments',
+  paypal: 'payments',
+  mpesa: 'payments',
+  gocardless: 'payments',
+  paytm: 'payments',
+  braintree: 'payments',
+  swagger: 'dev-tools',
+  press: 'dev-tools',
+  'frappe-types': 'dev-tools',
+  'data-migration': 'dev-tools',
+  'api-logs': 'dev-tools',
+  'webhook-tester': 'dev-tools',
+  'sql-notebook': 'dev-tools',
+  'india-compliance': 'localisation',
+  'kenya-csf': 'localisation',
+  'uae-vat': 'localisation',
+  'ksa-zatca': 'localisation',
+  'us-payroll': 'localisation',
+  'germany-datev': 'localisation',
+  'brazil-nfe': 'localisation',
+  'nigeria-firs': 'localisation',
 }
 
 export function categoryOf(key) {
   return APP_CATEGORY[key] || null
+}
+
+// The Frappe app each marketplace app is primarily built to extend. Most apps
+// are standalone apps on the framework; the rest bolt onto ERPNext (payments,
+// country compliance, trade add-ons) or Frappe HR. Drives the marketplace's
+// "Works with" filter. Anything unmapped works with the framework itself.
+const APP_WORKS_WITH = {
+  lending: 'ERPNext',
+  manufacturing: 'ERPNext',
+  nonprofit: 'ERPNext',
+  agriculture: 'ERPNext',
+  'print-designer': 'ERPNext',
+  shopify: 'ERPNext',
+  razorpay: 'ERPNext',
+  stripe: 'ERPNext',
+  paypal: 'ERPNext',
+  mpesa: 'ERPNext',
+  gocardless: 'ERPNext',
+  paytm: 'ERPNext',
+  braintree: 'ERPNext',
+  'india-compliance': 'ERPNext',
+  'kenya-csf': 'ERPNext',
+  'uae-vat': 'ERPNext',
+  'ksa-zatca': 'ERPNext',
+  'germany-datev': 'ERPNext',
+  'brazil-nfe': 'ERPNext',
+  'nigeria-firs': 'ERPNext',
+  'us-payroll': 'Frappe HR',
+}
+
+export function worksWithOf(key) {
+  return APP_WORKS_WITH[key] || 'Frappe Framework'
 }
 
 export const TEAM_SIZE_TO_PLAN = {
