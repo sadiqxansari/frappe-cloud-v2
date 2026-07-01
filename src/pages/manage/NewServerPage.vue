@@ -131,17 +131,18 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, FormControl, Tooltip, toast } from 'frappe-ui'
 import CentralShell from '../../components/CentralShell.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import PlanPicker from '../../components/PlanPicker.vue'
 import ProviderIcon from '../../components/ProviderIcon.vue'
-import { PROVIDERS, VERSIONS, priceFor, regionById, regionsOf } from '../../data/catalog'
+import { PROVIDERS, REGIONS, VERSIONS, priceFor, regionById, regionsOf } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 import { inr } from '../../utils/format'
 
 const store = useCloudStore()
+const route = useRoute()
 const router = useRouter()
 
 const providerId = ref('aws')
@@ -169,6 +170,18 @@ function providerDown(id) {
 function regionDown(id) {
   return downRegions.value.has(id)
 }
+// Deep link from the Servers map (an empty-region + spot): land here with the
+// provider and region already selected — unless Edge mode has them down.
+{
+  const wanted = REGIONS.find((r) => r.id === route.query.region)
+  if (wanted && !regionDown(wanted.id) && !providerDown(wanted.providerId)) {
+    providerId.value = wanted.providerId
+    regionId.value = wanted.id
+  } else if (typeof route.query.provider === 'string' && PROVIDERS.some((p) => p.id === route.query.provider)) {
+    selectProvider(route.query.provider)
+  }
+}
+
 const price = computed(() => priceFor(planId.value, regionId.value, customSpec.value))
 const versionOptions = computed(() => VERSIONS.map((v) => ({ label: `${v.label} — ${v.note}`, value: v.id })))
 
