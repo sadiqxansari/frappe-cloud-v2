@@ -243,7 +243,9 @@ function baseState() {
     // destination renders a ReturnBar, and completeAndReturn() routes back.
     returnContext: null,
     busy: 0, // in-flight work; drives the top progress bar
-    onboarding: { appKey: 'erpnext', teamSize: 'small', planId: CHEAPEST_PLAN_ID, customSpec: null, subdomain: '', regionId: 'aws-mumbai' },
+    // Onboarding starts on Starter by default — no plan picker, so the user
+    // never has to decide (it's covered by the free $25 credit).
+    onboarding: { appKey: 'erpnext', teamSize: 'small', planId: 'starter', customSpec: null, subdomain: '', regionId: 'aws-mumbai' },
   }
 }
 
