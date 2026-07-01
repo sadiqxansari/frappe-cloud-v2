@@ -1,7 +1,12 @@
 <template>
   <Dialog v-model:open="open" size="3xl">
     <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">{{ step === 'review' ? 'Migrate your server' : 'Change plan' }}</span>
+      <div>
+        <span class="text-xl font-semibold text-ink-gray-9">{{ step === 'review' ? 'Migrate your server' : 'Change plan' }}</span>
+        <p v-if="step === 'review'" class="mt-1 text-p-sm font-normal text-ink-gray-5">
+          Your server will be briefly unavailable during the migration.
+        </p>
+      </div>
     </template>
 
     <!-- Step 1 — choose a plan -->
@@ -46,53 +51,17 @@
 
     <!-- Step 2 — review the migration -->
     <div v-else>
-      <!-- Expectations note above ticket -->
-      <div class="flex items-start gap-2 text-sm text-ink-gray-5">
-        <span class="lucide-help-circle mt-0.5 size-3.5 shrink-0 text-ink-gray-4" />
-        Your server will be briefly unavailable during migration. You'll be redirected to Central to track progress.
-      </div>
-
-      <!-- From → To with map — uniform 16px radius -->
-      <div class="mt-4 overflow-hidden rounded-2xl border border-outline-gray-3 shadow-sm">
-        <div class="flex items-center gap-3 p-3">
-          <div class="flex min-w-0 flex-1 items-center gap-2.5">
-            <ProviderIcon :provider="currentProvider" :size="28" class="rounded" />
-            <div class="min-w-0">
-              <div class="text-xs text-ink-gray-5">From</div>
-              <div class="truncate text-sm font-medium text-ink-gray-9">{{ currentRegion.name }}</div>
-              <div class="text-xs text-ink-gray-5">{{ currentProvider.short }} · {{ currentPlan.name }}</div>
-            </div>
-          </div>
-          <span class="lucide-arrow-right size-4 shrink-0 text-ink-gray-4" />
-          <div class="flex min-w-0 flex-1 items-center gap-2.5">
-            <ProviderIcon :provider="destProvider" :size="28" class="rounded" />
-            <div class="min-w-0">
-              <div class="text-xs text-ink-gray-5">To</div>
-              <div class="truncate text-sm font-medium text-ink-gray-9">{{ region.name }}</div>
-              <div class="text-xs text-ink-gray-5">{{ destProvider.short }} · {{ selected?.name }}</div>
-            </div>
-          </div>
-        </div>
-        <div class="h-44 border-t border-outline-gray-2 bg-surface-gray-1">
-          <WorldMap
-            :pins="migrationPins"
-            :connections="migrationConnections"
-            :highlight="mapHighlight"
-            :pin-scale="2.4"
-            dark
-            fit
-            :fit-padding="40"
-            class="h-full w-full"
-            @hover="mapHighlight = $event"
-          />
-        </div>
-        <div class="flex items-center justify-between border-t border-outline-gray-2 px-3 py-2.5">
-          <span class="text-xs text-ink-gray-5">New monthly cost</span>
-          <span class="text-lg font-bold tabular-nums text-ink-gray-9">
-            {{ inr(newPrice) }}<span class="text-xs font-normal text-ink-gray-5"> /mo</span>
-          </span>
-        </div>
-      </div>
+      <!-- From → To map hero — endpoint cards pin to the dots. -->
+      <MigrationMapCard
+        class="mt-1"
+        :from-region="currentRegion"
+        :to-region="region"
+        :from-provider="currentProvider"
+        :to-provider="destProvider"
+        :from-plan="currentPlan?.name"
+        :to-plan="selected?.name"
+        :cost="inr(newPrice)"
+      />
 
       <!-- Scheduler: obvious times first, Custom for anything else.
            Here the options sit inline on the far right of the toggle row. -->
@@ -155,7 +124,7 @@
           <Button icon-left="lucide-arrow-left" label="Back" @click="step = 'choose'" />
           <Button
             variant="solid"
-            :label="scheduled ? 'Schedule plan change' : 'Migrate'"
+            :label="scheduled ? 'Schedule migration' : 'Migrate'"
             :disabled="scheduled && !scheduleAt"
             @click="doMigrate"
           />
@@ -170,10 +139,9 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button, Checkbox, Dialog, Tooltip, toast } from 'frappe-ui'
 import ProviderRegionPicker from './ProviderRegionPicker.vue'
-import ProviderIcon from './ProviderIcon.vue'
 import PlanPicker from './PlanPicker.vue'
 import ScheduleField from './ScheduleField.vue'
-import WorldMap from './WorldMap.vue'
+import MigrationMapCard from './MigrationMapCard.vue'
 import { planById, priceFor, providerById, regionById } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
 import { inr } from '../utils/format'
@@ -193,7 +161,6 @@ const customSpec = ref(null)
 const regionId = ref('aws-mumbai')
 const scheduled = ref(false)
 const scheduleAt = ref('')
-const mapHighlight = ref(null)
 
 watch(open, (isOpen) => {
   if (isOpen) {
@@ -257,19 +224,6 @@ const planChanged = computed(
 )
 
 const newPrice = computed(() => priceFor(selectedId.value, regionId.value, customSpec.value))
-
-const migrationPins = computed(() => {
-  if (!currentRegion.value || !region.value) return []
-  return [
-    { id: currentRegion.value.id, lat: currentRegion.value.lat, lng: currentRegion.value.lng, status: 'active' },
-    { id: region.value.id, lat: region.value.lat, lng: region.value.lng, status: null, selected: true },
-  ]
-})
-
-const migrationConnections = computed(() => {
-  if (!currentRegion.value || !region.value || currentRegion.value.id === region.value.id) return []
-  return [{ fromId: currentRegion.value.id, toId: region.value.id, progress: 0 }]
-})
 
 function doResize() {
   const p = store.resizeServer(props.server.id, selectedId.value, customSpec.value)

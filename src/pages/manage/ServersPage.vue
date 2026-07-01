@@ -69,38 +69,37 @@
           <div
             v-for="srv in filtered"
             :key="srv.id"
-            class="grid grid-cols-[1fr_9.5rem_7rem_1.75rem] items-center gap-3 border-b border-outline-alpha-gray-1 px-6 py-3 transition-colors hover:bg-surface-gray-1"
+            class="grid cursor-pointer grid-cols-[1fr_9.5rem_7rem_1.75rem] items-center gap-3 border-b border-outline-alpha-gray-1 px-6 py-3 transition-colors hover:bg-surface-gray-1"
+            @click="openRow(srv)"
             @mouseenter="hoverId = srv.id"
             @mouseleave="hoverId = null"
           >
-            <button class="min-w-0 text-left" @click="goServer(srv.id)">
+            <div class="min-w-0 text-left">
               <div class="truncate font-medium text-ink-gray-9">{{ srv.name }}</div>
               <div class="truncate text-sm text-ink-gray-5">
                 {{ store.planOf(srv).name }} · {{ inr(store.monthlyPriceOf(srv)) }}/mo
               </div>
-            </button>
+            </div>
 
-            <button class="flex min-w-0 items-center gap-2 text-left" @click="goServer(srv.id)">
+            <div class="flex min-w-0 items-center gap-2 text-left">
               <ProviderIcon :provider="provOf(srv)" :size="20" class="rounded" />
               <span class="truncate text-sm text-ink-gray-8">{{ city(srv) }}</span>
-            </button>
+            </div>
 
             <div class="flex items-center gap-1.5">
-              <!-- Migrating: clickable badge -->
+              <!-- Migrating: status badge (the whole row opens the progress modal) -->
               <template v-if="srv.status === 'migrating'">
-                <button type="button" class="cursor-pointer" @click="openMigration(srv)">
-                  <Badge theme="blue" variant="subtle" size="sm">
-                    <template #prefix><Spinner class="size-3 shrink-0" /></template>
-                    Migrating…
-                  </Badge>
-                </button>
+                <Badge theme="blue" variant="subtle" size="sm">
+                  <template #prefix><Spinner class="size-3 shrink-0" /></template>
+                  Migrating…
+                </Badge>
               </template>
               <!-- Scheduled: active dot + clickable badge -->
               <template v-else-if="srv.status === 'migration-scheduled'">
                 <span class="inline-flex items-center gap-1.5 text-sm text-ink-gray-7">
                   <span class="size-1.5 rounded-full bg-[var(--ink-green-7)]" />Active
                 </span>
-                <button type="button" class="cursor-pointer" @click="scheduledServer = srv; scheduledModalOpen = true">
+                <button type="button" class="cursor-pointer" @click.stop="scheduledServer = srv; scheduledModalOpen = true">
                   <Badge label="Scheduled" theme="blue" variant="subtle" size="sm" />
                 </button>
               </template>
@@ -118,10 +117,13 @@
               </template>
             </div>
 
-            <ServerActions :server="srv" central />
+            <div @click.stop>
+              <ServerActions :server="srv" central />
+            </div>
           </div>
 
           <MigrationScheduledModal v-model:open="scheduledModalOpen" :server="scheduledServer" />
+          <MigrationProgressModal v-model:open="progressModalOpen" :server="progressServer" />
 
           <EmptyState
             v-if="!filtered.length"
@@ -147,6 +149,7 @@ import Alert from '../../components/Alert.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import MigrationScheduledModal from '../../components/MigrationScheduledModal.vue'
+import MigrationProgressModal from '../../components/MigrationProgressModal.vue'
 import ServerActions from '../../components/ServerActions.vue'
 import WorldMap from '../../components/WorldMap.vue'
 import ProviderIcon from '../../components/ProviderIcon.vue'
@@ -164,6 +167,8 @@ const hoverId = ref(null)
 const scale = ref(1)
 const scheduledModalOpen = ref(false)
 const scheduledServer = ref(null)
+const progressModalOpen = ref(false)
+const progressServer = ref(null)
 
 const providerOptions = [
   { label: 'All providers', value: '' },
@@ -212,8 +217,14 @@ function goServer(id) {
   window.open(`/manage/${id}`, '_blank', 'noopener')
 }
 function openMigration(srv) {
-  const { toRegionId, toPlanId } = srv.migration || {}
-  window.open(`/migration/${srv.id}?to=${toRegionId}&plan=${toPlanId}`, '_blank', 'noopener')
+  progressServer.value = srv
+  progressModalOpen.value = true
+}
+// A migrating row opens the progress modal; once it's active again it opens the
+// server like any other row.
+function openRow(srv) {
+  if (srv.status === 'migrating') openMigration(srv)
+  else goServer(srv.id)
 }
 function zoom(delta) {
   scale.value = Math.min(2.4, Math.max(1, Math.round((scale.value + delta) * 10) / 10))

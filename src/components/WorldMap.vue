@@ -6,19 +6,20 @@
       <g :style="zoomStyle">
         <image :href="dark ? darkMap : lightMap" x="0" y="0" width="879" height="443" preserveAspectRatio="none" />
 
-        <!-- Connection lines between pins: dotted base + animated progress overlay. -->
+        <!-- Connection arcs between pins: dotted base + animated progress overlay.
+             The path bows upward like a flight route (see projectedConnections). -->
         <g v-for="(c, i) in projectedConnections" :key="i">
-          <line
-            :x1="c.x1" :y1="c.y1" :x2="c.x2" :y2="c.y2"
+          <path
+            :d="c.d" fill="none"
             stroke="var(--ink-gray-6)" stroke-width="1.5"
-            stroke-dasharray="6 5" opacity="0.9"
+            stroke-dasharray="6 5" stroke-linecap="round" opacity="0.9"
             vector-effect="non-scaling-stroke"
           />
-          <line
-            :x1="c.x1" :y1="c.y1" :x2="c.x2" :y2="c.y2"
-            :stroke="c.lineColor"
-            stroke-width="2.5"
-            :stroke-dasharray="`${c.filled} ${c.len}`"
+          <path
+            :d="c.d" fill="none"
+            :stroke="c.lineColor" stroke-width="2.5"
+            pathLength="1" :stroke-dasharray="`${c.progress} 1`"
+            stroke-linecap="round"
             vector-effect="non-scaling-stroke"
             class="wm-progress-line"
           />
@@ -197,9 +198,23 @@ const projectedConnections = computed(() => {
     if (!fromPin || !toPin) return null
     const a = project(fromPin.lat, fromPin.lng)
     const b = project(toPin.lat, toPin.lng)
-    const len = Math.hypot(b.x - a.x, b.y - a.y)
-    const filled = Math.max(0, Math.min(1, c.progress ?? 0)) * len
-    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, len, filled, lineColor: c.lineColor || DEFAULT_LINE_COLOR }
+    const dx = b.x - a.x
+    const dy = b.y - a.y
+    const len = Math.hypot(dx, dy) || 1
+    // Perpendicular to the chord, forced to point "up" (negative y).
+    let px = -dy / len
+    let py = dx / len
+    if (py > 0) { px = -px; py = -py }
+    // Arc height grows with √distance: longer routes bow higher in absolute
+    // terms, while shorter routes bow more relative to their length — a flight
+    // path, not a straight line. `offset` is the control-point pull; the curve's
+    // apex rises about half that above the chord.
+    const offset = Math.min(Math.max(Math.sqrt(len) * 3.2, 16), 130)
+    const cx = (a.x + b.x) / 2 + px * offset
+    const cy = (a.y + b.y) / 2 + py * offset
+    const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`
+    const progress = Math.max(0, Math.min(1, c.progress ?? 0))
+    return { d, progress, lineColor: c.lineColor || DEFAULT_LINE_COLOR }
   }).filter(Boolean)
 })
 
