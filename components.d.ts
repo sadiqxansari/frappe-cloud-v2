@@ -53,6 +53,7 @@ declare module 'vue' {
     ServerOverviewModal: typeof import('./src/components/ServerOverviewModal.vue')['default']
     ServerSettingsDialog: typeof import('./src/components/ServerSettingsDialog.vue')['default']
     ServerShell: typeof import('./src/components/ServerShell.vue')['default']
+    SettingsDialog: typeof import('./src/components/SettingsDialog.vue')['default']
     SiteCard: typeof import('./src/components/SiteCard.vue')['default']
     SiteIcon: typeof import('./src/components/SiteIcon.vue')['default']
     SystemInfoDialog: typeof import('./src/components/SystemInfoDialog.vue')['default']
