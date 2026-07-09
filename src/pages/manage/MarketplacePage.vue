@@ -1,141 +1,157 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs">
-    <!-- ── Header ─────────────────────────────────────────────────────────
-         Browsing shows the Marketplace title + version context. Inside a
-         category ("See all"), it swaps to a Back link + the category title,
-         App Store style. -->
-    <template v-if="!activeCategory">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <h1 class="text-2xl font-semibold text-ink-gray-9">Marketplace</h1>
-          <p class="mt-1 text-p-base text-ink-gray-5">
-            Apps built by developers worldwide, ready to install on {{ server.name }}'s sites.
-          </p>
-        </div>
-        <Tooltip :text="`This server runs ${versionLabel}. Only apps that support it can be installed.`">
-          <span class="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-outline-gray-2 bg-surface-gray-1 px-2.5 py-1 text-p-sm text-ink-gray-6">
-            <span class="lucide-box size-3.5" />
-            {{ versionLabel }}
-          </span>
-        </Tooltip>
+    <!-- ── Header ───────────────────────────────────────────────────────── -->
+    <div class="flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <h1 class="text-lg font-semibold text-ink-gray-9">Explore Frappe Marketplace</h1>
+        <span class="inline-flex h-min shrink-0 items-center gap-1 rounded-full bg-surface-gray-2 px-2 py-0.5 text-p-xs text-ink-gray-6">
+          <span class="size-3 lucide-box" /> {{ versionLabel }}
+        </span>
       </div>
-
-      <!-- Arriving from a site preselects it; that's the only banner. Direct entry
-           shows nothing — you browse first and pick where to install on commit. -->
-      <div v-if="preselectedSite" class="mt-4 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-2">
-        <SiteIcon size="sm" />
-        <span class="text-sm text-ink-gray-7">Installing onto <span class="font-medium text-ink-gray-9">{{ preselectedSite.name }}</span></span>
-        <button v-if="liveSites.length > 1" class="ml-auto text-sm text-ink-gray-5 underline-offset-2 hover:underline" @click="siteSelectOpen = true">Choose a different site</button>
-      </div>
-      <Alert
-        v-else-if="!liveSites.length"
-        theme="yellow"
-        class="mt-4"
-        :title="`${server.name} has no live site yet — create one first, then install apps on it.`"
-      />
-    </template>
-
-    <template v-else>
-      <h1 class="text-2xl font-semibold text-ink-gray-9">{{ detail.label }}</h1>
-      <p class="mt-1 text-p-base text-ink-gray-5">{{ detail.tagline }}</p>
-    </template>
-
-    <!-- Search. On the marketplace it collapses the sections into a flat result
-         list; inside a category it sits alongside the Categories / Works-with
-         filters. -->
-    <FormControl v-if="!activeCategory" v-model="search" type="text" placeholder="Search for any app" autocomplete="off" class="mt-5 [&_input]:w-full" />
-    <div v-else class="mt-5 flex flex-col gap-2 sm:flex-row">
-      <FormControl v-model="search" type="text" placeholder="Search for any app" autocomplete="off" class="flex-1 [&_input]:w-full" />
-      <FormControl v-model="categoryFilter" type="select" :options="categoryFilterOptions" class="sm:w-44" />
-      <FormControl v-model="worksWith" type="select" :options="worksWithOptions" class="sm:w-44" />
+      <button
+        type="button"
+        class="inline-flex h-min shrink-0 items-center gap-1.5 rounded-full bg-surface-gray-2 px-2.5 py-1 text-p-sm text-ink-gray-7 transition-colors hover:bg-surface-gray-3"
+        @click="siteChooserOpen = true"
+      >
+        <span class="size-3.5 text-ink-gray-5" :class="preselectedSite ? 'lucide-globe' : 'lucide-layout-grid'" />
+        {{ siteLabel }}
+      </button>
     </div>
 
-    <!-- ── Category detail ("See all") ──────────────────────────────────── -->
-    <div v-if="activeCategory" class="mt-4">
-      <div class="grid gap-x-8 sm:grid-cols-2">
-        <MarketplaceAppRow
-          v-for="app in detail.apps"
-          :key="app.key"
-          :app="app"
-          :version-label="versionLabel"
-          :installing="isInstalling(app.key)"
-          :progress="installProgress[app.key]"
-          :failed="isFailed(app.key)"
-          @install="onInstall(app)"
-          @cancel="cancelInstall(app.key)"
-          @retry="retryInstall(app)"
-          @view-log="viewLog"
-        />
-      </div>
-      <p v-if="!detail.apps.length" class="py-3 text-p-sm text-ink-gray-5">No apps match{{ search ? ` “${search}”` : '' }}.</p>
-    </div>
+    <!-- Search + works-with + import + category pills -->
+    <MarketplaceFilters
+      v-model:search="search"
+      v-model:pill="selectedPill"
+      v-model:works-with="worksWith"
+      :works-with-options="worksWithOptions"
+      @add-from-github="ghOpen = true"
+    />
 
-    <!-- ── Search results (flat list) ───────────────────────────────────── -->
-    <div v-else-if="search.trim()" class="mt-4">
-      <div class="grid gap-x-8 sm:grid-cols-2">
-        <MarketplaceAppRow
-          v-for="app in searchResults"
-          :key="app.key"
-          :app="app"
-          :version-label="versionLabel"
-          :installing="isInstalling(app.key)"
-          :progress="installProgress[app.key]"
-          :failed="isFailed(app.key)"
-          @install="onInstall(app)"
-          @cancel="cancelInstall(app.key)"
-          @retry="retryInstall(app)"
-          @view-log="viewLog"
-        />
-      </div>
-      <p v-if="!searchResults.length" class="py-3 text-p-sm text-ink-gray-5">No apps match “{{ search }}”.</p>
-    </div>
-
-    <!-- ── Browse: Featured + a section per category + All apps ──────────── -->
-    <div v-else>
-      <section v-for="s in browseSections" :key="s.key" class="mt-8 first:mt-6">
-        <div class="mb-1 flex items-center justify-between">
-          <h2 class="text-base font-semibold text-ink-gray-9">{{ s.label }}</h2>
-          <button
-            v-if="s.apps.length > PREVIEW"
-            class="flex items-center gap-0.5 text-p-sm font-medium text-ink-gray-6 hover:text-ink-gray-9"
-            @click="openCategory(s.key)"
-          >
-            See all <span class="lucide-chevron-right size-4" />
-          </button>
-        </div>
-        <div class="grid gap-x-8 sm:grid-cols-2">
+    <!-- ── Filtered: a single combined section ──────────────────────────── -->
+    <template v-if="isFiltered">
+      <section v-if="filteredApps.length" class="mt-12">
+        <p class="text-base font-medium text-ink-gray-9">{{ filteredHeading }}</p>
+        <div class="mt-3 grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
           <MarketplaceAppRow
-            v-for="app in s.apps.slice(0, PREVIEW)"
+            v-for="app in filteredApps"
             :key="app.key"
             :app="app"
             :version-label="versionLabel"
-            :installing="isInstalling(app.key)"
-            :progress="installProgress[app.key]"
-            :failed="isFailed(app.key)"
+            :can-uninstall="canUninstall(app)"
             @install="onInstall(app)"
-            @cancel="cancelInstall(app.key)"
-            @retry="retryInstall(app)"
-            @view-log="viewLog"
+            @uninstall="askUninstall(app)"
+          />
+        </div>
+      </section>
+      <p v-else class="mt-8 text-center text-sm text-ink-gray-5">No apps found.</p>
+    </template>
+
+    <!-- ── Default: Your custom apps / From Frappe / Community ────────────── -->
+    <template v-else>
+      <section v-if="customApps.length" class="mt-12">
+        <p class="text-base font-medium text-ink-gray-9">Your custom apps</p>
+        <div class="mt-3 grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+          <MarketplaceAppRow
+            v-for="app in customApps"
+            :key="app.key"
+            :app="app"
+            :version-label="versionLabel"
+            :can-uninstall="canUninstall(app)"
+            @uninstall="askUninstall(app)"
           />
         </div>
       </section>
 
-      <!-- Install from a GitHub repo (marketplace-only path). The last app row's
-           own bottom border is the divider here, so no border-t. -->
-      <div class="mt-6">
-        <button v-if="!ghOpen" class="text-sm text-ink-gray-6 underline-offset-2 hover:underline" @click="ghOpen = true">
-          Building your own? Install from GitHub
-        </button>
-        <div v-else class="grid gap-3 sm:grid-cols-[1fr,8rem,auto] sm:items-end">
-          <FormControl v-model="ghRepo" type="text" label="GitHub repository" placeholder="github.com/you/your-app" />
-          <FormControl v-model="ghBranch" type="text" label="Branch" placeholder="develop" />
-          <Button variant="subtle" label="Install" :disabled="!ghRepo.trim()" @click="onInstallGitHub" />
+      <section v-if="frappeApps.length" class="mt-12">
+        <p class="text-base font-medium text-ink-gray-9">From Frappe</p>
+        <div class="mt-3 grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+          <MarketplaceAppRow
+            v-for="app in frappeApps"
+            :key="app.key"
+            :app="app"
+            :version-label="versionLabel"
+            :can-uninstall="canUninstall(app)"
+            @install="onInstall(app)"
+            @uninstall="askUninstall(app)"
+          />
         </div>
+      </section>
+
+      <section v-if="communityApps.length" class="mt-12">
+        <p class="text-base font-medium text-ink-gray-9">Community</p>
+        <div class="mt-3 grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+          <MarketplaceAppRow
+            v-for="app in communityApps"
+            :key="app.key"
+            :app="app"
+            :version-label="versionLabel"
+            :can-uninstall="canUninstall(app)"
+            @install="onInstall(app)"
+            @uninstall="askUninstall(app)"
+          />
+        </div>
+      </section>
+
+      <p v-if="!frappeApps.length && !communityApps.length && !customApps.length" class="mt-8 text-center text-sm text-ink-gray-5">
+        No apps found.
+      </p>
+    </template>
+
+    <!-- Import from GitHub -->
+    <Dialog v-model:open="ghOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Import custom app</span></template>
+      <TabButtons v-model="ghTab" :options="ghTabs" />
+      <div class="mt-4 grid gap-3">
+        <div class="grid min-h-28 content-start gap-3">
+          <FormControl
+            v-if="ghTab === 'public'"
+            v-model="ghRepo"
+            type="text"
+            label="Repository URL"
+            placeholder="https://github.com/you/your-app"
+          />
+          <template v-else>
+            <div class="flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-2">
+              <span class="size-3.5 shrink-0 text-ink-green-6 lucide-circle-check" />
+              <span class="text-p-sm text-ink-gray-7">
+                Connected as <span class="font-medium text-ink-gray-9">{{ GH_ACCOUNT.username }}</span>
+              </span>
+            </div>
+            <FormControl
+              v-model="ghRepo"
+              type="select"
+              label="Repository"
+              :options="[{ label: 'Select a repository', value: '' }, ...GH_ACCOUNT.repos.map((r) => ({ label: r, value: r }))]"
+            />
+          </template>
+        </div>
+        <FormControl v-model="ghBranch" type="text" label="Branch" placeholder="develop" />
       </div>
-    </div>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="resetGh" />
+          <Button variant="solid" label="Install" :disabled="!ghRepo.trim()" @click="onInstallGitHub" />
+        </div>
+      </template>
+    </Dialog>
+
+    <!-- Confirm install (a site is already chosen). -->
+    <Dialog v-model:open="confirmOpen" size="sm">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Install {{ pending?.name || 'app' }}</span></template>
+      <p class="text-p-base text-ink-gray-7">
+        Install <span class="font-medium text-ink-gray-9">{{ pending?.name }}</span> on
+        <span class="font-medium text-ink-gray-9">{{ preselectedSite?.name }}</span>?
+      </p>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button label="Cancel" @click="confirmOpen = false" />
+          <Button variant="solid" label="Install" @click="confirmDirectInstall" />
+        </div>
+      </template>
+    </Dialog>
 
     <!-- Choose where to install (direct entry, or "All sites"). Skipped when a
-         site was preselected. -->
+         site was already chosen. -->
     <Dialog v-model:open="pickerOpen" size="sm">
       <template #title><span class="text-xl font-semibold text-ink-gray-9">Install {{ pending?.name || 'app' }}</span></template>
       <div v-if="liveSites.length" class="space-y-2">
@@ -184,38 +200,68 @@
       </template>
     </Dialog>
 
-    <!-- Switch the preselected site (only offered when there's more than one). -->
-    <Dialog v-model:open="siteSelectOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Choose a site</span></template>
-      <div class="space-y-2">
-        <button
-          v-for="s in liveSites"
-          :key="s.id"
-          class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors"
-          :class="s.id === preselectId ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
-          @click="switchSite(s)"
-        >
-          <SiteIcon size="sm" />
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-medium text-ink-gray-9">{{ s.name }}</span>
-            <span class="block truncate text-xs text-ink-gray-5">{{ s.apps.length }} {{ s.apps.length === 1 ? 'app' : 'apps' }} · {{ versionLabel }}</span>
-          </span>
-          <span v-if="s.id === preselectId" class="lucide-check size-4 shrink-0 text-ink-gray-7" />
-        </button>
-      </div>
+    <!-- Which site are you browsing for? "All sites" + one row per site. -->
+    <Dialog v-model:open="siteChooserOpen" size="md">
+      <template #title><span class="text-xl font-semibold text-ink-gray-9">Which site are you browsing for?</span></template>
+      <p v-if="!liveSites.length" class="py-6 text-center text-sm text-ink-gray-5">
+        {{ server.name }} has no live sites yet — create one first, then install apps on it.
+      </p>
+      <template v-else>
+        <p class="mb-4 text-p-sm text-ink-gray-6">Installed apps are marked, and installs target this site.</p>
+        <div class="grid max-h-96 gap-2 overflow-y-auto">
+          <button
+            type="button"
+            class="flex items-center gap-3 rounded-lg border p-3 text-left transition-colors"
+            :class="!currentSiteId ? 'border-outline-gray-4 bg-surface-gray-1' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+            @click="chooseSite('')"
+          >
+            <span class="grid size-8 shrink-0 place-items-center rounded-md bg-surface-gray-2"><span class="size-4 text-ink-gray-6 lucide-layout-grid" /></span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium text-ink-gray-8">All sites</span>
+              <span class="block truncate text-p-sm text-ink-gray-5">Browse every available app</span>
+            </span>
+            <span v-if="!currentSiteId" class="size-4 shrink-0 text-ink-gray-8 lucide-check" />
+          </button>
+          <button
+            v-for="s in liveSites"
+            :key="s.id"
+            type="button"
+            class="flex items-center gap-3 rounded-lg border p-3 text-left transition-colors"
+            :class="s.id === currentSiteId ? 'border-outline-gray-4 bg-surface-gray-1' : 'border-outline-gray-2 hover:bg-surface-gray-1'"
+            @click="chooseSite(s.id)"
+          >
+            <span class="grid size-8 shrink-0 place-items-center rounded-md bg-surface-gray-2"><span class="size-4 text-ink-gray-6 lucide-globe" /></span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium text-ink-gray-8">{{ s.name }}</span>
+              <span class="block truncate text-p-sm text-ink-gray-5">{{ s.apps.length }} {{ s.apps.length === 1 ? 'app' : 'apps' }} · {{ versionLabel }}</span>
+            </span>
+            <span v-if="s.id === currentSiteId" class="size-4 shrink-0 text-ink-gray-8 lucide-check" />
+          </button>
+        </div>
+      </template>
     </Dialog>
+
+    <ConfirmDialog
+      v-model:open="uninstallOpen"
+      theme="red"
+      :title="`Uninstall ${pendingUninstall?.name}?`"
+      :message="pendingUninstallSite ? `It comes off ${pendingUninstallSite.name}. Its data stays in your backups for 30 days.` : ''"
+      confirm-label="Uninstall"
+      @confirm="confirmUninstall"
+    />
   </ServerShell>
 </template>
 
 <script setup>
-import { computed, onUnmounted, reactive, ref, watch, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, Dialog, FormControl, Tooltip, toast } from 'frappe-ui'
-import Alert from '../../components/Alert.vue'
+import { Button, Dialog, FormControl, TabButtons, toast } from 'frappe-ui'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import MarketplaceAppRow from '../../components/MarketplaceAppRow.vue'
+import MarketplaceFilters from '../../components/MarketplaceFilters.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import SiteIcon from '../../components/SiteIcon.vue'
-import { APP_CATALOG, APP_CATEGORIES, categoryOf, versionById, worksWithOf } from '../../data/catalog'
+import { APP_CATALOG, APP_CATEGORIES, categoryOf, isFrappeApp, versionById, worksWithOf } from '../../data/catalog'
 import { useCloudStore } from '../../stores/cloud'
 
 const store = useCloudStore()
@@ -226,36 +272,30 @@ const server = computed(() => store.findServer(route.params.serverId) || store.c
 watchEffect(() => {
   if (!server.value) router.replace('/')
 })
-// Inside a category ("See all") the breadcrumb becomes the way back — the
-// clickable "Marketplace" crumb drops the ?category= param, and a browser/
-// trackpad back gesture pops that same history entry, landing here rather than
-// on wherever you came from before the marketplace.
-const marketplacePath = computed(() => `/manage/${server.value.id}/marketplace`)
-const crumbs = computed(() =>
-  activeCategory.value
-    ? [{ label: 'Marketplace', route: marketplacePath.value }, { label: detail.value.label }]
-    : [{ label: 'Marketplace' }],
-)
+const crumbs = [{ label: 'Marketplace' }]
 
 const versionLabel = computed(() => versionById(server.value.version).label)
 const liveSites = computed(() => (server.value?.sites || []).filter((s) => s.status === 'live'))
 
-// Arrived from a site (?site=) → that live site is preselected, and installs go
-// straight to it. Direct entry leaves it null: you browse, then pick on commit.
-const preselectId = ref(route.query.site || null)
-const preselectedSite = computed(() => liveSites.value.find((s) => s.id === preselectId.value) || null)
-const siteSelectOpen = ref(false)
-function switchSite(site) {
-  preselectId.value = site.id
-  siteSelectOpen.value = false
+// Arrived from a site (?site=) → that live site is chosen, and installs go
+// straight to it. Direct entry leaves it '': you browse "All sites" first, and
+// pick where to install on commit. The header pill reopens this choice anytime.
+const currentSiteId = ref(route.query.site || '')
+const preselectedSite = computed(() => liveSites.value.find((s) => s.id === currentSiteId.value) || null)
+const siteLabel = computed(() => preselectedSite.value?.name || 'All sites')
+const siteChooserOpen = ref(false)
+function chooseSite(id) {
+  currentSiteId.value = id
+  siteChooserOpen.value = false
 }
 
 const search = ref('')
+const selectedPill = ref('all')
+const worksWith = ref('')
 
 // ── Catalog shaping ──────────────────────────────────────────────────────
-// Every browse view renders the same decorated app: compatibility with this
-// server, what it needs if locked, and whether it's already on the site we
-// arrived from.
+// Every view renders the same decorated app: compatibility with this server,
+// what it needs if locked, and whether it's already on the site we arrived from.
 function decorate(a) {
   const ver = server.value?.version
   const onSite = new Set((preselectedSite.value?.apps || []).map((x) => x.key))
@@ -264,13 +304,7 @@ function decorate(a) {
     compatible: a.compat.includes(ver),
     needs: versionById(a.compat[0]).label,
     installedHere: onSite.has(a.key),
-    worksWith: worksWithOf(a.key),
   }
-}
-const allApps = computed(() => APP_CATALOG.map(decorate))
-
-function matches(app, q) {
-  return app.name.toLowerCase().includes(q) || app.tagline.toLowerCase().includes(q)
 }
 function installsNum(app) {
   const s = String(app.installs || '').trim().toLowerCase()
@@ -278,163 +312,120 @@ function installsNum(app) {
   if (s.endsWith('k')) return parseFloat(s) * 1e3
   return parseFloat(s) || 0
 }
-
-// — Featured = most installed, across the whole catalog.
-const featuredApps = computed(() => [...allApps.value].sort((a, b) => installsNum(b) - installsNum(a)))
-
-// — Section-per-category preview cap and the sentinel keys the "See all" links
-// route to (kept distinct from the site-picker's ALL constant).
-const PREVIEW = 6
-const FEATURED = 'featured'
-const ALL_APPS = 'all'
-const CATEGORY_TAGLINES = {
-  integrations: 'Sync, connect and extend your Frappe apps with external services',
-  utility: 'Everyday tools to get more out of your sites',
-  payments: 'Collect payments the way your customers prefer',
-  business: 'Run your operations end to end',
-  'dev-tools': 'Build, debug and ship on the Frappe framework',
-  localisation: 'Stay compliant, wherever you operate',
+function bySort(a, b) {
+  if (a.installedHere !== b.installedHere) return a.installedHere ? -1 : 1
+  const diff = installsNum(b) - installsNum(a)
+  return diff !== 0 ? diff : a.name.localeCompare(b.name)
 }
 
-const browseSections = computed(() => {
-  const out = [{ key: FEATURED, label: 'Featured apps', apps: featuredApps.value }]
-  for (const c of APP_CATEGORIES) {
-    const apps = allApps.value.filter((a) => categoryOf(a.key) === c.value)
-    if (apps.length) out.push({ key: c.value, label: c.label, apps })
+// Your custom apps — installed from GitHub, so they don't live in the catalog
+// at all. With a site chosen, only that site's custom apps show; on "All
+// sites", the union across every live site (deduped by key) shows instead.
+// Not narrowed by search/pill/works-with, and only shown in the default
+// (unfiltered) view, same as pilot.
+const customApps = computed(() => {
+  const sites = preselectedSite.value ? [preselectedSite.value] : liveSites.value
+  const byKey = new Map()
+  for (const site of sites) {
+    for (const a of site.apps || []) {
+      if (a.key.startsWith('gh-') && !byKey.has(a.key)) {
+        byKey.set(a.key, { ...a, compatible: true, installedHere: true, siteId: site.id })
+      }
+    }
   }
-  out.push({ key: ALL_APPS, label: 'All apps', apps: allApps.value })
-  return out
+  return [...byKey.values()]
 })
 
-const searchResults = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  if (!q) return []
-  return allApps.value.filter((a) => matches(a, q))
-})
-
-// ── "See all" category detail ────────────────────────────────────────────
-// The active category lives in the URL (?category=), so it's a real history
-// entry: "See all" pushes, the breadcrumb pops, and the back gesture works.
-const activeCategory = computed(() => route.query.category || null)
-function openCategory(key) {
-  router.push({ path: marketplacePath.value, query: { ...route.query, category: key } })
+// Which site an installed app's uninstall action targets: the app's own
+// siteId when aggregated from "All sites" (customApps), otherwise whichever
+// site is currently chosen.
+function uninstallSiteFor(app) {
+  return store.findSite(app.siteId) || preselectedSite.value || null
 }
-// A fresh search + cleared filters whenever we cross into or out of a category.
-watch(activeCategory, () => {
-  search.value = ''
-  worksWith.value = ''
+// A site needs at least one app, so uninstall is withheld for its last one.
+function canUninstall(app) {
+  const site = uninstallSiteFor(app)
+  return Boolean(site && site.apps.length > 1)
+}
+
+const uninstallOpen = ref(false)
+const pendingUninstall = ref(null)
+const pendingUninstallSite = computed(() => (pendingUninstall.value ? uninstallSiteFor(pendingUninstall.value) : null))
+function askUninstall(app) {
+  pendingUninstall.value = app
+  uninstallOpen.value = true
+}
+function confirmUninstall() {
+  const app = pendingUninstall.value
+  const site = uninstallSiteFor(app)
+  if (!site) return
+  toast.promise(store.uninstallApp(site.id, app.key), {
+    loading: `Uninstalling ${app.name}…`,
+    success: `${app.name} uninstalled`,
+    error: 'Uninstall failed',
+  })
+}
+
+function matchesPill(app, pill) {
+  return pill === 'all' || categoryOf(app.key) === pill
+}
+function matchesWorksWith(app, w) {
+  return !w || worksWithOf(app.key) === w
+}
+const matchingApps = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  return APP_CATALOG.filter(
+    (a) =>
+      matchesPill(a, selectedPill.value) &&
+      matchesWorksWith(a, worksWith.value) &&
+      (!q || a.name.toLowerCase().includes(q) || a.tagline.toLowerCase().includes(q)),
+  ).map(decorate)
+})
+const frappeApps = computed(() => matchingApps.value.filter((a) => isFrappeApp(a.key)).sort(bySort))
+const communityApps = computed(() => matchingApps.value.filter((a) => !isFrappeApp(a.key)).sort(bySort))
+
+// A pill or works-with filter collapses the frappe/community split into one
+// combined, sorted list — search alone does not (it just narrows within
+// whichever view is active), matching pilot.
+const isFiltered = computed(() => selectedPill.value !== 'all' || Boolean(worksWith.value))
+const filteredApps = computed(() => [...matchingApps.value].sort(bySort))
+const filteredHeading = computed(() => {
+  const name = selectedPill.value !== 'all' ? APP_CATEGORIES.find((c) => c.value === selectedPill.value)?.label : 'Matching apps'
+  const count = filteredApps.value.length
+  return `${name} · ${count} ${count === 1 ? 'app' : 'apps'}`
 })
 
-// The "Categories" dropdown doubles as a section switcher — picking one routes
-// to that view (so history/back stays consistent).
-const categoryFilter = computed({
-  get: () => activeCategory.value,
-  set: (v) => openCategory(v),
-})
-const categoryFilterOptions = [
-  { label: 'Featured', value: FEATURED },
-  { label: 'All apps', value: ALL_APPS },
-  ...APP_CATEGORIES,
-]
-
-// "Works with" — narrow to apps built for a given Frappe app (ERPNext, HR, …).
-const worksWith = ref('')
-
-// The set of apps for the current view, before search / works-with narrowing.
-const detailBaseApps = computed(() => {
-  const v = activeCategory.value
-  if (!v) return []
-  if (v === FEATURED) return featuredApps.value.slice(0, 12)
-  if (v === ALL_APPS) return allApps.value
-  return allApps.value.filter((a) => categoryOf(a.key) === v)
-})
-
-// Only offer "Works with" values that actually appear in this view.
+// "Works with" — only Frappe apps that something in the catalog is built for
+// (ERPNext, Frappe HR, …), each resolved back to its own catalog entry for icon/name.
 const worksWithOptions = computed(() => {
-  const seen = [...new Set(detailBaseApps.value.map((a) => a.worksWith))].sort()
-  return [{ label: 'Works with', value: '' }, ...seen.map((w) => ({ label: w, value: w }))]
+  const names = [...new Set(APP_CATALOG.map((a) => worksWithOf(a.key)).filter((w) => w !== 'Frappe Framework'))]
+  return names
+    .map((name) => APP_CATALOG.find((a) => a.name === name))
+    .filter(Boolean)
+    .map((a) => ({ name: a.name, key: a.key }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-const detail = computed(() => {
-  const v = activeCategory.value
-  let label
-  let tagline
-  if (v === FEATURED) {
-    label = 'Featured apps'
-    tagline = 'The most installed apps on Frappe Cloud'
-  } else if (v === ALL_APPS) {
-    label = 'All apps'
-    tagline = 'Every app in the marketplace'
-  } else {
-    const c = APP_CATEGORIES.find((x) => x.value === v)
-    label = c?.label || 'Apps'
-    tagline = CATEGORY_TAGLINES[v] || `${label} apps for your sites`
-  }
-  const q = search.value.trim().toLowerCase()
-  const apps = detailBaseApps.value.filter(
-    (a) => (!q || matches(a, q)) && (!worksWith.value || a.worksWith === worksWith.value),
-  )
-  return { label, tagline, apps }
-})
-
-// — Install ring: a real-feeling determinate ring that fills over ~30s against a
-// chosen site, then commits through the store (which can fail in edge mode).
-const INSTALL_MS = 30000
-const TICK_MS = 200
-const installProgress = reactive({})
-const installTargetId = reactive({}) // app.key → site id it's installing onto
-const installTimers = {}
-const failedKeys = reactive(new Set())
-const isInstalling = (key) => key in installProgress
-const isFailed = (key) => failedKeys.has(key)
-
-// Entry point from a row's Install button: go straight to the preselected site,
+// Entry point from a row's Install button: confirm against the chosen site,
 // otherwise ask where it should land.
 function onInstall(app) {
   if (!liveSites.value.length) {
     toast('Create a live site first, then install apps onto it')
     return
   }
-  if (preselectedSite.value) beginRing(app, preselectedSite.value.id)
-  else openPicker(app)
-}
-function retryInstall(app) {
-  const siteId = installTargetId[app.key]
-  if (siteId && store.findSite(siteId)) beginRing(app, siteId)
-  else onInstall(app)
+  if (preselectedSite.value) {
+    pending.value = app
+    confirmOpen.value = true
+  } else {
+    openPicker(app)
+  }
 }
 
-function beginRing(app, siteId) {
-  failedKeys.delete(app.key)
-  installTargetId[app.key] = siteId
-  installProgress[app.key] = 0
-  const step = (TICK_MS / INSTALL_MS) * 100
-  installTimers[app.key] = setInterval(() => {
-    const next = (installProgress[app.key] || 0) + step
-    if (next >= 100) {
-      installProgress[app.key] = 100
-      stopTimer(app.key)
-      commitInstall(app)
-    } else {
-      installProgress[app.key] = next
-    }
-  }, TICK_MS)
-}
-function commitInstall(app) {
-  const site = store.findSite(installTargetId[app.key])
-  if (!site) {
-    delete installProgress[app.key]
-    return
-  }
-  store
-    .addApp(site.id, app.key)
-    .then(() => {
-      delete installProgress[app.key]
-      toast.success(`${app.name} installed on ${site.name}`)
-    })
-    .catch(() => {
-      delete installProgress[app.key]
-      failedKeys.add(app.key)
+function commitInstall(app, site) {
+  toast.promise(store.addApp(site.id, app.key), {
+    loading: `Installing ${app.name} on ${site.name}…`,
+    success: () => `${app.name} installed on ${site.name}`,
+    error: () => {
       store.logTask('Install App', {
         site: site.name,
         status: 'failed',
@@ -445,22 +436,19 @@ function commitInstall(app) {
           { name: 'Run migrations', status: 'failed', duration: '11s' },
         ],
       })
-      toast.error(`Couldn't install ${app.name} — try again`)
-    })
+      return `Couldn't install ${app.name} — try again`
+    },
+  })
 }
-function cancelInstall(key) {
-  stopTimer(key)
-  delete installProgress[key]
-  toast('Install cancelled')
+
+// — Confirm against the chosen site.
+const confirmOpen = ref(false)
+function confirmDirectInstall() {
+  confirmOpen.value = false
+  const site = preselectedSite.value
+  if (!site || !pending.value) return
+  commitInstall(pending.value, site)
 }
-function stopTimer(key) {
-  clearInterval(installTimers[key])
-  delete installTimers[key]
-}
-function viewLog() {
-  router.push(`/manage/${server.value.id}/developer/tasks`)
-}
-onUnmounted(() => Object.keys(installTimers).forEach(stopTimer))
 
 // — "Where do I install this?" picker (direct entry, or the All-sites path).
 // `pending` is a catalog app, or a { github, name, repo, branch } payload.
@@ -501,13 +489,12 @@ function confirmPicker() {
     sites.forEach((s) => fireInstall(s, payload))
     if (payload.github) resetGh()
     toast.success(`Installing ${payload.name} on ${sites.length} ${sites.length === 1 ? 'site' : 'sites'}…`)
-    router.push(`/manage/${server.value.id}`)
     return
   }
   const site = store.findSite(targetSiteId.value)
   if (!site) return
   if (payload.github) commitGitHub(site, payload)
-  else beginRing(payload, site.id)
+  else commitInstall(payload, site)
 }
 function fireInstall(site, payload) {
   return payload.github
@@ -516,11 +503,19 @@ function fireInstall(site, payload) {
 }
 
 // — Install from GitHub (marketplace-only). Same destination logic: straight to
-// the preselected site, otherwise through the picker.
+// the chosen site, otherwise through the picker. Two tabs, same as pilot: a
+// public repo URL, or one of the demo account's own repos.
 const ghOpen = ref(false)
+const ghTab = ref('public')
+const ghTabs = [
+  { label: 'Public repository', value: 'public' },
+  { label: 'Your GitHub account', value: 'private' },
+]
+const GH_ACCOUNT = { username: 'ravibakes-dev', repos: ['acme/portal', 'acme/loyalty-app', 'acme/internal-tools'] }
 const ghRepo = ref('')
 const ghBranch = ref('')
 function resetGh() {
+  ghTab.value = 'public'
   ghRepo.value = ''
   ghBranch.value = ''
   ghOpen.value = false
@@ -542,6 +537,5 @@ function commitGitHub(site, payload) {
     error: 'Install failed',
   })
   resetGh()
-  router.push(`/manage/${server.value.id}/sites/${site.id}`)
 }
 </script>

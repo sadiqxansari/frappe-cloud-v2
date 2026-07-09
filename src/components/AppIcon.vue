@@ -2,8 +2,9 @@
   <img v-if="logo" :src="logo" :alt="meta?.name || appKey" class="shrink-0" :class="imgClasses" />
   <div
     v-else
-    class="grid shrink-0 place-items-center rounded-lg font-semibold"
-    :class="[meta.tile, sizeClasses]"
+    class="grid shrink-0 place-items-center rounded-4 font-semibold"
+    :class="[meta.tile || 'text-white', sizeClasses]"
+    :style="meta.tile ? {} : { background: logoColor(appKey) }"
   >
     {{ meta.letter }}
   </div>
@@ -22,13 +23,21 @@ const props = defineProps({
   size: { type: String, default: 'md' }, // sm | md | lg | xl
 })
 
-// Unknown keys (e.g. apps installed from GitHub) fall back to a letter tile.
+// Unknown keys (e.g. apps installed from GitHub) fall back to a letter tile,
+// colored by a hash of the key so each custom app still reads as distinct.
+const COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626', '#7c3aed']
+function logoColor(key) {
+  let hash = 0
+  for (const char of key) hash = (hash * 31 + char.charCodeAt(0)) | 0
+  return COLORS[Math.abs(hash) % COLORS.length]
+}
+
 const meta = computed(
   () =>
     appByKey(props.appKey) || {
       name: props.appKey,
       letter: (props.appKey.replace(/^gh-/, '')[0] || '?').toUpperCase(),
-      tile: 'bg-surface-gray-2 text-ink-gray-7',
+      tile: null,
     },
 )
 const logo = computed(() => logos[`../assets/apps/${props.appKey}.png`] || null)
@@ -36,20 +45,20 @@ const logo = computed(() => logos[`../assets/apps/${props.appKey}.png`] || null)
 const imgClasses = computed(
   () =>
     ({
-      sm: 'size-5 rounded-md',
-      md: 'size-8 rounded-lg',
-      lg: 'size-12 rounded-xl',
-      xl: 'size-16 rounded-2xl',
+      sm: 'size-5 rounded-3',
+      md: 'size-8 rounded-4',
+      lg: 'size-12 rounded-4',
+      xl: 'size-16 rounded-4',
     })[props.size],
 )
 
 const sizeClasses = computed(
   () =>
     ({
-      sm: 'size-5 text-xs rounded-md',
-      md: 'size-8 text-sm',
-      lg: 'size-12 text-lg rounded-xl',
-      xl: 'size-16 text-2xl rounded-2xl',
+      sm: 'size-5 text-xs rounded-3',
+      md: 'size-8 text-sm rounded-4',
+      lg: 'size-12 text-lg rounded-4',
+      xl: 'size-16 text-2xl rounded-4',
     })[props.size],
 )
 </script>

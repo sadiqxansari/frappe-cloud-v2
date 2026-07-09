@@ -365,8 +365,8 @@ export const APP_CATEGORIES = [
   { label: 'Utility', value: 'utility' },
   { label: 'Payments', value: 'payments' },
   { label: 'Business', value: 'business' },
-  { label: 'Dev tools', value: 'dev-tools' },
-  { label: 'Localisation', value: 'localisation' },
+  { label: 'Dev Tools', value: 'dev-tools' },
+  { label: 'Localization', value: 'localisation' },
 ]
 
 // Which category each catalog app falls under (drives the marketplace filter).
@@ -456,6 +456,17 @@ const APP_WORKS_WITH = {
 
 export function worksWithOf(key) {
   return APP_WORKS_WITH[key] || 'Frappe Framework'
+}
+
+// Apps built and maintained by Frappe itself, vs. third-party/community apps —
+// drives the marketplace's "From Frappe" / "Community" grouping.
+const FRAPPE_APP_KEYS = new Set([
+  'erpnext', 'hr', 'crm', 'helpdesk', 'drive', 'insights', 'builder', 'lending',
+  'lms', 'mail', 'school', 'manufacturing', 'nonprofit', 'healthcare', 'agriculture',
+  'gameplan', 'wiki', 'print-designer', 'raven', 'notes',
+])
+export function isFrappeApp(key) {
+  return FRAPPE_APP_KEYS.has(key)
 }
 
 export const TEAM_SIZE_TO_PLAN = {

@@ -268,6 +268,9 @@ function grownState() {
     makeBackup(34 * HOUR, '408 MB'),
     makeBackup(58 * HOUR, '405 MB'),
   ]
+  // A custom app pulled from their own GitHub repo — shows up in the
+  // Marketplace's "Your custom apps" section, same shape addCustomApp() makes.
+  company.apps.push({ id: uid('app'), key: 'gh-acme-portal', name: 'Acme Portal', version: 'main' })
   const shop = makeSite('My Shop', ['erpnext', 'crm'])
   shop.backups = [makeBackup(10 * HOUR, '96 MB')]
 
@@ -429,6 +432,9 @@ function soloState() {
 
   const site = makeSite('ravibakes', ['erpnext', 'hr'])
   site.backups = [makeBackup(9 * HOUR, '128 MB'), makeBackup(33 * HOUR, '126 MB')]
+  // A custom app pulled from their own GitHub repo — shows up in the
+  // Marketplace's "Your custom apps" section, same shape addCustomApp() makes.
+  site.apps.push({ id: uid('app'), key: 'gh-ravibakes-loyalty', name: 'Ravibakes Loyalty', version: 'main' })
 
   const server = makeServer({
     name: 'My Server',

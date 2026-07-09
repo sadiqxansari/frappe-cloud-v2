@@ -33,10 +33,23 @@
           </button>
         </Tooltip>
 
-        <!-- Dev tools — flat items under a lowercase caption -->
+        <!-- Insights, then Dev tools — flat items under their own captions -->
+        <div v-if="!collapsed" class="px-2 pb-1 pt-3 text-xs font-medium text-ink-gray-4">Insights</div>
+        <div v-else class="my-1 h-px shrink-0 bg-outline-alpha-gray-1" />
+        <Tooltip v-for="d in insightItems" :key="d.label" :text="collapsed ? d.label : ''" placement="right" :hover-delay="0">
+          <button
+            class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+            :class="[d.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2', collapsed && 'justify-center']"
+            @click="router.push(d.to)"
+          >
+            <span class="size-4 shrink-0 text-ink-gray-6" :class="d.icon" />
+            <span v-if="!collapsed" class="truncate">{{ d.label }}</span>
+          </button>
+        </Tooltip>
+
         <div v-if="!collapsed" class="px-2 pb-1 pt-3 text-xs font-medium text-ink-gray-4">Dev tools</div>
         <div v-else class="my-1 h-px shrink-0 bg-outline-alpha-gray-1" />
-        <Tooltip v-for="d in devItems" :key="d.label" :text="collapsed ? d.label : ''" placement="right" :hover-delay="0">
+        <Tooltip v-for="d in devToolItems" :key="d.label" :text="collapsed ? d.label : ''" placement="right" :hover-delay="0">
           <button
             class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
             :class="[d.active ? 'bg-surface-elevation-3 text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2', collapsed && 'justify-center']"
@@ -176,14 +189,20 @@ const items = computed(() => {
   ]
 })
 
-const devItems = computed(() => {
+const insightItems = computed(() => {
   const b = base.value
   return [
-    { label: 'Insights', icon: 'lucide-chart-line', to: `${b}/analytics`, active: route.path.startsWith(`${b}/analytics`) },
+    { label: 'Analytics', icon: 'lucide-chart-line', to: `${b}/analytics`, active: route.path.startsWith(`${b}/analytics`) },
     { label: 'Logs', icon: 'lucide-scroll-text', to: `${b}/developer/logs`, active: route.path.startsWith(`${b}/developer/logs`) },
+    { label: 'Tasks', icon: 'lucide-list-checks', to: `${b}/developer/tasks`, active: route.path.startsWith(`${b}/developer/tasks`) },
+  ]
+})
+
+const devToolItems = computed(() => {
+  const b = base.value
+  return [
     { label: 'DB analyzer', icon: 'lucide-database', to: `${b}/developer/database`, active: route.path.startsWith(`${b}/developer/database`) },
     { label: 'SQL playground', icon: 'lucide-terminal', to: `${b}/developer/sql`, active: route.path.startsWith(`${b}/developer/sql`) },
-    { label: 'Tasks', icon: 'lucide-list-checks', to: `${b}/developer/tasks`, active: route.path.startsWith(`${b}/developer/tasks`) },
   ]
 })
 // Brand dropdown — the quick, low-stakes menu for this server: jump back to
