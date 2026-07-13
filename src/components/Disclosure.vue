@@ -1,5 +1,5 @@
 <template>
-  <section class="mt-4 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
+  <section class="mt-4 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
     <button class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-gray-1" @click="open = !open">
       <span v-if="icon" :class="icon" class="size-4 shrink-0 text-ink-gray-5" />
       <span class="min-w-0 flex-1">

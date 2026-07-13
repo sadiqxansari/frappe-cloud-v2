@@ -11,7 +11,7 @@
       </p>
 
       <!-- From → To -->
-      <div class="mt-4 flex items-center gap-3 rounded-xl border border-outline-gray-2 p-3">
+      <div class="mt-4 flex items-center gap-3 rounded-lg border border-outline-gray-2 p-3">
         <div class="min-w-0 flex-1">
           <div class="text-xs text-ink-gray-5">From</div>
           <div class="truncate text-sm font-medium text-ink-gray-9">{{ fromRegion?.name }}</div>

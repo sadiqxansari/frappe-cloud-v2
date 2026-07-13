@@ -17,7 +17,7 @@
       <!-- The wait becomes a place: the dotted map zoomed into the region, with a
            pulsing pin that turns green when the server is live, and a badge that
            names exactly where it's being born. -->
-      <div class="relative mt-5 h-48 w-full overflow-hidden rounded-xl bg-surface-gray-1 ring-1 ring-outline-gray-2">
+      <div class="relative mt-5 h-48 w-full overflow-hidden rounded-lg bg-surface-gray-1 ring-1 ring-outline-gray-2">
         <WorldMap :pins="pins" :focus="region.id" :scale="1.4" :pin-scale="3.5" class="h-full w-full" />
         <div class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[calc(100%+18px)]">
           <span class="inline-flex items-center whitespace-nowrap rounded-full bg-surface-gray-2 px-2.5 py-1 text-xs font-medium text-ink-gray-8 shadow-sm ring-1 ring-outline-gray-2">

@@ -130,7 +130,7 @@
           </Dropdown>
         </template>
       </ListView>
-      <p v-if="!filteredMembers.length" class="rounded-xl border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
+      <p v-if="!filteredMembers.length" class="rounded-lg border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
         No members match “{{ memberQuery }}”.
       </p>
     </div>
@@ -182,7 +182,7 @@
           <button v-else-if="column.key === 'actions' && !row._role.system" class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-red-2 hover:text-ink-red-7" :aria-label="`Delete ${row._role.name}`" @click.stop="promptDeleteRole(row._role)"><span class="lucide-trash-2 size-4" /></button>
         </template>
       </ListView>
-      <p v-if="!filteredRoles.length" class="rounded-xl border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
+      <p v-if="!filteredRoles.length" class="rounded-lg border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
         No roles match “{{ roleQuery }}”.
       </p>
     </div>
@@ -395,7 +395,7 @@
       </template>
 
       <!-- View mode: compact roles table -->
-      <div v-if="memberDialogMode === 'view' && memberDialogTarget" class="max-h-[28rem] overflow-y-auto rounded-xl border border-outline-gray-2">
+      <div v-if="memberDialogMode === 'view' && memberDialogTarget" class="max-h-[28rem] overflow-y-auto rounded-lg border border-outline-gray-2">
         <div v-for="row in memberDialogRows(memberDialogTarget)" :key="row.key" class="flex items-center gap-3 border-b border-outline-alpha-gray-1 px-3 py-2.5 last:border-b-0">
           <ProviderIcon v-if="row.provider" :provider="row.provider" :size="24" class="rounded" />
           <span v-else class="grid size-6 shrink-0 place-items-center rounded bg-surface-gray-2">

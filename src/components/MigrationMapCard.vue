@@ -11,7 +11,7 @@
     />
 
     <!-- From — top left -->
-    <div class="wm-card absolute left-3 top-3 z-10 w-52 rounded-xl border border-outline-gray-2 bg-surface-elevation-1/85 p-2.5 shadow-sm backdrop-blur-md" :class="{ 'is-in': shown }" style="transition-delay: 0ms">
+    <div class="wm-card absolute left-3 top-3 z-10 w-52 rounded-lg border border-outline-gray-2 bg-surface-elevation-1/85 p-2.5 shadow-sm backdrop-blur-md" :class="{ 'is-in': shown }" style="transition-delay: 0ms">
       <div class="text-xs text-ink-gray-5">From</div>
       <div class="mt-1 flex items-center gap-2">
         <ProviderIcon :provider="fromProvider" :size="22" class="rounded" />
@@ -23,7 +23,7 @@
     </div>
 
     <!-- To — top right -->
-    <div class="wm-card absolute right-3 top-3 z-10 w-52 rounded-xl border border-outline-gray-2 bg-surface-elevation-1/85 p-2.5 shadow-sm backdrop-blur-md" :class="{ 'is-in': shown }" style="transition-delay: 70ms">
+    <div class="wm-card absolute right-3 top-3 z-10 w-52 rounded-lg border border-outline-gray-2 bg-surface-elevation-1/85 p-2.5 shadow-sm backdrop-blur-md" :class="{ 'is-in': shown }" style="transition-delay: 70ms">
       <div class="text-xs text-ink-gray-5">To</div>
       <div class="mt-1 flex items-center gap-2">
         <ProviderIcon :provider="toProvider" :size="22" class="rounded" />

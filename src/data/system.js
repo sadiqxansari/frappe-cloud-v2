@@ -124,58 +124,58 @@ export const DB_TABLES = [
 // this area is for technical users.
 export const BACKGROUND_JOBS = [
   {
-    id: 'job-5821', name: 'Backup Site', site: 'mycompany.frappe.cloud', status: 'success',
+    id: '20260713-124517-5821ba', name: 'Backup Site', site: 'mycompany.frappe.cloud', status: 'success',
     startedMinsAgo: 7, duration: '48s',
     steps: [
-      { name: 'Enqueue backup', status: 'success', duration: '0.2s' },
-      { name: 'Dump database', status: 'success', duration: '31s' },
-      { name: 'Archive files', status: 'success', duration: '14s' },
-      { name: 'Upload to offsite storage', status: 'success', duration: '2.6s' },
+      { name: 'Enqueue backup', status: 'success', duration: '0.2s', log: 'Scheduling backup for mycompany.frappe.cloud\nBackup job queued (priority: default)' },
+      { name: 'Dump database', status: 'success', duration: '31s', log: 'mysqldump: dumping _a1b2c3d4e5 (142 tables)\nWriting database.sql.gz ... 218.4 MB\nDatabase dump complete' },
+      { name: 'Archive files', status: 'success', duration: '14s', log: 'Archiving public files ... 84.1 MB\nArchiving private files ... 12.7 MB\nfiles.tar written' },
+      { name: 'Upload to offsite storage', status: 'success', duration: '2.6s', log: 'Uploading to s3://frappe-cloud-backups/mumbai/\n✔ database.sql.gz\n✔ files.tar\nBackup available in Recent backups' },
     ],
   },
   {
-    id: 'job-5820', name: 'Update Site Configuration', site: 'mycompany.frappe.cloud', status: 'running',
+    id: '20260713-125102-5820cd', name: 'Update Site Configuration', site: 'mycompany.frappe.cloud', status: 'running',
     startedMinsAgo: 1, duration: null,
     steps: [
-      { name: 'Validate configuration', status: 'success', duration: '0.4s' },
-      { name: 'Apply to site', status: 'running', duration: null },
-      { name: 'Reload services', status: 'pending', duration: null },
+      { name: 'Validate configuration', status: 'success', duration: '0.4s', log: 'Parsing site_config.json\n✔ 3 keys changed, 0 invalid' },
+      { name: 'Apply to site', status: 'running', duration: null, log: 'Writing site_config.json ...' },
+      { name: 'Reload services', status: 'pending', duration: null, log: '' },
     ],
   },
   {
-    id: 'job-5817', name: 'Install App', site: 'shop.frappe.cloud', status: 'failed',
+    id: '20260713-121809-5817ef', name: 'Install App', site: 'shop.frappe.cloud', status: 'failed',
     startedMinsAgo: 34, duration: '1m 12s',
     steps: [
-      { name: 'Resolve app dependencies', status: 'success', duration: '3s' },
-      { name: 'Build assets', status: 'success', duration: '58s' },
-      { name: 'Run migrations', status: 'failed', duration: '11s' },
+      { name: 'Resolve app dependencies', status: 'success', duration: '3s', log: 'Resolving hrms@version-15\n✔ frappe, erpnext already present\n✔ dependency tree resolved' },
+      { name: 'Build assets', status: 'success', duration: '58s', log: 'yarn run v1.22.22\n$ node esbuild --production --apps hrms\nDONE  Total Build Time: 41.2s\n✔ Application Assets Linked' },
+      { name: 'Run migrations', status: 'failed', duration: '11s', log: 'Executing hrms.patches.v15_0.migrate_leaves\nTraceback (most recent call last):\n  File "apps/frappe/frappe/migrate.py", line 142, in migrate\npymysql.err.OperationalError: (1213, \'Deadlock found when trying to get lock\')\nMigration aborted — no changes committed' },
     ],
   },
   {
-    id: 'job-5810', name: 'Deploy Bench', site: null, status: 'success',
+    id: '20260713-111233-5810ab', name: 'Deploy Bench', site: null, status: 'success',
     startedMinsAgo: 96, duration: '4m 31s',
     steps: [
-      { name: 'Clone repositories', status: 'success', duration: '22s' },
-      { name: 'Build image', status: 'success', duration: '3m 40s' },
-      { name: 'Roll out', status: 'success', duration: '29s' },
+      { name: 'Clone repositories', status: 'success', duration: '22s', log: 'Cloning frappe (version-15) ...\nCloning erpnext (version-15) ...\n✔ 2 repositories at target commits' },
+      { name: 'Build image', status: 'success', duration: '3m 40s', log: 'Building container image bench-0f3a...\nStep 14/18 : RUN bench build --production\n✔ image built: registry.frappe.cloud/bench-0f3a' },
+      { name: 'Roll out', status: 'success', duration: '29s', log: 'Pulling image on server ...\nRestarting web, socketio, workers\n✔ Deploy live' },
     ],
   },
   {
-    id: 'job-5804', name: 'Restore Site', site: 'mycompany.frappe.cloud', status: 'success',
+    id: '20260713-091845-5804dc', name: 'Restore Site', site: 'mycompany.frappe.cloud', status: 'success',
     startedMinsAgo: 220, duration: '2m 03s',
     steps: [
-      { name: 'Download backup', status: 'success', duration: '18s' },
-      { name: 'Restore database', status: 'success', duration: '1m 33s' },
-      { name: 'Restore files', status: 'success', duration: '12s' },
+      { name: 'Download backup', status: 'success', duration: '18s', log: 'Fetching backup 20260712-2200 from offsite storage\n✔ database.sql.gz (214.9 MB)\n✔ files.tar (95.2 MB)' },
+      { name: 'Restore database', status: 'success', duration: '1m 33s', log: 'Dropping existing tables ...\nImporting database.sql.gz (142 tables)\n✔ database restored' },
+      { name: 'Restore files', status: 'success', duration: '12s', log: 'Extracting files.tar\n✔ public and private files restored' },
     ],
   },
   {
-    id: 'job-5799', name: 'Migrate Site', site: 'shop.frappe.cloud', status: 'success',
+    id: '20260713-060421-5799fa', name: 'Migrate Site', site: 'shop.frappe.cloud', status: 'success',
     startedMinsAgo: 410, duration: '1m 47s',
     steps: [
-      { name: 'Take pre-migration backup', status: 'success', duration: '41s' },
-      { name: 'Run patches', status: 'success', duration: '58s' },
-      { name: 'Clear cache', status: 'success', duration: '8s' },
+      { name: 'Take pre-migration backup', status: 'success', duration: '41s', log: 'Snapshotting site before migration\n✔ backup 20260713-0557 stored' },
+      { name: 'Run patches', status: 'success', duration: '58s', log: 'Executing 17 patches\n✔ all patches applied\nBuilding search index' },
+      { name: 'Clear cache', status: 'success', duration: '8s', log: 'Clearing redis cache\n✔ website and app cache cleared' },
     ],
   },
 ]

@@ -76,7 +76,7 @@
               :key="site.id"
               role="button"
               tabindex="0"
-              class="flex cursor-pointer items-start gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
+              class="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
             >

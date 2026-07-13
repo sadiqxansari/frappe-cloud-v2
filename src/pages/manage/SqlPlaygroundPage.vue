@@ -33,7 +33,7 @@
       Read-write runs against the live database — an UPDATE or DELETE here is real and immediate.
     </div>
 
-    <div class="mt-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+    <div class="mt-4 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
       <textarea
         v-model="query"
         rows="6"

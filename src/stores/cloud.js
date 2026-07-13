@@ -4,6 +4,13 @@ import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planBy
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
+
+// Agent-style job id: YYYYMMDD-HHMMSS, matching the platform's run ids.
+function newJobId() {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+}
 import { BACKGROUND_JOBS, makeProcesses } from '../data/system'
 import { fmtDateTime, slugify, usdToDisplay } from '../utils/format'
 
@@ -501,6 +508,11 @@ export const useCloudStore = defineStore('cloud', {
       return (id) => this.allServers.find((srv) => srv.id === id) || null
     },
 
+    // A single background job by id — powers the Tasks detail page.
+    findJob() {
+      return (id) => this.jobs.find((j) => j.id === id) || null
+    },
+
     serverOfSite() {
       return (siteId) => this.allServers.find((srv) => srv.sites.some((st) => st.id === siteId)) || null
     },
@@ -696,7 +708,7 @@ export const useCloudStore = defineStore('cloud', {
     // success; pass `steps` for a richer breakdown (the Install/SSL flows do).
     logTask(name, { site = null, status = 'success', duration = null, steps = null } = {}) {
       const job = {
-        id: `job-${this.jobSeq++}`,
+        id: `${newJobId()}-${(this.jobSeq++).toString(16)}`,
         name,
         site,
         status,

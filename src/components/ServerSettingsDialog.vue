@@ -88,7 +88,7 @@
           <!-- Developer -->
           <div v-else class="space-y-5">
             <h2 class="text-lg font-semibold text-ink-gray-9">Developer</h2>
-            <section class="rounded-xl border border-outline-gray-2 p-4">
+            <section class="rounded-lg border border-outline-gray-2 p-4">
               <div class="flex items-center justify-between">
                 <h3 class="text-base font-semibold text-ink-gray-8">API access</h3>
                 <Button variant="subtle" size="sm" label="Regenerate" icon-left="lucide-refresh-cw" @click="regenerate" />
@@ -99,7 +99,7 @@
               </div>
             </section>
 
-            <section class="rounded-xl border border-outline-gray-2 p-4">
+            <section class="rounded-lg border border-outline-gray-2 p-4">
               <div class="flex items-center justify-between">
                 <h3 class="text-base font-semibold text-ink-gray-8">SSH keys</h3>
                 <Button variant="subtle" size="sm" label="Add SSH key" icon-left="lucide-plus" @click="keyOpen = true" />
@@ -119,7 +119,7 @@
               </EmptyState>
             </section>
 
-            <section class="rounded-xl border border-outline-gray-2 p-4">
+            <section class="rounded-lg border border-outline-gray-2 p-4">
               <div class="flex items-center justify-between">
                 <h3 class="text-base font-semibold text-ink-gray-8">Webhooks</h3>
                 <Button variant="subtle" size="sm" label="Add webhook" icon-left="lucide-plus" @click="hookOpen = true" />

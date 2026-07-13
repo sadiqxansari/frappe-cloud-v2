@@ -28,7 +28,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
               <!-- Estimated this cycle — the stat, with the budget alert as a quiet
                    footer line since the alert is what watches this number. -->
-              <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+              <section class="flex flex-col rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
                 <!-- Match the Wallet card's header height (its chevron makes that row
                      24px tall) so both cards' three lines line up row-for-row. -->
                 <div class="flex h-6 items-center">
@@ -48,7 +48,7 @@
               <!-- Wallet — balance + how this cycle gets covered, plus auto-recharge
                    as a quiet footer line (it refills the wallet, so it belongs here). -->
               <div
-                class="flex flex-col rounded-xl border bg-surface-elevation-1 p-5 transition-colors"
+                class="flex flex-col rounded-lg border bg-surface-elevation-1 p-5 transition-colors"
                 :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
               >
                 <div class="flex items-center justify-between">
@@ -86,7 +86,7 @@
             </div>
 
             <!-- Payment methods -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-1.5">
                   <h2 class="text-base font-semibold text-ink-gray-8">Payment methods</h2>
@@ -127,7 +127,7 @@
 
             <!-- Billing contact & tax — its own card; email, address and tax
                  details together (#14). -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <div class="flex items-center justify-between">
                 <h2 class="text-base font-semibold text-ink-gray-8">Billing contact &amp; tax</h2>
                 <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact and tax" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
@@ -149,7 +149,7 @@
             </section>
 
             <!-- Subscriptions (one per server) -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
               <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
               <div class="mt-2 divide-y divide-outline-alpha-gray-1">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
@@ -176,7 +176,7 @@
             <!-- Marketplace payouts — always shown for discoverability (issue
                  #19). Before you publish anything it's an invitation; once you're
                  a developer it shows your withdrawable earnings. -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <div class="flex items-center gap-2">
                 <h2 class="text-base font-semibold text-ink-gray-8">Marketplace payouts</h2>
                 <Badge theme="gray" variant="subtle" label="Paid in USD" />
@@ -213,7 +213,7 @@
             <!-- Stop / resume billing — the single global switch. Suspends every
                  server (reversible); nothing is deleted, so it stays calm — a plain
                  card with a single subtle red action, not an alarming red card. -->
-            <section v-if="store.allServers.length" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section v-if="store.allServers.length" class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="min-w-0">
                   <template v-if="allSuspended">

@@ -15,7 +15,7 @@
 
     <div v-if="server" class="space-y-4">
       <!-- Resource usage -->
-      <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="mb-3 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-ink-gray-8">Resource usage</h3>
           <span class="inline-flex items-center gap-1.5 text-xs text-ink-gray-5">
@@ -63,7 +63,7 @@
 
       <div class="grid gap-4 lg:grid-cols-2">
         <!-- Server information -->
-        <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+        <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
           <h3 class="mb-3 text-sm font-semibold text-ink-gray-8">Server information</h3>
           <dl class="space-y-2.5 text-sm">
             <div class="flex items-center justify-between gap-3">
@@ -97,7 +97,7 @@
         </section>
 
         <!-- Load average -->
-        <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+        <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-ink-gray-8">Load average</h3>
             <span class="text-xs tabular-nums text-ink-gray-5">peak {{ chart.peak.toFixed(2) }}</span>

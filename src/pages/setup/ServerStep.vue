@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <div class="mt-5 rounded-xl border border-outline-gray-2 p-4">
+    <div class="mt-5 rounded-lg border border-outline-gray-2 p-4">
       <!-- Header: plan + recommended on the left, price on the right -->
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">

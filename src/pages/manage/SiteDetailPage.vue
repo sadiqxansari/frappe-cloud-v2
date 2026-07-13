@@ -13,7 +13,7 @@
          menu sit here; Open site is up in the nav bar. -->
     <div class="relative -mx-4 -mt-8 overflow-hidden px-4 pb-7 pt-8 sm:-mx-8 sm:px-8">
       <div class="dot-field pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div class="relative flex items-start justify-between gap-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <div class="relative flex items-start justify-between gap-4 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
         <div class="flex min-w-0 items-center gap-3">
           <SiteIcon size="lg" />
           <div class="min-w-0">

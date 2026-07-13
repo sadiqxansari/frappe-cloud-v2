@@ -227,7 +227,7 @@
         <section v-else-if="active === 'Billing'" class="space-y-4">
           <!-- Plan + live consumption in one card: the plan up top, the meters
                across the bottom. -->
-          <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+          <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <div class="text-sm text-ink-gray-5">Plan</div>
@@ -263,7 +263,7 @@
                until billing is set up), so both stay symmetric three-line stats. -->
           <div class="grid gap-4 sm:grid-cols-2">
             <!-- Estimated this cycle — the exact card from Central billing. -->
-            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="flex flex-col rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
               <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
               <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
@@ -278,7 +278,7 @@
 
             <!-- Credit balance — coverage status, then Add credit + auto-recharge,
                  paired exactly like Central's wallet card. -->
-            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="flex flex-col rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
               <span class="text-sm text-ink-gray-5">{{ balanceLabel }}</span>
               <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(balanceValue) }}</div>
               <p class="mt-1.5 flex items-center gap-1.5 text-xs" :class="covers ? 'text-ink-gray-5' : 'text-ink-amber-8'">

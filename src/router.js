@@ -33,6 +33,7 @@ const routes = [
   { path: '/manage/:serverId/developer/database', name: 'server-database', component: () => import('./pages/manage/DatabasePage.vue') },
   { path: '/manage/:serverId/developer/sql', name: 'server-sql', component: () => import('./pages/manage/SqlPlaygroundPage.vue') },
   { path: '/manage/:serverId/developer/tasks', name: 'server-tasks', component: () => import('./pages/manage/TasksPage.vue') },
+  { path: '/manage/:serverId/developer/tasks/:taskId', name: 'server-task-detail', component: () => import('./pages/manage/TaskDetailPage.vue') },
   // Legacy redirects.
   { path: '/account', redirect: '/billing' },
   { path: '/marketplace', redirect: '/servers' },
