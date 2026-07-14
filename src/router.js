@@ -3,8 +3,14 @@ import { useCloudStore } from './stores/cloud'
 
 const routes = [
   { path: '/', name: 'home', component: { render: () => null } },
-  { path: '/setup', redirect: '/setup/account' },
-  { path: '/setup/account', component: () => import('./pages/setup/AccountStep.vue') },
+  // Auth surface (mocked — no backend). MinimalAuthShell, no stepper.
+  { path: '/login', name: 'login', component: () => import('./pages/auth/LoginPage.vue') },
+  { path: '/signup', name: 'signup', component: () => import('./pages/auth/SignupPage.vue') },
+  { path: '/signup/verify', name: 'signup-verify', component: () => import('./pages/auth/VerifyEmailPage.vue') },
+  { path: '/forgot-password', name: 'forgot-password', component: () => import('./pages/auth/ForgotPasswordPage.vue') },
+  // Old signup links now land on the new signup route.
+  { path: '/setup', redirect: '/signup' },
+  { path: '/setup/account', redirect: '/signup' },
   { path: '/setup/app', component: () => import('./pages/setup/AppStep.vue') },
   { path: '/setup/server', component: () => import('./pages/setup/ServerStep.vue') },
   { path: '/setup/provisioning', component: () => import('./pages/setup/ProvisioningStep.vue') },
@@ -47,7 +53,7 @@ router.beforeEach((to) => {
   const store = useCloudStore()
 
   if (to.path === '/') {
-    if (!store.server) return '/setup/account'
+    if (!store.server) return '/signup'
     // The landing fork (decisions 1 & 9): a single-server owner lives in the
     // Desk; a fleet operator — or anyone who's ever graduated to a 2nd server
     // (sticky `centralUnlocked`) — lands in Central, their home for the fleet.

@@ -103,7 +103,7 @@ let openTimer = null
 
 onMounted(() => {
   if (!store.server) {
-    router.replace('/setup/account')
+    router.replace('/signup')
     return
   }
   if (store.server.status === 'active') {

@@ -33,6 +33,7 @@ declare module 'vue' {
     MigrationMapCard: typeof import('./src/components/MigrationMapCard.vue')['default']
     MigrationProgressModal: typeof import('./src/components/MigrationProgressModal.vue')['default']
     MigrationScheduledModal: typeof import('./src/components/MigrationScheduledModal.vue')['default']
+    MinimalAuthShell: typeof import('./src/components/MinimalAuthShell.vue')['default']
     MoveSiteDialog: typeof import('./src/components/MoveSiteDialog.vue')['default']
     NewSiteDialog: typeof import('./src/components/NewSiteDialog.vue')['default']
     OnboardingShell: typeof import('./src/components/OnboardingShell.vue')['default']
@@ -59,6 +60,7 @@ declare module 'vue' {
     SiteIcon: typeof import('./src/components/SiteIcon.vue')['default']
     SystemInfoDialog: typeof import('./src/components/SystemInfoDialog.vue')['default']
     UpdateServerDialog: typeof import('./src/components/UpdateServerDialog.vue')['default']
+    ValidatedFormControl: typeof import('./src/components/ValidatedFormControl.vue')['default']
     WorldDots: typeof import('./src/components/WorldDots.vue')['default']
     WorldMap: typeof import('./src/components/WorldMap.vue')['default']
   }

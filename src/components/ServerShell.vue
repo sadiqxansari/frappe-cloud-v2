@@ -277,7 +277,7 @@ const userOptions = computed(() => [
     icon: 'lucide-log-out',
     onClick: () => {
       store.loadScenario('fresh')
-      router.push('/setup/account')
+      router.push('/signup')
     },
   },
 ])

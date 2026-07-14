@@ -46,7 +46,7 @@ import cloudLogo from '../assets/apps/cloud.png'
 
 defineProps({
   step: { type: Number, default: 0 },
-  steps: { type: Number, default: 3 },
+  steps: { type: Number, default: 2 },
   // Provisioning runs after the 3-step flow, so it hides the stepper entirely.
   hideStepper: { type: Boolean, default: false },
   // Provisioning's own header carries the logo, so it hides the centered brand.

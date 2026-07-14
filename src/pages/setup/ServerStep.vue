@@ -1,5 +1,5 @@
 <template>
-  <OnboardingShell :step="3" back="/setup/app">
+  <OnboardingShell :step="2" back="/setup/app">
     <div class="flex items-start gap-3">
       <AppIcon :app-key="store.onboarding.appKey" size="md" class="mt-0.5" />
       <div class="min-w-0">

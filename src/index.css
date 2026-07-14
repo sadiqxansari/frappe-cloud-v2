@@ -50,6 +50,29 @@
   opacity: 0;
 }
 
+/* Auth forms slide their error line in from just above and fade it out.
+   Used via <Transition name="error-fade"> around ErrorMessage. */
+.error-fade-enter-active {
+  transition:
+    opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.error-fade-leave-active {
+  transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.error-fade-enter-from,
+.error-fade-leave-to {
+  opacity: 0;
+}
+.error-fade-enter-from {
+  transform: translateY(-4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .error-fade-enter-from {
+    transform: none;
+  }
+}
+
 /* DateTimePicker calendar: a selected day carries both its base ink
    (`text-ink-gray-8`/`-9`, light in dark mode) and the selected ink
    (`text-ink-base`, dark) — the light one wins and the number washes out on the

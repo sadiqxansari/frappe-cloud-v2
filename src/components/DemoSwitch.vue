@@ -19,7 +19,7 @@ function switchTo(name) {
   store.loadScenario(name)
   // Single-server personas land in the Desk (their home); the fleet operator
   // lands in Central; a fresh signup starts onboarding.
-  const target = { fresh: '/setup/account', solo: '/app', grown: '/servers' }[name]
+  const target = { fresh: '/signup', solo: '/app', grown: '/servers' }[name]
   router.push(target)
 }
 

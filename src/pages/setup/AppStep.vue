@@ -1,5 +1,5 @@
 <template>
-  <OnboardingShell :step="2" back="/setup/account">
+  <OnboardingShell :step="1" back="/signup">
     <h1 class="text-xl font-semibold text-ink-gray-9">Name your site</h1>
     <p class="mt-2 text-p-base text-ink-gray-6">
       Your web address — you can add a custom domain later.
