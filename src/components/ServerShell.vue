@@ -81,7 +81,6 @@
       />
 
       <ProfileDialog v-model:open="profileOpen" />
-      <SystemInfoDialog v-model:open="systemInfoOpen" :server="server" />
       <ServerSettingsDialog v-model:open="settingsOpen" :server="server" />
       <UpdateServerDialog v-model:open="updateOpen" :server="server" />
     </aside>
@@ -91,7 +90,7 @@
         <div v-if="store.busy > 0" class="console-bar absolute inset-y-0 left-0 bg-[var(--ink-gray-8)]" />
       </div>
 
-      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-alpha-gray-1 bg-surface-elevation-1 px-4">
+      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-alpha-gray-1 bg-surface-base px-4">
         <Breadcrumbs v-if="crumbs?.length" :items="crumbs" class="min-w-0" />
         <div v-else />
         <div class="flex shrink-0 items-center gap-2">
@@ -99,11 +98,12 @@
                place with two states; primary when there's something to do, quiet
                on the sites pages where rows show their own cues (issue #42). -->
           <Button
+            v-if="showUpdate"
             size="sm"
             :variant="updateVariant"
             :label="updateLabel"
             icon-left="lucide-circle-arrow-up"
-            :class="updateVariant === 'outline' ? '!bg-surface-elevation-1' : ''"
+            :class="updateVariant === 'outline' ? '!bg-surface-base' : ''"
             @click="updateOpen = true"
           />
           <!-- Primary action sits right-most. -->
@@ -126,7 +126,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dropdown, Tooltip } from 'frappe-ui'
 import cloudLogo from '../assets/apps/cloud.png'
 import ProfileDialog from './ProfileDialog.vue'
-import SystemInfoDialog from './SystemInfoDialog.vue'
 import ServerSettingsDialog from './ServerSettingsDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
 import { useCloudStore } from '../stores/cloud'
@@ -179,6 +178,9 @@ const updateVariant = computed(() => {
   if (hasUpdates.value) return siteContext.value ? 'outline' : 'solid'
   return 'outline'
 })
+// Nothing to update and nothing scheduled → hide the affordance entirely rather
+// than leave a dead "Check for updates" button sitting in the bar.
+const showUpdate = computed(() => hasUpdates.value || !!scheduledUpdate.value)
 
 const base = computed(() => `/manage/${server.value?.id}`)
 const items = computed(() => {
@@ -206,9 +208,8 @@ const devToolItems = computed(() => {
   ]
 })
 // Brand dropdown — the quick, low-stakes menu for this server: jump back to
-// Central, open read-only System info, switch theme. Anything that *changes*
-// the server (version, firewall, workers) lives on the Settings page, not here.
-const systemInfoOpen = ref(false)
+// Central, open Settings, switch theme. Anything that *changes* the server
+// (version, firewall, workers) lives in the Settings dialog, not here.
 const settingsOpen = ref(false)
 
 // Light / dark / system, with a check on the active choice. Theme is an
@@ -249,13 +250,6 @@ const serverMenu = computed(() => [
     icon: 'lucide-settings',
     onClick: () => {
       settingsOpen.value = true
-    },
-  },
-  {
-    label: 'System info',
-    icon: 'lucide-info',
-    onClick: () => {
-      systemInfoOpen.value = true
     },
   },
   {

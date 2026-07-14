@@ -1,9 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="sm">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">Delete this site</span>
-    </template>
-
+  <Dialog v-model:open="open" title="Delete this site" size="sm">
     <p class="text-p-base text-ink-gray-6">
       This permanently deletes <span class="font-medium text-ink-gray-8">{{ site.name }}</span> and everything on
       it. Backups are kept for 30 days.

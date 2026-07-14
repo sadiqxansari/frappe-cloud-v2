@@ -12,7 +12,7 @@
           aria-controls="provider-listbox"
           :aria-expanded="providerOpen"
           :aria-activedescendant="providerOpen ? `provider-opt-${providerActiveIndex}` : undefined"
-          class="flex h-9 w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
+          class="flex h-9 w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-base px-2.5 text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
           @click="providerOpen ? closeProviderMenu() : openProviderMenu()"
           @keydown="onProviderKeydown"
         >
@@ -69,7 +69,7 @@
           aria-controls="region-listbox"
           :aria-expanded="regionOpen"
           :aria-activedescendant="regionOpen ? `region-opt-${regionActiveIndex}` : undefined"
-          class="flex h-9 w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-elevation-1 px-2.5 text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
+          class="flex h-9 w-full items-center gap-2 rounded border border-outline-gray-2 bg-surface-base px-2.5 text-left text-sm transition-colors hover:border-outline-gray-3 focus:outline-none focus:ring-1 focus:ring-outline-gray-4"
           @click="regionOpen ? closeRegionMenu() : openRegionMenu()"
           @keydown="onRegionKeydown"
         >

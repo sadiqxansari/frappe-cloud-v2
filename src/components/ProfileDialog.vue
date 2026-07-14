@@ -1,10 +1,8 @@
 <template>
-  <Dialog v-model:open="open" size="md">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Your profile</span></template>
-
+  <Dialog v-model:open="open" title="Your profile" size="md">
     <div class="space-y-5">
       <!-- Identity + account settings -->
-      <div class="divide-y divide-outline-alpha-gray-1 rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
+      <div class="divide-y divide-outline-alpha-gray-1 rounded-lg border border-outline-gray-2 bg-surface-base">
         <div class="flex items-center gap-3 p-4">
           <Avatar :label="store.user.name || 'You'" size="lg" />
           <div class="min-w-0 flex-1">
@@ -30,7 +28,7 @@
       </div>
 
       <!-- Refer & Earn -->
-      <section class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <section class="rounded-lg border border-outline-gray-2 bg-surface-base p-4">
         <h2 class="text-base font-semibold text-ink-gray-8">Refer &amp; Earn</h2>
         <p class="mt-0.5 text-p-sm text-ink-gray-5">Your unique referral link</p>
         <div class="mt-3 flex items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-2 px-3 py-2">
@@ -45,8 +43,7 @@
   </Dialog>
 
   <!-- Edit profile -->
-  <Dialog v-model:open="editOpen" size="sm">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Edit profile</span></template>
+  <Dialog v-model:open="editOpen" title="Edit profile" size="sm">
     <div class="space-y-3">
       <FormControl v-model="form.name" type="text" label="Name" />
       <FormControl v-model="form.email" type="email" label="Email" />
@@ -57,8 +54,7 @@
   </Dialog>
 
   <!-- Notification preferences -->
-  <Dialog v-model:open="notifyOpen" size="sm">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Notifications</span></template>
+  <Dialog v-model:open="notifyOpen" title="Notifications" size="sm">
     <div class="space-y-3">
       <div v-for="n in notifyRows" :key="n.key" class="flex items-center justify-between gap-3">
         <span class="text-sm text-ink-gray-7">{{ n.label }}</span>

@@ -1,11 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="lg">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">
-        {{ requiredVersion ? `Move to ${versionById(effectiveVersion).label}` : 'Change version' }}
-      </span>
-    </template>
-
+  <Dialog v-model:open="open" :title="requiredVersion ? `Move to ${versionById(effectiveVersion).label}` : 'Change version'" size="lg">
     <p class="text-p-base text-ink-gray-6">
       A site's version comes from the server it runs on — so {{ site.name }} moves to a server running the
       version you pick. The address stays the same; visitors won't notice.

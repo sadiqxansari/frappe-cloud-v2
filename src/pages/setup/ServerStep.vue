@@ -61,10 +61,7 @@
     </template>
   </OnboardingShell>
 
-  <Dialog v-model:open="compareOpen" size="2xl">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">Choose a plan</span>
-    </template>
+  <Dialog v-model:open="compareOpen" title="Choose a plan" size="2xl">
     <div class="mb-4">
       <ProviderRegionPicker v-model="regionId" />
     </div>

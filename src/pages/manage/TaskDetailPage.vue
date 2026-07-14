@@ -36,7 +36,7 @@
         <div
           v-for="(step, i) in job.steps"
           :key="i"
-          class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1"
+          class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base"
         >
           <button
             class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-gray-1"

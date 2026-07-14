@@ -1,14 +1,7 @@
 <template>
   <!-- Choose which app updates to run across the server's sites — now or on a
        schedule, with an option to skip failing patches (issue #42). -->
-  <Dialog v-model:open="open" size="lg">
-    <template #title>
-      <div>
-        <span class="text-xl font-semibold text-ink-gray-9">Updates</span>
-        <p v-if="appUpdates.length" class="mt-0.5 text-p-sm font-normal text-ink-gray-5">We back up first — brief downtime.</p>
-      </div>
-    </template>
-
+  <Dialog v-model:open="open" title="Updates" size="lg">
     <!-- Already scheduled — surface it, with a way to cancel. -->
     <div v-if="scheduled" class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">
       <div class="min-w-0">

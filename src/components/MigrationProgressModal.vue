@@ -1,11 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="2xl">
-    <template #title>
-      <span class="text-base font-semibold text-ink-gray-9">
-        {{ isPaused ? 'Migration paused' : `Migrating ${server?.name} server` }}
-      </span>
-    </template>
-
+  <Dialog v-model:open="open" :title="isPaused ? 'Migration paused' : `Migrating ${server?.name} server`" size="2xl">
     <div v-if="server?.migration">
       <!-- Same map hero as the Migrate review step; the line fills as steps complete. -->
       <MigrationMapCard
