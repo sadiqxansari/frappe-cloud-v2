@@ -8,10 +8,10 @@
          started by clicking the server in Central. Chrome (pills/panel)
          stays outside so it holds still. -->
     <div class="ssm-settle h-full w-full" :class="ready && 'ssm-in'" :style="settleStyle">
-      <!-- Dotted world, fixed framing centred on the server's region. Uses the
-           dense-pitch asset so the grid stays fine at this zoom. -->
+      <!-- Dotted world, fixed framing centred on the server's region. Same
+           asset as Central's map so both stages share one texture. -->
       <div class="absolute left-0 top-0 origin-top-left" :style="mapStyle">
-        <WorldDotsDense class="block text-ink-gray-2" :style="{ width: `${W}px`, height: `${H}px` }" />
+        <WorldDots class="block text-ink-gray-2" :style="{ width: `${W}px`, height: `${H}px` }" />
       </div>
 
       <template v-if="ready">
@@ -56,7 +56,7 @@
               :mask="`url(#${l.maskId})`"
             />
             <circle
-              v-for="l in lines.filter((l) => l.kind !== 'plus')"
+              v-for="l in lines"
               :key="`${l.id}-dot`"
               :cx="l.E.x" :cy="l.E.y" r="2.25"
               fill="var(--ink-gray-5)" opacity="0.8"
@@ -124,22 +124,6 @@
           </button>
         </div>
 
-        <!-- New site: the same quiet + affordance Central uses for empty regions -->
-        <div
-          v-if="server.status === 'active' && sites.length"
-          class="ssm-land absolute z-10"
-          :style="{ left: `${plusPt.x - 14}px`, top: `${plusPt.y - 14}px`, animationDelay: `${330 + cards.length * 70}ms` }"
-        >
-          <Tooltip text="New site" placement="right" :hover-delay="0.4">
-            <button
-              class="grid size-7 place-items-center rounded-full border border-outline-gray-2 bg-surface-elevation-1 text-ink-gray-6 shadow-sm transition-[transform,box-shadow] duration-150 ease-out hover:shadow-md active:scale-95"
-              aria-label="New site"
-              @click="emit('new-site')"
-            >
-              <span class="lucide-plus size-3.5" />
-            </button>
-          </Tooltip>
-        </div>
       </template>
     </div>
 
@@ -256,7 +240,6 @@
         >
           <ProviderAvatar :provider="prov" :size="18" />
           <span class="text-sm font-semibold text-ink-gray-9">{{ server.name }}</span>
-          <span class="size-2 rounded-full" :style="{ background: statusVar(server.status) }" />
           <span class="lucide-chevron-down size-3.5 text-ink-gray-5" />
         </button>
       </Transition>
@@ -286,11 +269,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
+import { Badge, Button, Dropdown, FormControl, toast } from 'frappe-ui'
 import ChangeVersionDialog from './ChangeVersionDialog.vue'
 import ProviderAvatar from './ProviderAvatar.vue'
 import ServerActions from './ServerActions.vue'
-import WorldDotsDense from './WorldDotsDense.vue'
+import WorldDots from './WorldDots.vue'
 import { providerById } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
 import { inr } from '../utils/format'
@@ -318,7 +301,7 @@ const W = 879
 const H = 443
 const LAT_TOP = 83
 const LAT_BOTTOM = -56
-const ZOOM = 2.2
+const ZOOM = 1.9
 const FX = 0.5
 const FY = 0.44
 
@@ -369,19 +352,21 @@ onMounted(() => {
 onBeforeUnmount(() => ro?.disconnect())
 
 // — Slots: five fixed positions fanned around the server, biased away from
-//   the corners the pills own. Scaled down gently on small viewports and
-//   clamped inside the frame so nothing hides under the chrome.
-const CARD_W = 210
+//   the corners the pills own. Angular spread (fix D): every occupied slot —
+//   including the overflow card — owns its own ~35°+ sector with varied radii,
+//   so no two lines ever share a corridor and the hub can't read as an
+//   octopus. Scaled down gently on small viewports and clamped inside the
+//   frame so nothing hides under the chrome.
+const CARD_W = 236
 const MORE_W = 128
 const SLOTS = [
-  [-300, -120],
-  [250, -150],
-  [-240, 150],
-  [320, 100],
-  [-40, 225],
+  [-290, -88],
+  [189, -128],
+  [-289, 98],
+  [318, -8],
+  [-4, 198],
 ]
-const MORE_AT = [150, 185]
-const PLUS_AT = [110, -185]
+const MORE_AT = [244, 148]
 
 const slotScale = computed(() => Math.min(Math.max(Math.min(cw.value / 1150, ch.value / 720), 0.7), 1.1))
 
@@ -400,10 +385,11 @@ const ordered = computed(() =>
 const cards = computed(() => ordered.value.slice(0, SLOTS.length).map((site, i) => ({ site, ...slotPoint(SLOTS[i]) })))
 const extraCount = computed(() => Math.max(0, ordered.value.length - SLOTS.length))
 const morePt = computed(() => slotPoint(MORE_AT))
-const plusPt = computed(() => slotPoint(PLUS_AT))
 
-// — Connections: cubic routes that leave the server radially and land flat on
-//   the card's facing edge (matching the artifact spec from the line studies).
+// — Connections: cubic routes that leave the server radially and land on the
+//   card's nearest edge. The pull is gentle (0.18) — deep uniform curls made
+//   the hub read as an octopus — and cards mostly above/below the server are
+//   entered through their top/bottom edge instead of looping to a side.
 function cubicTo(E) {
   const S0 = serverPt.value
   const dx = E.x - S0.x
@@ -411,14 +397,23 @@ function cubicTo(E) {
   const dist0 = Math.hypot(dx, dy) || 1
   const S = { x: S0.x + (dx / dist0) * 26, y: S0.y + (dy / dist0) * 26 }
   const d = Math.hypot(E.x - S.x, E.y - S.y)
-  const pull = d * 0.38
+  const pull = d * 0.18
   const c1 = { x: S.x + (dx / dist0) * pull, y: S.y + (dy / dist0) * pull }
-  const c2 = { x: E.x + Math.sign(S0.x - E.x) * pull, y: E.y }
+  const c2 = E.axis === 'v'
+    ? { x: E.x, y: E.y + Math.sign(S0.y - E.y) * pull }
+    : { x: E.x + Math.sign(S0.x - E.x) * pull, y: E.y }
   return { d: `M ${S.x} ${S.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${E.x} ${E.y}`, S, E }
 }
 
-function edgePoint(center, halfW) {
-  return { x: center.x - Math.sign(center.x - serverPt.value.x) * (halfW + 6), y: center.y }
+// Lines land ON the card edge — the terminal dot plugs into the pill rather
+// than hovering short of it.
+function edgePoint(center, halfW, halfH) {
+  const dx = center.x - serverPt.value.x
+  const dy = center.y - serverPt.value.y
+  if (Math.abs(dy) > Math.abs(dx)) {
+    return { x: center.x, y: center.y - Math.sign(dy) * halfH, axis: 'v' }
+  }
+  return { x: center.x - Math.sign(dx) * halfW, y: center.y, axis: 'h' }
 }
 
 const lines = computed(() => {
@@ -426,25 +421,19 @@ const lines = computed(() => {
     id: `site-${c.site.id}`,
     kind: 'site',
     delay: 80 + i * 70,
-    ...cubicTo(edgePoint(c, CARD_W / 2)),
+    ...cubicTo(edgePoint(c, CARD_W / 2, 20)),
   }))
   if (extraCount.value > 0) {
     out.push({
       id: 'more',
       kind: 'more',
       delay: 80 + out.length * 70,
-      ...cubicTo(edgePoint(morePt.value, MORE_W / 2)),
+      ...cubicTo(edgePoint(morePt.value, MORE_W / 2, 17)),
     })
   }
-  if (props.server.status === 'active' && sites.value.length) {
-    out.push({
-      id: 'plus',
-      kind: 'plus',
-      delay: 150 + out.length * 70,
-      ...cubicTo(edgePoint(plusPt.value, 14)),
-    })
-  }
-  return out.map((l, i) => ({ ...l, gradId: `ssm-g-${i}`, maskId: `ssm-m-${i}` }))
+  // Ids keyed by the line's identity (not index), so a site created later
+  // draws its own line in without re-triggering everyone else's reveal.
+  return out.map((l) => ({ ...l, gradId: `ssm-g-${l.id}`, maskId: `ssm-m-${l.id}` }))
 })
 
 // — Chrome state

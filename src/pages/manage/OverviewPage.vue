@@ -43,7 +43,7 @@
     </div>
 
     <AddCardDialog v-model:open="addCardOpen" />
-    <NewSiteDialog v-model:open="newSiteOpen" :server="server" />
+    <NewSiteDialog v-model:open="newSiteOpen" :server="server" stay />
   </ServerShell>
 </template>
 
