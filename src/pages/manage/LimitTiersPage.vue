@@ -37,7 +37,7 @@
           </div>
 
           <!-- Tiers table -->
-          <div class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
+          <div class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base">
             <table class="w-full text-left">
               <thead>
                 <tr class="border-b border-outline-gray-2 bg-surface-gray-1">
@@ -91,7 +91,7 @@
           </div>
 
           <!-- How tiers work -->
-          <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-5">
+          <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-5">
             <div class="flex flex-col gap-2">
               <div class="flex items-center gap-2">
                 <span class="lucide-info size-5 shrink-0 text-ink-gray-5" />

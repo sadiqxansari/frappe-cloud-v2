@@ -18,17 +18,17 @@
 
     <!-- Resource summary -->
     <div class="mt-5 grid gap-4 sm:grid-cols-3">
-      <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-4">
         <div class="text-sm text-ink-gray-5">CPU</div>
         <Progress :value="health.cpuPct" size="sm" class="mt-3" />
         <div class="mt-2 text-sm text-ink-gray-7">{{ health.cpuPct }}% of {{ specs?.vcpu ?? '—' }} vCPUs</div>
       </div>
-      <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-4">
         <div class="text-sm text-ink-gray-5">Memory</div>
         <Progress :value="health.memPct" size="sm" class="mt-3" />
         <div class="mt-2 text-sm text-ink-gray-7">{{ health.memUsed }} GB of {{ health.memTotal }} GB</div>
       </div>
-      <div class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-4">
         <div class="text-sm text-ink-gray-5">Storage</div>
         <Progress :value="health.diskPct" size="sm" class="mt-3" />
         <div class="mt-2 text-sm text-ink-gray-7">{{ health.diskUsed }} GB of {{ health.diskTotal }} GB</div>
@@ -40,7 +40,7 @@
       <div
         v-for="c in charts"
         :key="c.title"
-        class="rounded-lg border border-outline-gray-2 bg-surface-elevation-1"
+        class="rounded-lg border border-outline-gray-2 bg-surface-base"
       >
         <div class="h-[300px]">
           <AxisChart :config="c" />

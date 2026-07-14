@@ -108,14 +108,116 @@ export const DB_ANALYZER = {
   ],
 }
 
-// Sample schema for the SQL Playground's table browser — enough to write a query
-// against without leaving the page.
+// Sample schema for the SQL Playground's table browser. Columns carry their
+// SQL type so the browser can render the COLUMN / TYPE grid the real Pilot
+// shows. Sequence tables (`*_id_seq`) all share MariaDB's 8-column shape, so
+// that's factored out. `DB_TABLE_COUNT` stands in for the true table count a
+// live site would report (the schema below is a representative slice of it).
+const SEQ_COLUMNS = [
+  { name: 'next_not_cached_value', type: 'bigint(21)' },
+  { name: 'minimum_value', type: 'bigint(21)' },
+  { name: 'maximum_value', type: 'bigint(21)' },
+  { name: 'start_value', type: 'bigint(21)' },
+  { name: 'increment', type: 'bigint(21)' },
+  { name: 'cache_size', type: 'bigint(21) unsigned' },
+  { name: 'cycle_option', type: 'tinyint(1) unsigned' },
+  { name: 'cycle_count', type: 'bigint(21)' },
+]
+
+const seq = (name) => ({ name, columns: SEQ_COLUMNS })
+
+export const DB_TABLE_COUNT = 394
+
 export const DB_TABLES = [
-  { name: 'tabUser', columns: ['name', 'email', 'enabled', 'creation', 'modified'] },
-  { name: 'tabSales Invoice', columns: ['name', 'customer', 'grand_total', 'status', 'posting_date'] },
-  { name: 'tabGL Entry', columns: ['name', 'account', 'debit', 'credit', 'posting_date'] },
-  { name: 'tabItem', columns: ['name', 'item_name', 'item_group', 'stock_uom'] },
-  { name: 'tabVersion', columns: ['name', 'ref_doctype', 'docname', 'data', 'creation'] },
+  {
+    name: '__Auth',
+    columns: [
+      { name: 'doctype', type: 'varchar(140)' },
+      { name: 'name', type: 'varchar(140)' },
+      { name: 'fieldname', type: 'varchar(140)' },
+      { name: 'password', type: 'text' },
+      { name: 'encrypted', type: 'int(1)' },
+    ],
+  },
+  {
+    name: '__UserSettings',
+    columns: [
+      { name: 'user', type: 'varchar(180)' },
+      { name: 'doctype', type: 'varchar(180)' },
+      { name: 'data', type: 'longtext' },
+    ],
+  },
+  {
+    name: '__global_search',
+    columns: [
+      { name: 'doctype', type: 'varchar(100)' },
+      { name: 'name', type: 'varchar(140)' },
+      { name: 'title', type: 'text' },
+      { name: 'content', type: 'longtext' },
+      { name: 'route', type: 'text' },
+      { name: 'published', type: 'int(1)' },
+    ],
+  },
+  seq('case_followup_id_seq'),
+  seq('case_id_seq'),
+  seq('crm_product_sync_issue_id_seq'),
+  seq('crm_task_id_seq'),
+  seq('crm_view_settings_id_seq'),
+  seq('drive_entity_log_id_seq'),
+  seq('drive_favourite_id_seq'),
+  seq('family_reintegration_id_seq'),
+  seq('food_drop_off_detail_id_seq'),
+  seq('gp_comment_id_seq'),
+  seq('gp_custom_emoji_id_seq'),
+  {
+    name: 'tabUser',
+    columns: [
+      { name: 'name', type: 'varchar(140)' },
+      { name: 'email', type: 'varchar(140)' },
+      { name: 'enabled', type: 'int(1)' },
+      { name: 'creation', type: 'datetime(6)' },
+      { name: 'modified', type: 'datetime(6)' },
+    ],
+  },
+  {
+    name: 'tabSales Invoice',
+    columns: [
+      { name: 'name', type: 'varchar(140)' },
+      { name: 'customer', type: 'varchar(140)' },
+      { name: 'grand_total', type: 'decimal(21,9)' },
+      { name: 'status', type: 'varchar(140)' },
+      { name: 'posting_date', type: 'date' },
+    ],
+  },
+  {
+    name: 'tabGL Entry',
+    columns: [
+      { name: 'name', type: 'varchar(140)' },
+      { name: 'account', type: 'varchar(140)' },
+      { name: 'debit', type: 'decimal(21,9)' },
+      { name: 'credit', type: 'decimal(21,9)' },
+      { name: 'posting_date', type: 'date' },
+    ],
+  },
+  {
+    name: 'tabItem',
+    columns: [
+      { name: 'name', type: 'varchar(140)' },
+      { name: 'item_name', type: 'varchar(140)' },
+      { name: 'item_group', type: 'varchar(140)' },
+      { name: 'stock_uom', type: 'varchar(140)' },
+    ],
+  },
+  {
+    name: 'tabVersion',
+    columns: [
+      { name: 'name', type: 'varchar(140)' },
+      { name: 'ref_doctype', type: 'varchar(140)' },
+      { name: 'docname', type: 'varchar(140)' },
+      { name: 'data', type: 'longtext' },
+      { name: 'creation', type: 'datetime(6)' },
+    ],
+  },
 ]
 
 // Background jobs (the "Tasks" dev-tools page). Mirrors Frappe Cloud's agent

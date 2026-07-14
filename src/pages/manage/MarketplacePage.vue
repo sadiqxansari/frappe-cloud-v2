@@ -98,8 +98,7 @@
     </template>
 
     <!-- Import from GitHub -->
-    <Dialog v-model:open="ghOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Import custom app</span></template>
+    <Dialog v-model:open="ghOpen" title="Import custom app" size="sm">
       <TabButtons v-model="ghTab" :options="ghTabs" />
       <div class="mt-4 grid gap-3">
         <div class="grid min-h-28 content-start gap-3">
@@ -136,8 +135,7 @@
     </Dialog>
 
     <!-- Confirm install (a site is already chosen). -->
-    <Dialog v-model:open="confirmOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Install {{ pending?.name || 'app' }}</span></template>
+    <Dialog v-model:open="confirmOpen" :title="`Install ${pending?.name || 'app'}`" size="sm">
       <p class="text-p-base text-ink-gray-7">
         Install <span class="font-medium text-ink-gray-9">{{ pending?.name }}</span> on
         <span class="font-medium text-ink-gray-9">{{ preselectedSite?.name }}</span>?
@@ -152,8 +150,7 @@
 
     <!-- Choose where to install (direct entry, or "All sites"). Skipped when a
          site was already chosen. -->
-    <Dialog v-model:open="pickerOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Install {{ pending?.name || 'app' }}</span></template>
+    <Dialog v-model:open="pickerOpen" :title="`Install ${pending?.name || 'app'}`" size="sm">
       <div v-if="liveSites.length" class="space-y-2">
         <button
           v-if="liveSites.length > 1"
@@ -201,8 +198,7 @@
     </Dialog>
 
     <!-- Which site are you browsing for? "All sites" + one row per site. -->
-    <Dialog v-model:open="siteChooserOpen" size="md">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Which site are you browsing for?</span></template>
+    <Dialog v-model:open="siteChooserOpen" title="Which site are you browsing for?" size="md">
       <p v-if="!liveSites.length" class="py-6 text-center text-sm text-ink-gray-5">
         {{ server.name }} has no live sites yet — create one first, then install apps on it.
       </p>

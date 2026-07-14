@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen flex-col bg-surface-elevation-1">
+  <div class="flex min-h-screen flex-col bg-surface-base">
     <main class="flex flex-1 items-start justify-center px-4 pb-20 pt-16">
       <div class="w-full max-w-sm">
         <!-- Brand centered over the stepper; Back is absolute so it never
