@@ -50,6 +50,15 @@
   opacity: 0;
 }
 
+/* Red buttons (subtle/outline/ghost, theme="red"): frappe-ui hardcodes the
+   static Tailwind `text-red-700` instead of a theme token, so in dark mode
+   the dark-red label sinks into the dark-red surface. Remap it to the ink
+   token, which flips to a readable light red (red/300) on dark. Scoped to
+   buttons so any deliberate text-red-700 elsewhere is untouched. */
+[data-theme='dark'] button.text-red-700 {
+  color: var(--ink-red-7);
+}
+
 /* DateTimePicker calendar: a selected day carries both its base ink
    (`text-ink-gray-8`/`-9`, light in dark mode) and the selected ink
    (`text-ink-base`, dark) — the light one wins and the number washes out on the
