@@ -1,31 +1,17 @@
 <template>
-  <ServerShell v-if="site" :server="server" :crumbs="crumbs" wide>
-    <!-- Open site lives in the top nav bar (right-most action slot). -->
-    <template #actions>
-      <Button variant="subtle" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
-      <Dropdown :options="siteMenu" placement="bottom-end">
-        <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" aria-label="More actions" />
-      </Dropdown>
-    </template>
-
-    <!-- Split view: the page pane scrolls on its own; the sites list floats
-         beside it in the same corner the map's panel occupies, so crossing
-         map ⇄ site reads as the panel standing still. Collapsing the list
-         hands the full width back to the page. -->
-    <div class="relative h-full">
-      <div
-        ref="scroller"
-        class="h-full overflow-y-auto transition-[padding] duration-300 ease-in-out motion-reduce:transition-none"
-        :class="listOpen ? 'lg:pl-[25rem]' : ''"
-      >
-        <div class="sdl-page mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
-
-    <!-- Site header — the identity sits over a faded dot field that anchors the
-         page, then dissolves into the normal background. Install app and the ⋯
-         menu sit here; Open site is up in the nav bar. -->
-    <div class="relative -mx-4 -mt-8 overflow-hidden px-4 pb-7 pt-8 sm:-mx-8 sm:px-8">
-      <div class="dot-field pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div class="relative flex items-start justify-between gap-4 rounded-lg border border-outline-gray-2 bg-surface-base p-4">
+  <!-- Floating site card — the site detail as a sheet over the dimmed map.
+       The map (and its sites panel) stays mounted underneath, so picking a
+       different site in the panel swaps this card's content in place. Esc
+       and the scrim close the card and the panel together; ✕ closes just
+       the card. -->
+  <div
+    v-if="site"
+    class="absolute inset-y-4 right-4 z-40 w-[44rem] transition-[max-width] duration-300 ease-in-out motion-reduce:transition-none"
+    :style="{ maxWidth: panelOpen ? 'calc(100% - 27rem)' : 'calc(100% - 2rem)' }"
+  >
+    <div class="flex h-full flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-2xl">
+      <!-- Header: identity on the left, everything you can do on the right. -->
+      <header class="flex items-start justify-between gap-4 border-b border-outline-alpha-gray-1 px-6 py-4">
         <div class="flex min-w-0 items-center gap-3">
           <SiteIcon size="lg" />
           <div class="min-w-0">
@@ -44,11 +30,20 @@
         </div>
         <div class="flex shrink-0 items-center gap-2">
           <Button variant="subtle" size="sm" label="Install app" icon-left="lucide-plus" @click="installApp" />
+          <Button variant="subtle" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
+          <Dropdown :options="siteMenu" placement="bottom-end">
+            <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" aria-label="More actions" />
+          </Dropdown>
+          <Button variant="ghost" size="sm" icon="lucide-x" aria-label="Close" @click="closeCard" />
         </div>
-      </div>
-    </div>
+      </header>
 
-    <TabButtons v-model="tab" :buttons="tabs" class="mt-1" />
+      <div class="shrink-0 px-6 pt-4">
+        <TabButtons v-model="tab" :buttons="tabs" />
+      </div>
+
+      <!-- Only the tab content scrolls; the header and tabs hold still. -->
+      <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto px-6 pb-8">
 
     <!-- Apps — the apps installed on this site, in the FC manage modal's row
          style: icon, name + version (+ update target), tagline, manage action. -->
@@ -275,12 +270,7 @@
         </div>
       </div>
     </section>
-        </div>
       </div>
-
-      <!-- The same panel the map shows — here it's the split's left column.
-           Selecting swaps the page instantly; minimize gives the width back. -->
-      <SitesPanel v-model:open="listOpen" :server="server" :active-site-id="site.id" @select="goSite" />
     </div>
 
     <MoveSiteDialog v-model:open="moveOpen" :site="site" :server="server" :required-version="moveVersion" @moved="onMoved" />
@@ -336,7 +326,7 @@
       @confirm="resetSite"
     />
 
-  </ServerShell>
+  </div>
 </template>
 
 <script setup>
@@ -347,15 +337,13 @@ import AddDomainDialog from '../../components/AddDomainDialog.vue'
 import AppIcon from '../../components/AppIcon.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import ServerShell from '../../components/ServerShell.vue'
 import SiteIcon from '../../components/SiteIcon.vue'
-import SitesPanel from '../../components/SitesPanel.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
 import MoveSiteDialog from '../../components/MoveSiteDialog.vue'
 import { versionById } from '../../data/catalog'
 import { backupCustomLabel, useCloudStore } from '../../stores/cloud'
 import { fmtDateTime } from '../../utils/format'
-import { sitesByAttention, sitesPanelOpen } from '../../utils/sites'
+import { sitesPanelOpen } from '../../utils/sites'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -371,11 +359,6 @@ watchEffect(() => {
   else if (!site.value) router.replace(`/manage/${server.value.id}`)
 })
 
-const crumbs = computed(() => [
-  { label: 'Sites', route: `/manage/${server.value.id}` },
-  { label: site.value.name, route: route.fullPath },
-])
-
 const tab = ref('apps')
 const tabs = [
   { label: 'Apps', value: 'apps' },
@@ -384,16 +367,12 @@ const tabs = [
   { label: 'Settings', value: 'settings' },
 ]
 
-// — Split view. The list shares its open state with the map's panel; landing
-// here on a desktop viewport docks it open (playing the pill → panel morph if
-// it was collapsed). The active tab is deliberately NOT reset when switching
-// sites — walking the list comparing one tab is the hot path.
-const listOpen = sitesPanelOpen
+// — Floating card. The sites panel underneath belongs to the map; its open
+// state only matters here for how much width the card may take. The active
+// tab is deliberately NOT reset when switching sites — walking the list
+// comparing one tab is the hot path.
+const panelOpen = sitesPanelOpen
 const scroller = ref(null)
-
-function goSite(s) {
-  if (s.id !== site.value.id) router.push(`/manage/${server.value.id}/sites/${s.id}`)
-}
 
 // New site, same component instance: switching is an instant content swap —
 // only the scroll position resets.
@@ -404,35 +383,28 @@ watch(
   },
 )
 
-onMounted(() => {
-  if (!listOpen.value && window.matchMedia('(min-width: 1024px)').matches) listOpen.value = true
-  window.addEventListener('keydown', onKeydown)
-})
+onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
-// Esc leaves for the map — where the panel is still open, and a second Esc
-// collapses it to the pill. One key, always "out". ↑/↓ walk the sites in the
-// list's attention-first order.
+// Esc dismisses the whole inspection: the card AND the sites panel close
+// together, landing on the bare map. (Dialogs and menus consume Esc before
+// it gets here; a focused field just blurs.)
 function onKeydown(e) {
-  if (e.defaultPrevented || !server.value || !site.value) return
+  if (e.key !== 'Escape' || e.defaultPrevented || !server.value || !site.value) return
   const t = e.target
-  const typing = t instanceof HTMLElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)
-  if (e.key === 'Escape') {
-    if (t.closest?.('[role="dialog"], [role="menu"]')) return
-    if (typing) {
-      t.blur()
-      return
-    }
-    router.push(`/manage/${server.value.id}`)
-  } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !typing && listOpen.value) {
-    const list = sitesByAttention(server.value.sites)
-    const i = list.findIndex((s) => s.id === site.value.id)
-    const next = list[i + (e.key === 'ArrowDown' ? 1 : -1)]
-    if (i >= 0 && next) {
-      e.preventDefault()
-      router.replace(`/manage/${server.value.id}/sites/${next.id}`)
-    }
+  if (t.closest?.('[role="dialog"], [role="menu"]')) return
+  if (t instanceof HTMLElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) {
+    t.blur()
+    return
   }
+  panelOpen.value = false
+  closeCard()
+}
+
+// The ✕ closes just the card — the panel keeps whatever state it had. (The
+// scrim, handled by the map page, closes both, like Esc.)
+function closeCard() {
+  router.push(`/manage/${server.value.id}`)
 }
 
 const addDomainOpen = ref(false)
@@ -703,34 +675,3 @@ function migrateSite() {
   toast.success('Running bench migrate — this can take a minute')
 }
 </script>
-
-<style scoped>
-/* Faded dot field behind the header — anchors the page, then dissolves into
-   the background. The dot colour and the mask both adapt to dark mode. */
-.dot-field {
-  background-image: radial-gradient(var(--outline-gray-4) 1.1px, transparent 1.3px);
-  background-size: 12px 12px;
-  background-position: -6px -6px;
-  /* Wide radial mask anchored top-centre: the dots stay dense behind the card
-     and spread out to the left and right before dissolving into the page. */
-  -webkit-mask-image: radial-gradient(135% 120% at 50% 22%, rgb(0 0 0 / 0.95) 0%, transparent 72%);
-  mask-image: radial-gradient(135% 120% at 50% 22%, rgb(0 0 0 / 0.95) 0%, transparent 72%);
-}
-
-/* First paint of the pane: a quiet rise-in. Switching sites reuses this
-   component instance, so the hot path swaps with no animation at all. */
-.sdl-page {
-  animation: sdl-page-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
-}
-@keyframes sdl-page-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sdl-page {
-    animation: none;
-  }
-}
-</style>

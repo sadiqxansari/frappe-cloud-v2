@@ -7,8 +7,16 @@
     <div class="relative h-full">
       <!-- The sites map is the page: sites fan out around the server on the
            dotted world. The floating panel inside covers list duties (search,
-           statuses, actions); the server pill covers the old specs rail. -->
-      <SitesMap :server="server" @new-site="newSiteOpen = true" />
+           statuses, actions); the server pill covers the old specs rail.
+           While a site is open (child route), the stage dims under the wash —
+           only the sites panel stays bright, since it's how you switch sites. -->
+      <SitesMap
+        :server="server"
+        :dimmed="!!activeSite"
+        :active-site-id="activeSite?.id || null"
+        @new-site="newSiteOpen = true"
+        @dismiss="closeSite"
+      />
 
       <!-- Lifecycle banners float over the map so the stage stays full-bleed. -->
       <div
@@ -40,6 +48,14 @@
           </Alert>
         </div>
       </div>
+      <!-- The floating site card (site-detail child route). It rises over the
+           dimmed map and fades out on dismiss; switching sites reuses the same
+           component instance, so that swap is instant. -->
+      <router-view v-slot="{ Component }">
+        <Transition name="sdo">
+          <component :is="Component" />
+        </Transition>
+      </router-view>
     </div>
 
     <AddCardDialog v-model:open="addCardOpen" />
@@ -57,6 +73,7 @@ import NewSiteDialog from '../../components/NewSiteDialog.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import SitesMap from '../../components/SitesMap.vue'
 import { useCloudStore } from '../../stores/cloud'
+import { sitesPanelOpen } from '../../utils/sites'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -73,7 +90,21 @@ watchEffect(() => {
 })
 
 const base = computed(() => `/manage/${server.value.id}`)
-const crumbs = computed(() => [{ label: 'Sites', route: base.value }])
+
+// The open site (child route), if any — drives the dim wash and the crumb.
+const activeSite = computed(() => server.value?.sites.find((s) => s.id === route.params.siteId) || null)
+const crumbs = computed(() => {
+  const list = [{ label: 'Sites', route: base.value }]
+  if (activeSite.value) list.push({ label: activeSite.value.name, route: route.fullPath })
+  return list
+})
+
+// Scrim click behaves like Esc: the card AND the sites panel close together,
+// landing on the bare map.
+function closeSite() {
+  sitesPanelOpen.value = false
+  router.push(base.value)
+}
 
 const addCardOpen = ref(false)
 const newSiteOpen = ref(false)
@@ -86,3 +117,32 @@ function contactSupport() {
   toast('In the real thing, this opens a support ticket for this server')
 }
 </script>
+
+<style scoped>
+/* The site card rises over the dimming map; dismissing is a quick fade so
+   the map is back the moment you let go. (Scoped styles reach the child's
+   root element, which is the card's positioned wrapper.) */
+.sdo-enter-active {
+  transition: opacity 250ms cubic-bezier(0.23, 1, 0.32, 1), transform 250ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.sdo-leave-active {
+  transition: opacity 150ms ease-in;
+}
+.sdo-enter-from {
+  opacity: 0;
+  transform: translateY(10px) scale(0.99);
+}
+.sdo-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdo-enter-active,
+  .sdo-leave-active {
+    transition: opacity 100ms ease;
+  }
+  .sdo-enter-from {
+    transform: none;
+  }
+}
+</style>

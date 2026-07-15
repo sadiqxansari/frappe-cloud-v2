@@ -131,10 +131,18 @@
       </template>
     </div>
 
-    <!-- All sites — the pill ⇄ full-height list lives in SitesPanel, shared
-         with the site page (where the same panel, in the same corner, is the
-         split view's left column). -->
-    <SitesPanel v-model:open="panelOpen" :server="server" @select="goSite" @hover="highlightId = $event" />
+    <!-- Dim wash while a site card floats above OR the sites panel is open:
+         the stage (and the server pill) recede behind it; the panel sits
+         higher (z-40) and stays bright. Clicking the wash closes whatever is
+         open — card and panel together (like Esc), or just the panel. -->
+    <Transition name="ssm-dim">
+      <div v-if="dimmed || panelOpen" class="absolute inset-0 z-[35] bg-surface-base/70" @click="onScrimClick" />
+    </Transition>
+
+    <!-- All sites — the pill ⇄ full-height list lives in SitesPanel. While a
+         site card is open its row stays lit, and picking another row swaps
+         the card in place. -->
+    <SitesPanel v-model:open="panelOpen" :server="server" :active-site-id="activeSiteId" @select="goSite" @hover="highlightId = $event" />
 
     <!-- Server — pill that expands into the compact detail card -->
     <div ref="serverBox" class="absolute right-4 top-4 z-30">
@@ -240,8 +248,12 @@ import { appsLabel, siteRowOptions, sitesByAttention, sitesPanelOpen, siteStatus
 
 const props = defineProps({
   server: { type: Object, required: true },
+  // A site card is floating above — dim the stage under the wash.
+  dimmed: { type: Boolean, default: false },
+  // The site that card shows; its panel row stays lit.
+  activeSiteId: { type: String, default: null },
 })
-const emit = defineEmits(['new-site'])
+const emit = defineEmits(['new-site', 'dismiss'])
 
 const store = useCloudStore()
 const router = useRouter()
@@ -452,7 +464,16 @@ function statusVar(status) {
   return 'var(--ink-green-7)'
 }
 function goSite(site) {
+  if (site.id === props.activeSiteId) return
   router.push(`/manage/${props.server.id}/sites/${site.id}`)
+}
+
+// The wash click closes whatever it sits under: with a site card open it
+// dismisses card and panel together (handled by the map page); with just the
+// panel open it collapses the panel.
+function onScrimClick() {
+  if (props.dimmed) emit('dismiss')
+  else panelOpen.value = false
 }
 const siteOptions = (site) => siteRowOptions(site, { store, router })
 </script>
@@ -517,6 +538,18 @@ const siteOptions = (site) => siteRowOptions(site, { store, router })
   transform: scale(0.97);
 }
 .ssm-pill-leave-to {
+  opacity: 0;
+}
+
+/* Dim wash under the floating site card. */
+.ssm-dim-enter-active {
+  transition: opacity 200ms ease-out;
+}
+.ssm-dim-leave-active {
+  transition: opacity 150ms ease-in;
+}
+.ssm-dim-enter-from,
+.ssm-dim-leave-to {
   opacity: 0;
 }
 

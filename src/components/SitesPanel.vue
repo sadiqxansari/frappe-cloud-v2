@@ -1,13 +1,13 @@
 <template>
-  <!-- All sites — pill that expands into the full-height floating list.
-       Rendered in the same corner by the map and the site page (where it is
-       the split view's left column), so navigating between the two reads as
-       the panel standing still. -->
-  <div class="pointer-events-none absolute bottom-4 left-4 top-4 z-30">
+  <!-- All sites — pill that expands into the floating list. The panel hugs
+       its rows (min half the stage, capped at full height). z-40 keeps it
+       above the map's dim wash (z-35) while a site card is open, so it stays
+       bright and usable for switching sites. -->
+  <div class="pointer-events-none absolute bottom-4 left-4 top-4 z-40 flex flex-col items-start">
     <Transition name="ssp-panel">
       <div
         v-if="open"
-        class="pointer-events-auto flex h-full w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
+        class="pointer-events-auto flex max-h-full min-h-[50%] w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
         :style="{ transformOrigin: 'top left' }"
       >
         <div class="flex items-center justify-between px-4 pb-2 pt-3.5">
