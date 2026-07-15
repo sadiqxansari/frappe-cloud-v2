@@ -281,10 +281,31 @@ function grownState() {
   const shop = makeSite('My Shop', ['erpnext', 'crm'])
   shop.backups = [makeBackup(10 * HOUR, '96 MB')]
 
+  // Ten more sites on the web server — enough to overflow the map's five
+  // slots into "+N more" and give the sites panel / split list a real scroll.
+  const payroll = makeSite('Payroll', ['erpnext', 'hr'])
+  payroll.backups = [makeBackup(12 * HOUR, '210 MB')]
+  const crmIndia = makeSite('CRM India', ['crm'])
+  crmIndia.backups = [makeBackup(16 * HOUR, '84 MB')]
+  const fieldSales = makeSite('Field Sales', ['crm', 'whatsapp'])
+  fieldSales.backups = [makeBackup(20 * HOUR, '61 MB')]
+  const moreSites = [
+    payroll,
+    crmIndia,
+    fieldSales,
+    makeSite('Support Desk', ['helpdesk']),
+    makeSite('Analytics', ['insights']),
+    makeSite('Wholesale', ['erpnext']),
+    makeSite('Learning', ['lms']),
+    makeSite('Docs Wiki', ['wiki', 'drive']),
+    makeSite('Legacy ERP', ['erpnext'], 'suspended'),
+    makeSite('Store Builder', ['builder'], 'creating'),
+  ]
+
   const server = makeServer({
     name: 'atlas-web-01',
     creditBalance: 18,
-    sites: [company, shop],
+    sites: [company, shop, ...moreSites],
     build: '15.78.1', // a patch behind latest — shows the "update available" flow (#24)
     planHistory: [
       { id: uid('ph'), date: '10 Jun 2026', from: 'Starter', to: 'Business', direction: 'upgrade' },
