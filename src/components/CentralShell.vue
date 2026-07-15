@@ -12,7 +12,7 @@
           :class="collapsed && 'justify-center'"
           :title="collapsed ? `Frappe Cloud · ${store.team.name}` : undefined"
         >
-          <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0 rounded-md" />
+          <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0" />
           <template v-if="!collapsed">
             <span class="min-w-0 flex-1 text-left">
               <span class="block truncate text-p-sm font-semibold text-ink-gray-9">Frappe Cloud</span>
@@ -175,7 +175,7 @@
 import { computed, h, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
-import cloudLogo from '../assets/apps/cloud.png'
+import cloudLogo from '../assets/frappe-cloud-logo.svg'
 import ProfileDialog from './ProfileDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
@@ -274,7 +274,7 @@ const userOptions = computed(() => [
     icon: 'lucide-log-out',
     onClick: () => {
       store.loadScenario('fresh')
-      router.push('/setup/account')
+      router.push('/signup')
     },
   },
 ])

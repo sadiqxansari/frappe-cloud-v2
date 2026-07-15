@@ -19,11 +19,26 @@ function switchTo(name) {
   store.loadScenario(name)
   // Single-server personas land in the Desk (their home); the fleet operator
   // lands in Central; a fresh signup starts onboarding.
-  const target = { fresh: '/setup/account', solo: '/app', grown: '/servers' }[name]
+  const target = { fresh: '/signup', solo: '/app', grown: '/servers' }[name]
   router.push(target)
 }
 
+// Kick off an app-aware "product signup" — the funnel a user hits after clicking
+// "sign up" for a specific app on the marketing site. Fresh account, ?product set.
+function productSignup(appKey) {
+  store.loadScenario('fresh')
+  router.push({ path: '/signup', query: { product: appKey } })
+}
+
 const check = (name) => (store.scenario === name ? 'lucide-check' : 'lucide-minus')
+
+// The apps Central features as product signups.
+const PRODUCT_SIGNUPS = [
+  { key: 'erpnext', label: 'ERPNext' },
+  { key: 'crm', label: 'Frappe CRM' },
+  { key: 'hr', label: 'Frappe HR' },
+  { key: 'helpdesk', label: 'Helpdesk' },
+]
 
 const options = computed(() => [
   {
@@ -33,6 +48,14 @@ const options = computed(() => [
       { label: 'Solo — one site (Ravi)', icon: check('solo'), onClick: () => switchTo('solo') },
       { label: 'Operator — a fleet (Arjun)', icon: check('grown'), onClick: () => switchTo('grown') },
     ],
+  },
+  {
+    group: 'Product signups',
+    options: PRODUCT_SIGNUPS.map((p) => ({
+      label: p.label,
+      icon: 'lucide-package',
+      onClick: () => productSignup(p.key),
+    })),
   },
   {
     group: 'Toggles',

@@ -29,6 +29,13 @@ export function validateEmail(value, { required = false } = {}) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? '' : 'Enter a valid email address.'
 }
 
+// A labelled "this field can't be blank" check for the auth forms.
+export function validateRequired(value, label, { required = true } = {}) {
+  const v = (value || '').trim()
+  if (!v) return required ? `${label} is required.` : ''
+  return ''
+}
+
 export function validatePort(value, { required = true } = {}) {
   const v = String(value ?? '').trim()
   if (!v) return required ? 'A port is required.' : ''

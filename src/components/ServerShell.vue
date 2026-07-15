@@ -124,7 +124,7 @@
 import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dropdown, Tooltip } from 'frappe-ui'
-import cloudLogo from '../assets/apps/cloud.png'
+import cloudLogo from '../assets/frappe-cloud-logo.svg'
 import ProfileDialog from './ProfileDialog.vue'
 import ServerSettingsDialog from './ServerSettingsDialog.vue'
 import UpdateServerDialog from './UpdateServerDialog.vue'
@@ -271,7 +271,7 @@ const userOptions = computed(() => [
     icon: 'lucide-log-out',
     onClick: () => {
       store.loadScenario('fresh')
-      router.push('/setup/account')
+      router.push('/signup')
     },
   },
 ])

@@ -8,7 +8,7 @@
       <div class="overflow-hidden rounded-2xl border border-outline-gray-2 bg-surface-elevation-1 shadow-xl">
         <div class="flex items-center gap-2.5 border-b border-outline-gray-2 px-5 py-4">
           <span v-if="intent === 'method'" class="grid size-7 shrink-0 place-items-center rounded-md text-xs font-bold text-white" :style="{ backgroundColor: gatewayColor }">{{ gatewayMark }}</span>
-          <img v-else :src="cloudLogo" alt="" class="size-7 shrink-0 rounded-md" />
+          <img v-else :src="cloudLogo" alt="" class="size-7 shrink-0" />
           <div class="min-w-0 flex-1">
             <div class="text-sm font-semibold text-ink-gray-9">{{ intent === 'method' ? gateway : 'Frappe Cloud' }}</div>
             <div class="truncate text-p-xs text-ink-gray-5">
@@ -75,7 +75,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from 'frappe-ui'
-import cloudLogo from '../assets/apps/cloud.png'
+import cloudLogo from '../assets/frappe-cloud-logo.svg'
 import { useCloudStore } from '../stores/cloud'
 import { money as fmtMoney } from '../utils/format'
 

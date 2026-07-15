@@ -23,7 +23,7 @@
         <p class="mt-3 text-p-xs text-ink-gray-5">Pay only for what you use.</p>
       </div>
       <div class="mt-4 flex items-center justify-center gap-1.5 text-p-sm text-ink-gray-5">
-        <img :src="cloudLogo" alt="" class="size-4 rounded" />
+        <img :src="cloudLogo" alt="" class="size-4" />
         Hosted on Frappe Cloud
       </div>
     </div>
@@ -34,7 +34,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from 'frappe-ui'
-import cloudLogo from '../../assets/apps/cloud.png'
+import cloudLogo from '../../assets/frappe-cloud-logo.svg'
 import { useCloudStore } from '../../stores/cloud'
 
 const store = useCloudStore()
