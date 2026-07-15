@@ -50,6 +50,17 @@
   opacity: 0;
 }
 
+/* Dropdowns and dialogs teleport to <body> with no z-index (reka popper
+   wrappers ship z-index: auto; frappe-ui's DialogOverlay is bare fixed) — so
+   floating chrome inside the app (the site card and sites panel at z-40)
+   paints over open menus and modals. Lift every teleported layer above them;
+   DOM order still decides among the layers themselves, so menus opened from
+   inside a dialog stay on top of it. */
+body > [data-reka-popper-content-wrapper],
+.dialog-overlay {
+  z-index: 50 !important;
+}
+
 /* Red buttons (subtle/outline/ghost, theme="red"): frappe-ui hardcodes the
    static Tailwind `text-red-700` instead of a theme token, so in dark mode
    the dark-red label sinks into the dark-red surface. Remap it to the ink
