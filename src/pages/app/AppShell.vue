@@ -3,14 +3,16 @@
        this same URL instead (decision 11). Flips reactively the moment credit
        runs out or comes back. -->
   <SitePausedPage v-if="siteSuspended" />
-  <div v-else-if="site" class="min-h-screen bg-surface-base">
+  <!-- `isolate` contains the sticky header's z-10 in its own stacking context so
+       body-portaled overlays (the FC modal) paint over the whole Desk, nav included. -->
+  <div v-else-if="site" class="isolate min-h-screen bg-surface-base">
     <!-- Minimal Desk top bar: Frappe mark · search · notifications · account -->
-    <header class="sticky top-0 z-10 border-b border-outline-gray-2 bg-surface-elevation-1">
+    <header class="sticky top-0 z-10 border-b border-outline-gray-2 bg-surface-base">
       <div class="flex h-14 items-center gap-3 px-4">
         <span class="grid size-8 shrink-0 place-items-center rounded-md bg-[var(--ink-gray-9)] text-base font-bold text-ink-base">F</span>
 
         <button
-          class="mx-auto flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 px-3 text-sm text-ink-gray-5 hover:bg-surface-gray-1"
+          class="mx-auto flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-base px-3 text-sm text-ink-gray-5 hover:bg-surface-gray-1"
           @click="mock('Search')"
         >
           <span class="lucide-search size-4" />

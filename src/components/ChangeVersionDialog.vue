@@ -1,7 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="lg">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Change Frappe version</span></template>
-
+  <Dialog v-model:open="open" title="Change Frappe version" size="lg">
     <p class="text-p-sm text-ink-gray-5">
       {{ server?.name }} runs {{ currentLabel }}. Pick a version to move it — and all its sites — to. You can go up or down.
     </p>

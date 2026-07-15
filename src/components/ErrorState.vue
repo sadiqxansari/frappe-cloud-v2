@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rounded-xl border px-6 py-10 text-center"
+    class="rounded-lg border px-6 py-10 text-center"
     :class="tone === 'red' ? 'border-outline-red-1 bg-surface-red-1' : 'border-outline-gray-2 bg-surface-gray-1'"
   >
     <span

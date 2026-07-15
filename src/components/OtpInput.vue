@@ -10,7 +10,7 @@
       inputmode="numeric"
       maxlength="1"
       autocomplete="one-time-code"
-      class="h-12 w-full rounded-lg border border-outline-gray-3 bg-surface-elevation-1 text-center text-lg font-semibold text-ink-gray-9 outline-none transition-colors focus:border-outline-gray-4 focus:ring-2 focus:ring-outline-gray-3 disabled:opacity-60"
+      class="h-12 w-full rounded-lg border border-outline-gray-3 bg-surface-base text-center text-lg font-semibold text-ink-gray-9 outline-none transition-colors focus:border-outline-gray-4 focus:ring-2 focus:ring-outline-gray-3 disabled:opacity-60"
       @input="onInput(i, $event)"
       @keydown="onKeydown(i, $event)"
       @focus="$event.target.select()"

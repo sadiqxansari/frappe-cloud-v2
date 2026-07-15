@@ -4,8 +4,7 @@
   </Dropdown>
 
   <!-- Rename -->
-  <Dialog v-model:open="renameOpen" size="sm">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Rename server</span></template>
+  <Dialog v-model:open="renameOpen" title="Rename server" size="sm">
     <FormControl v-model="newName" type="text" label="Server name" :placeholder="server.name" />
     <template #actions>
       <div class="flex justify-end gap-2">
@@ -16,8 +15,7 @@
   </Dialog>
 
   <!-- Drop server (type to confirm) -->
-  <Dialog v-model:open="dropOpen" size="sm">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Drop this server</span></template>
+  <Dialog v-model:open="dropOpen" title="Drop this server" size="sm">
     <p class="text-p-base text-ink-gray-6">
       This permanently removes <span class="font-medium text-ink-gray-8">{{ server.name }}</span> and all its sites.
       Backups are kept for 30 days.

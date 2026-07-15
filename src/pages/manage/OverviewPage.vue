@@ -76,7 +76,7 @@
               :key="site.id"
               role="button"
               tabindex="0"
-              class="flex cursor-pointer items-start gap-3 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
+              class="flex cursor-pointer items-start gap-3 rounded-lg border border-outline-gray-2 bg-surface-base p-4 transition-colors hover:border-outline-gray-3 hover:bg-surface-gray-1"
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
             >
@@ -204,8 +204,7 @@
     <AddCardDialog v-model:open="addCardOpen" />
     <NewSiteDialog v-model:open="newSiteOpen" :server="server" />
 
-    <Dialog v-model:open="historyOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Plan history</span></template>
+    <Dialog v-model:open="historyOpen" title="Plan history" size="sm">
       <div class="space-y-3">
         <PlanChangeRow v-for="h in server.planHistory" :key="h.id" :entry="h" />
       </div>
@@ -328,7 +327,7 @@ function siteOptions(site) {
   return [
     { label: 'Open site', icon: 'lucide-arrow-up-right', onClick: () => { store.openSite(site.id); router.push('/app') } },
     {
-      label: 'Back up now',
+      label: 'Backup now',
       icon: 'lucide-archive',
       onClick: () => toast.promise(store.backupNow(site.id), { loading: 'Backing up…', success: 'Backed up just now', error: 'Backup failed' }),
     },

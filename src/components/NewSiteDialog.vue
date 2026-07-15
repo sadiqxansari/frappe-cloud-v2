@@ -1,9 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="lg">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">New site</span>
-    </template>
-
+  <Dialog v-model:open="open" title="New site" size="lg">
     <div class="space-y-5">
       <div>
         <FormControl v-model="label" type="text" label="Site name" placeholder="e.g. My Shop" />

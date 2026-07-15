@@ -28,7 +28,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
               <!-- Estimated this cycle — the stat, with the budget alert as a quiet
                    footer line since the alert is what watches this number. -->
-              <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+              <section class="flex flex-col rounded-lg border border-outline-gray-2 bg-surface-base p-5">
                 <!-- Match the Wallet card's header height (its chevron makes that row
                      24px tall) so both cards' three lines line up row-for-row. -->
                 <div class="flex h-6 items-center">
@@ -48,7 +48,7 @@
               <!-- Wallet — balance + how this cycle gets covered, plus auto-recharge
                    as a quiet footer line (it refills the wallet, so it belongs here). -->
               <div
-                class="flex flex-col rounded-xl border bg-surface-elevation-1 p-5 transition-colors"
+                class="flex flex-col rounded-lg border bg-surface-base p-5 transition-colors"
                 :class="openPanel?.type === 'wallet' ? 'border-outline-gray-4 ring-1 ring-outline-gray-4' : 'border-outline-gray-2'"
               >
                 <div class="flex items-center justify-between">
@@ -86,7 +86,7 @@
             </div>
 
             <!-- Payment methods -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
               <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-1.5">
                   <h2 class="text-base font-semibold text-ink-gray-8">Payment methods</h2>
@@ -127,7 +127,7 @@
 
             <!-- Billing contact & tax — its own card; email, address and tax
                  details together (#14). -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-base p-5">
               <div class="flex items-center justify-between">
                 <h2 class="text-base font-semibold text-ink-gray-8">Billing contact &amp; tax</h2>
                 <button class="rounded p-1 text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit billing contact and tax" @click="openContact"><span class="lucide-pencil size-3.5" /></button>
@@ -149,7 +149,7 @@
             </section>
 
             <!-- Subscriptions (one per server) -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5 pt-4">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
               <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
               <div class="mt-2 divide-y divide-outline-alpha-gray-1">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
@@ -176,7 +176,7 @@
             <!-- Marketplace payouts — always shown for discoverability (issue
                  #19). Before you publish anything it's an invitation; once you're
                  a developer it shows your withdrawable earnings. -->
-            <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="rounded-lg border border-outline-gray-2 bg-surface-base p-5">
               <div class="flex items-center gap-2">
                 <h2 class="text-base font-semibold text-ink-gray-8">Marketplace payouts</h2>
                 <Badge theme="gray" variant="subtle" label="Paid in USD" />
@@ -213,7 +213,7 @@
             <!-- Stop / resume billing — the single global switch. Suspends every
                  server (reversible); nothing is deleted, so it stays calm — a plain
                  card with a single subtle red action, not an alarming red card. -->
-            <section v-if="store.allServers.length" class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section v-if="store.allServers.length" class="rounded-lg border border-outline-gray-2 bg-surface-base p-5">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="min-w-0">
                   <template v-if="allSuspended">
@@ -306,7 +306,7 @@
 
       <!-- Docked panel — invoice detail OR wallet history -->
       <Transition name="slide">
-        <aside v-if="openPanel" class="flex w-[24rem] shrink-0 flex-col border-l border-outline-gray-2 bg-surface-elevation-1">
+        <aside v-if="openPanel" class="flex w-[24rem] shrink-0 flex-col border-l border-outline-gray-2 bg-surface-base">
           <!-- Invoice -->
           <template v-if="openPanel.type === 'invoice'">
             <div class="flex items-start justify-between gap-3 border-b border-outline-gray-2 p-4">
@@ -466,8 +466,7 @@
     </div>
 
     <!-- Add credit -->
-    <Dialog v-model:open="creditOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add credit</span></template>
+    <Dialog v-model:open="creditOpen" title="Add credit" size="sm">
       <div class="space-y-3">
         <div class="flex gap-2">
           <Button v-for="amt in [2000, 5000, 10000]" :key="amt" :variant="creditAmount === String(amt) ? 'solid' : 'subtle'" :label="inr(amt)" @click="creditAmount = String(amt)" />
@@ -487,8 +486,7 @@
     <PaymentSetupDialog v-model:open="pmOpen" :editing-pm="editingPm" />
 
     <!-- Billing contact & tax — email, address and tax details in one place -->
-    <Dialog v-model:open="contactOpen" size="md">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Billing contact &amp; tax</span></template>
+    <Dialog v-model:open="contactOpen" title="Billing contact &amp; tax" size="md">
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
@@ -510,8 +508,7 @@
     </Dialog>
 
     <!-- Invoice settings — recipient & language (paired with invoices) -->
-    <Dialog v-model:open="invoiceSettingsOpen" size="md">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Invoice recipient &amp; language</span></template>
+    <Dialog v-model:open="invoiceSettingsOpen" title="Invoice recipient &amp; language" size="md">
       <div class="space-y-3">
         <div>
           <FormControl v-model="details.invoiceRecipient" type="text" label="Invoice email recipient" placeholder="accounts@company.com" />
@@ -528,8 +525,7 @@
     </Dialog>
 
     <!-- Budget alert -->
-    <Dialog v-model:open="budgetOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Set a budget alert</span></template>
+    <Dialog v-model:open="budgetOpen" title="Set a budget alert" size="sm">
       <FormControl v-model="budget" type="number" label="Alert me above (₹)" placeholder="20000" />
       <template #actions>
         <div class="flex justify-end gap-2">
@@ -540,8 +536,7 @@
     </Dialog>
 
     <!-- Add payout account -->
-    <Dialog v-model:open="payoutOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Add payout account</span></template>
+    <Dialog v-model:open="payoutOpen" title="Add payout account" size="sm">
       <div class="space-y-3">
         <p class="text-p-sm text-ink-gray-6">Connect a bank account to withdraw your marketplace earnings. Payouts are sent in USD, usually within 5–7 business days.</p>
         <p class="text-p-sm text-ink-gray-5">You'll be redirected to our payments partner to add the account securely.</p>
@@ -556,8 +551,7 @@
 
     <!-- Auto-recharge: turn on / configure / turn off all live here now that the
          card shows a single button instead of a toggle. -->
-    <Dialog v-model:open="rechargeOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Auto-recharge</span></template>
+    <Dialog v-model:open="rechargeOpen" title="Auto-recharge" size="sm">
       <div class="space-y-3">
         <p class="text-p-sm text-ink-gray-6">Auto top-up so a low balance never interrupts service.</p>
         <FormControl v-model="rechargeForm.threshold" type="number" label="Top up when wallet drops below (₹)" placeholder="2000" />

@@ -23,7 +23,7 @@
       <!-- Storage breakup. The bar is the database file (data + index + the
            claimable space deleted/updated rows leave behind); free disk sits
            below as host context. Claimable is the actionable part. -->
-      <section class="mt-5 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-ink-gray-8">Storage</h2>
           <span class="text-p-xs text-ink-gray-5">{{ mb(fileMb) }} on disk</span>

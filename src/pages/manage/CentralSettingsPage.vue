@@ -7,7 +7,7 @@
         <div v-else class="grid size-12 place-items-center rounded-full bg-surface-gray-3 text-lg font-semibold text-ink-gray-7">
           {{ teamInitial }}
         </div>
-        <div v-if="isAdminOrOwner" class="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-surface-elevation-1 ring-1 ring-outline-gray-2">
+        <div v-if="isAdminOrOwner" class="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-surface-base ring-1 ring-outline-gray-2">
           <span class="lucide-camera size-3 text-ink-gray-5" />
         </div>
       </div>
@@ -24,7 +24,7 @@
           <input
             ref="teamNameInput"
             v-model="teamNameDraft"
-            class="rounded-md border border-outline-gray-3 bg-surface-elevation-1 px-2 py-1 text-xl font-semibold text-ink-gray-9 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+            class="rounded-md border border-outline-gray-3 bg-surface-base px-2 py-1 text-xl font-semibold text-ink-gray-9 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
             @keydown.enter="saveTeamName"
             @keydown.escape="cancelEditTeamName"
           />
@@ -130,7 +130,7 @@
           </Dropdown>
         </template>
       </ListView>
-      <p v-if="!filteredMembers.length" class="rounded-xl border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
+      <p v-if="!filteredMembers.length" class="rounded-lg border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
         No members match “{{ memberQuery }}”.
       </p>
     </div>
@@ -182,15 +182,14 @@
           <button v-else-if="column.key === 'actions' && !row._role.system" class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-red-2 hover:text-ink-red-7" :aria-label="`Delete ${row._role.name}`" @click.stop="promptDeleteRole(row._role)"><span class="lucide-trash-2 size-4" /></button>
         </template>
       </ListView>
-      <p v-if="!filteredRoles.length" class="rounded-xl border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
+      <p v-if="!filteredRoles.length" class="rounded-lg border border-outline-gray-2 p-6 text-center text-p-sm text-ink-gray-4">
         No roles match “{{ roleQuery }}”.
       </p>
     </div>
 
     <!-- ── Dialogs ─────────────────────────────────────────── -->
 
-    <Dialog v-model:open="inviteOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Invite to team</span></template>
+    <Dialog v-model:open="inviteOpen" title="Invite to team" size="sm">
       <div class="space-y-3">
         <FormControl v-model="invite.email" type="email" label="Email" placeholder="teammate@company.com" />
         <FormControl :modelValue="invite.roleId" type="select" label="Role" :options="roleInviteOptions" @update:modelValue="(v) => { invite.roleId = v; if (v === 'role-owner') invite.resourceId = '' }" />
@@ -290,7 +289,7 @@
           >
             <div>
               <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">Important</div>
-              <div class="flex items-center justify-between rounded-lg border border-outline-gray-2 bg-surface-elevation-1 px-3 py-2.5">
+              <div class="flex items-center justify-between rounded-lg border border-outline-gray-2 bg-surface-base px-3 py-2.5">
                 <div>
                   <div class="text-sm text-ink-gray-8">Administrator</div>
                   <div class="text-xs text-ink-gray-4">Full access to all resources and settings</div>
@@ -302,7 +301,7 @@
             </div>
             <div>
               <div class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-4">General</div>
-              <div class="divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1">
+              <div class="divide-y divide-outline-alpha-gray-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base">
                 <div v-for="perm in GENERAL_PERMISSIONS" :key="perm.key" class="flex items-center justify-between px-3 py-2.5">
                   <div>
                     <span class="text-sm text-ink-gray-8">{{ perm.label }}</span>
@@ -395,7 +394,7 @@
       </template>
 
       <!-- View mode: compact roles table -->
-      <div v-if="memberDialogMode === 'view' && memberDialogTarget" class="max-h-[28rem] overflow-y-auto rounded-xl border border-outline-gray-2">
+      <div v-if="memberDialogMode === 'view' && memberDialogTarget" class="max-h-[28rem] overflow-y-auto rounded-lg border border-outline-gray-2">
         <div v-for="row in memberDialogRows(memberDialogTarget)" :key="row.key" class="flex items-center gap-3 border-b border-outline-alpha-gray-1 px-3 py-2.5 last:border-b-0">
           <ProviderIcon v-if="row.provider" :provider="row.provider" :size="24" class="rounded" />
           <span v-else class="grid size-6 shrink-0 place-items-center rounded bg-surface-gray-2">
@@ -450,10 +449,7 @@
     </Dialog>
 
     <!-- Remove member confirmation -->
-    <Dialog v-model:open="removeMemberOpen" size="sm">
-      <template #title>
-        <span class="text-xl font-semibold text-ink-gray-9">Remove {{ removeMemberTarget?.name }}?</span>
-      </template>
+    <Dialog v-model:open="removeMemberOpen" :title="`Remove ${removeMemberTarget?.name}?`" size="sm">
       <p class="text-p-sm text-ink-gray-6">
         They'll immediately lose access to <span class="font-medium text-ink-gray-8">{{ store.team.name }}</span> and all its servers and sites. You can re-invite them at any time.
       </p>
@@ -466,10 +462,7 @@
     </Dialog>
 
     <!-- Leave team -->
-    <Dialog v-model:open="leaveOpen" size="sm">
-      <template #title>
-        <span class="text-xl font-semibold text-ink-gray-9">{{ leaveStep === 1 ? 'Transfer ownership first' : 'Leave team' }}</span>
-      </template>
+    <Dialog v-model:open="leaveOpen" :title="leaveStep === 1 ? 'Transfer ownership first' : 'Leave team'" size="sm">
       <div v-if="leaveStep === 1" class="space-y-3">
         <p class="text-p-sm text-ink-gray-6">You're the Owner. Choose someone to take over before you leave.</p>
         <FormControl v-model="newOwnerForLeave" type="select" label="New owner" :options="nonOwnerMemberOptions" />
@@ -489,10 +482,7 @@
     </Dialog>
 
     <!-- Delete role -->
-    <Dialog v-model:open="deleteRoleOpen" size="sm">
-      <template #title>
-        <span class="text-xl font-semibold text-ink-gray-9">Delete "{{ deleteTarget?.name }}"</span>
-      </template>
+    <Dialog v-model:open="deleteRoleOpen" :title='`Delete "${deleteTarget?.name}"`' size="sm">
       <div class="space-y-3">
         <p class="text-p-sm text-ink-gray-6">These members have this role. Assign them a new role before deleting.</p>
         <div class="space-y-3">

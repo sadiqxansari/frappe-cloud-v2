@@ -1,9 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="sm">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">{{ title }}</span>
-    </template>
-
+  <Dialog v-model:open="open" :title="title" size="sm">
     <p class="text-p-base text-ink-gray-6">{{ message }}</p>
 
     <template #actions>

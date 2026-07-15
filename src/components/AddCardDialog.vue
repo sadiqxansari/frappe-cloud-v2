@@ -1,9 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="md">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">Add a card</span>
-    </template>
-
+  <Dialog v-model:open="open" title="Add a card" size="md">
     <div class="space-y-4">
       <FormControl v-model="form.name" type="text" label="Name on card" placeholder="Rahul Mehta" />
       <FormControl v-model="form.number" type="text" label="Card number" placeholder="4242 4242 4242 4242" />

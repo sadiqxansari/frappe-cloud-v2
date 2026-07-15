@@ -12,6 +12,18 @@ import { useCloudStore } from './stores/cloud'
 // restores its own state on load. We deliberately do NOT sync live across tabs —
 // a shared `storage` listener caused feedback loops (two tabs $patch-ing each
 // other) that made counts/toggles flicker and demanded reloads.
+// Persisted state has no migration path, so when the seeded data shape changes
+// (new fields, new ids) old saved state would silently render broken. Bump
+// SCHEMA_VERSION on any such change to drop stale persisted stores once, forcing
+// a fresh reseed on next load.
+const SCHEMA_VERSION = '2'
+if (localStorage.getItem('fc.schema') !== SCHEMA_VERSION) {
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith('fc.store.'))
+    .forEach((k) => localStorage.removeItem(k))
+  localStorage.setItem('fc.schema', SCHEMA_VERSION)
+}
+
 const pinia = createPinia()
 pinia.use(({ store }) => {
   const KEY = `fc.store.${store.$id}`
