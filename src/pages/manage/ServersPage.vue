@@ -11,7 +11,6 @@
         :pins="pins"
         :spots="spots"
         :highlight-id="hoverId"
-        :panel-offset="panelOffset"
         @open="openServer"
         @new-server="goNewServer"
         @cluster-open="onClusterOpen"
@@ -29,9 +28,9 @@
         <template #description>This is your home for managing them. Your bill now combines both servers into one — nothing else changed.</template>
       </Alert>
 
-      <!-- Filters (top left) -->
-      <div class="absolute left-4 top-4 flex items-center gap-2">
-        <Dropdown :options="statusMenu" placement="bottom-start">
+      <!-- Filters (top right) -->
+      <div class="absolute right-4 top-4 z-30 flex items-center gap-2">
+        <Dropdown :options="statusMenu" placement="bottom-end">
           <button class="sp-pill">
             <span class="size-2 rounded-full transition-colors" :style="{ background: statusDot }" />
             {{ statusLabelText }}
@@ -39,7 +38,7 @@
           </button>
         </Dropdown>
         <!-- Cluster = provider → region, drilled through a nested menu. -->
-        <Dropdown :options="clusterMenu" placement="bottom-start">
+        <Dropdown :options="clusterMenu" placement="bottom-end">
           <button class="sp-pill">
             {{ clusterLabelText }}
             <span class="lucide-chevron-down size-3.5 text-ink-gray-5" />
@@ -47,23 +46,21 @@
         </Dropdown>
       </div>
 
-      <!-- All servers pill (top right) — expands into the side panel -->
-      <Transition name="sp-pill-t">
-        <button v-if="!panelOpen" class="sp-pill absolute right-4 top-4 !gap-2.5 font-semibold !text-ink-gray-9" @click="panelOpen = true">
-          {{ pillLabel }}
-          <span class="lucide-maximize-2 size-3.5 text-ink-gray-6" />
-        </button>
-      </Transition>
-
-      <!-- Server list — an overlay panel, above the map so the map never reflows -->
-      <Transition name="sp-panel">
-        <aside
-          v-if="panelOpen"
-          class="absolute inset-y-0 right-0 flex w-full max-w-[24rem] flex-col border-l border-outline-gray-2 bg-surface-elevation-1 shadow-xl"
-        >
-          <div class="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-4">
-            <h2 class="text-lg font-semibold text-ink-gray-9">Your servers ({{ filtered.length }})</h2>
-            <Button variant="ghost" icon="lucide-minimize-2" aria-label="Collapse list" @click="panelOpen = false" />
+      <!-- All servers — pill (top left) that morphs into the floating list,
+           matching the sites map's "All sites" panel. The empty container is
+           click-through; only the pill/panel catch pointer events. -->
+      <div class="pointer-events-none absolute bottom-4 left-4 top-4 z-30">
+        <Transition name="sp-panel">
+          <aside
+            v-if="panelOpen"
+            class="pointer-events-auto flex h-full w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
+            :style="{ transformOrigin: 'top left' }"
+          >
+          <div class="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-3.5">
+            <h2 class="text-base font-semibold text-ink-gray-9">Your servers <span class="font-normal text-ink-gray-5">({{ filtered.length }})</span></h2>
+            <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" aria-label="Collapse server list" @click="panelOpen = false">
+              <span class="lucide-minimize-2 size-4" />
+            </button>
           </div>
           <div class="shrink-0 px-4 pb-3">
             <FormControl v-model="q" type="text" placeholder="Search" autocomplete="off" class="[&_input]:w-full">
@@ -89,7 +86,7 @@
             <div
               v-for="(srv, i) in panelRows"
               :key="srv.id"
-              class="sp-row group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-surface-gray-2"
+              class="sp-row group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-3 transition-colors hover:bg-surface-gray-2"
               :style="{ animationDelay: `${Math.min(i * 25, 200)}ms` }"
               @click="openRow(srv)"
               @mouseenter="hoverId = srv.id"
@@ -111,7 +108,7 @@
                   </button>
                   <Badge v-else-if="srv.status === 'broken'" label="Broken" theme="red" variant="subtle" size="sm" />
                 </span>
-                <span class="block truncate text-sm text-ink-gray-5">{{ specLineOf(srv) }}</span>
+                <span class="mt-1 block truncate text-sm text-ink-gray-5">{{ specLineOf(srv) }}</span>
               </span>
               <span @click.stop>
                 <ServerActions :server="srv" central />
@@ -126,8 +123,18 @@
               :description="store.allServers.length ? 'Try a different search or clear the filters.' : 'Create your first server to host your sites.'"
             />
           </div>
-        </aside>
-      </Transition>
+          </aside>
+          <button
+            v-else
+            class="pointer-events-auto flex h-9 items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 px-3 shadow-sm transition-shadow hover:shadow-md"
+            @click="panelOpen = true"
+          >
+            <span class="text-sm font-semibold text-ink-gray-9">{{ pillName }}</span>
+            <span class="text-sm text-ink-gray-5">({{ filtered.length }})</span>
+            <span class="lucide-maximize-2 size-3.5 text-ink-gray-5" />
+          </button>
+        </Transition>
+      </div>
 
       <!-- First run: nothing deployed yet, so the map is all + spots -->
       <div v-if="!store.allServers.length" class="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-4">
@@ -175,9 +182,6 @@ const scheduledModalOpen = ref(false)
 const scheduledServer = ref(null)
 const progressModalOpen = ref(false)
 const progressServer = ref(null)
-
-const PANEL_W = 384 // w-[24rem] — the zoom controls slide out of its way
-const panelOffset = computed(() => (panelOpen.value ? PANEL_W : 0))
 
 // — Filters. Status and cluster scope the map and the panel; search only
 //   narrows the panel rows.
@@ -257,10 +261,8 @@ const panelRows = computed(() => {
   })
 })
 
-const pillLabel = computed(() =>
-  statusFilter.value || clusterFilter.value.providerId
-    ? `Servers (${filtered.value.length})`
-    : `All servers (${filtered.value.length})`,
+const pillName = computed(() =>
+  statusFilter.value || clusterFilter.value.providerId ? 'Servers' : 'All servers',
 )
 
 // — Map data. Pins carry everything their hover card shows so ServerMap stays
@@ -379,30 +381,21 @@ watch(panelOpen, (open) => {
   transform: scale(0.97);
 }
 
-/* The list panel slides over the map; the pill hands off to it. */
+/* Pill ⇄ panel: origin-aware scale from the top-left corner both share, so the
+   pill appears to grow into the panel (and back). Mirrors the sites map. */
 .sp-panel-enter-active {
-  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1), transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .sp-panel-leave-active {
-  transition: transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 120ms ease-in;
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 .sp-panel-enter-from,
 .sp-panel-leave-to {
-  transform: translateX(100%);
-}
-
-.sp-pill-t-enter-active {
-  transition: opacity 150ms ease-out 150ms, transform 150ms cubic-bezier(0.23, 1, 0.32, 1) 150ms;
-}
-.sp-pill-t-leave-active {
-  transition: opacity 100ms ease-in;
-}
-.sp-pill-t-enter-from {
   opacity: 0;
-  transform: scale(0.95);
-}
-.sp-pill-t-leave-to {
-  opacity: 0;
+  transform: scale(0.97);
 }
 
 /* Rows cascade in as the panel opens — brief, then out of the way. */
@@ -422,9 +415,7 @@ watch(panelOpen, (open) => {
 
 @media (prefers-reduced-motion: reduce) {
   .sp-panel-enter-active,
-  .sp-panel-leave-active,
-  .sp-pill-t-enter-active,
-  .sp-pill-t-leave-active {
+  .sp-panel-leave-active {
     transition: opacity 150ms ease;
   }
   .sp-panel-enter-from,
