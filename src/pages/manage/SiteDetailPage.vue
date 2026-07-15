@@ -1,5 +1,5 @@
 <template>
-  <ServerShell v-if="site" :server="server" :crumbs="crumbs" class="site-detail-shell">
+  <ServerShell v-if="site" :server="server" :crumbs="crumbs" wide>
     <!-- Open site lives in the top nav bar (right-most action slot). -->
     <template #actions>
       <Button variant="subtle" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
@@ -7,6 +7,18 @@
         <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" aria-label="More actions" />
       </Dropdown>
     </template>
+
+    <!-- Split view: the page pane scrolls on its own; the sites list floats
+         beside it in the same corner the map's panel occupies, so crossing
+         map ⇄ site reads as the panel standing still. Collapsing the list
+         hands the full width back to the page. -->
+    <div class="relative h-full">
+      <div
+        ref="scroller"
+        class="h-full overflow-y-auto transition-[padding] duration-300 ease-in-out motion-reduce:transition-none"
+        :class="listOpen ? 'lg:pl-[25rem]' : ''"
+      >
+        <div class="sdl-page mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
 
     <!-- Site header — the identity sits over a faded dot field that anchors the
          page, then dissolves into the normal background. Install app and the ⋯
@@ -18,7 +30,7 @@
           <SiteIcon size="lg" />
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <h1 class="truncate text-xl font-semibold text-ink-gray-9">{{ site.name }}</h1>
+              <h1 class="truncate text-lg font-semibold text-ink-gray-9">{{ site.name }}</h1>
               <Badge v-if="site.status === 'creating'" theme="orange" variant="subtle" label="Setting up…" />
               <Badge v-else-if="site.status === 'restoring'" theme="blue" variant="subtle" label="Restoring…" />
               <Badge v-else-if="site.status === 'moving'" theme="blue" variant="subtle" label="Moving…" />
@@ -263,6 +275,13 @@
         </div>
       </div>
     </section>
+        </div>
+      </div>
+
+      <!-- The same panel the map shows — here it's the split's left column.
+           Selecting swaps the page instantly; minimize gives the width back. -->
+      <SitesPanel v-model:open="listOpen" :server="server" :active-site-id="site.id" @select="goSite" />
+    </div>
 
     <MoveSiteDialog v-model:open="moveOpen" :site="site" :server="server" :required-version="moveVersion" @moved="onMoved" />
     <AddDomainDialog v-model:open="addDomainOpen" :site="site" />
@@ -321,7 +340,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, Dialog, Dropdown, FormControl, ListView, Switch, TabButtons, TimePicker, toast } from 'frappe-ui'
 import AddDomainDialog from '../../components/AddDomainDialog.vue'
@@ -330,11 +349,13 @@ import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import ServerShell from '../../components/ServerShell.vue'
 import SiteIcon from '../../components/SiteIcon.vue'
+import SitesPanel from '../../components/SitesPanel.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
 import MoveSiteDialog from '../../components/MoveSiteDialog.vue'
 import { versionById } from '../../data/catalog'
 import { backupCustomLabel, useCloudStore } from '../../stores/cloud'
 import { fmtDateTime } from '../../utils/format'
+import { sitesByAttention, sitesPanelOpen } from '../../utils/sites'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -362,6 +383,57 @@ const tabs = [
   { label: 'Config', value: 'config' },
   { label: 'Settings', value: 'settings' },
 ]
+
+// — Split view. The list shares its open state with the map's panel; landing
+// here on a desktop viewport docks it open (playing the pill → panel morph if
+// it was collapsed). The active tab is deliberately NOT reset when switching
+// sites — walking the list comparing one tab is the hot path.
+const listOpen = sitesPanelOpen
+const scroller = ref(null)
+
+function goSite(s) {
+  if (s.id !== site.value.id) router.push(`/manage/${server.value.id}/sites/${s.id}`)
+}
+
+// New site, same component instance: switching is an instant content swap —
+// only the scroll position resets.
+watch(
+  () => route.params.siteId,
+  () => {
+    if (scroller.value) scroller.value.scrollTop = 0
+  },
+)
+
+onMounted(() => {
+  if (!listOpen.value && window.matchMedia('(min-width: 1024px)').matches) listOpen.value = true
+  window.addEventListener('keydown', onKeydown)
+})
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+
+// Esc leaves for the map — where the panel is still open, and a second Esc
+// collapses it to the pill. One key, always "out". ↑/↓ walk the sites in the
+// list's attention-first order.
+function onKeydown(e) {
+  if (e.defaultPrevented || !server.value || !site.value) return
+  const t = e.target
+  const typing = t instanceof HTMLElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)
+  if (e.key === 'Escape') {
+    if (t.closest?.('[role="dialog"], [role="menu"]')) return
+    if (typing) {
+      t.blur()
+      return
+    }
+    router.push(`/manage/${server.value.id}`)
+  } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !typing && listOpen.value) {
+    const list = sitesByAttention(server.value.sites)
+    const i = list.findIndex((s) => s.id === site.value.id)
+    const next = list[i + (e.key === 'ArrowDown' ? 1 : -1)]
+    if (i >= 0 && next) {
+      e.preventDefault()
+      router.replace(`/manage/${server.value.id}/sites/${next.id}`)
+    }
+  }
+}
 
 const addDomainOpen = ref(false)
 function verifyDomain(d) {
@@ -645,8 +717,20 @@ function migrateSite() {
   mask-image: radial-gradient(135% 120% at 50% 22%, rgb(0 0 0 / 0.95) 0%, transparent 72%);
 }
 
-/* Widen the shell's content container to max-w-4xl (ServerShell only ships 3xl/5xl). */
-.site-detail-shell :deep(main > div) {
-  max-width: 56rem;
+/* First paint of the pane: a quiet rise-in. Switching sites reuses this
+   component instance, so the hot path swaps with no animation at all. */
+.sdl-page {
+  animation: sdl-page-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes sdl-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sdl-page {
+    animation: none;
+  }
 }
 </style>
