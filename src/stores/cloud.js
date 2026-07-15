@@ -484,6 +484,12 @@ export const useCloudStore = defineStore('cloud', {
 
     allServers: (s) => s.servers,
 
+    // Signed in? A fresh persona has neither an email nor a server, so it's
+    // false until signUp() records an email (or the persona already owns a
+    // server). Gates the Central dashboard, which a server-less account may
+    // still reach (its empty state lives in ServersPage).
+    isAuthed: (s) => !!s.user.email || s.servers.length > 0,
+
     // How many servers the account has — forks the whole home experience.
     // 1 server (any number of sites) = Desk-home + FC modal; 2+ = Central-home
     // (decision 1). Many sites stay one bill, so they stay simple.

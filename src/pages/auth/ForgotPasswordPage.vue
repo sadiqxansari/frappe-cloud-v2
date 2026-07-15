@@ -12,7 +12,7 @@
           label="Work email"
           type="email"
           autocomplete="email"
-          placeholder="rahul@mycompany.in"
+          placeholder="name@company.com"
           autofocus
           :validator="(v) => validateEmail(v, { required: true })"
           :submitted="submitted"

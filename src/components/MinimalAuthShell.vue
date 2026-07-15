@@ -5,7 +5,7 @@
     </section>
 
     <footer class="enter-rise mt-auto flex items-center justify-center gap-2 pb-10" style="--enter-delay: 120ms">
-      <img :src="cloudLogo" alt="" class="size-6 rounded-md" />
+      <img :src="cloudLogo" alt="" class="size-6" />
       <span class="text-sm font-semibold text-ink-gray-7">Frappe Cloud</span>
     </footer>
   </main>
@@ -13,8 +13,9 @@
 
 <script setup>
 // The app mounts a single ToastProvider in App.vue, so this shell doesn't add
-// its own. Logo asset matches OnboardingShell's brand mark.
-import cloudLogo from '../assets/apps/cloud.png'
+// its own. Central's brand-mark SVG has its corner radius baked into the
+// artwork, so no CSS rounding on the img.
+import cloudLogo from '../assets/frappe-cloud-logo.svg'
 </script>
 
 <style scoped>
