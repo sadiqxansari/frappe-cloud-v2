@@ -58,7 +58,6 @@ declare module 'vue' {
     ServerShell: typeof import('./src/components/ServerShell.vue')['default']
     SiteCard: typeof import('./src/components/SiteCard.vue')['default']
     SiteIcon: typeof import('./src/components/SiteIcon.vue')['default']
-    SystemInfoDialog: typeof import('./src/components/SystemInfoDialog.vue')['default']
     UpdateServerDialog: typeof import('./src/components/UpdateServerDialog.vue')['default']
     ValidatedFormControl: typeof import('./src/components/ValidatedFormControl.vue')['default']
     WorldDots: typeof import('./src/components/WorldDots.vue')['default']
