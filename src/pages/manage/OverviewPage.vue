@@ -1,7 +1,7 @@
 <template>
   <ServerShell v-if="server" :server="server" :crumbs="crumbs" wide>
     <template #actions>
-      <Button variant="solid" size="sm" label="New site" icon-left="lucide-plus" :disabled="server.status !== 'active'" @click="newSiteOpen = true" />
+      <Button variant="subtle" size="sm" label="New site" icon-left="lucide-plus" :disabled="server.status !== 'active'" @click="newSiteOpen = true" />
     </template>
 
     <div class="relative h-full">
