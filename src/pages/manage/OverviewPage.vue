@@ -62,6 +62,11 @@ const store = useCloudStore()
 const route = useRoute()
 const router = useRouter()
 
+// The map wants the full stage — start with the sidebar collapsed. Assigning
+// state directly (not setSidebarCollapsed) skips localStorage, so landing here
+// never overwrites the remembered preference; expanding by hand still persists.
+store.sidebarCollapsed = true
+
 const server = computed(() => (route.params.serverId ? store.findServer(route.params.serverId) : store.server))
 watchEffect(() => {
   if (!server.value) router.replace('/')

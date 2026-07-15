@@ -1,5 +1,5 @@
 <template>
-  <span class="grid shrink-0 place-items-center bg-surface-gray-1 text-ink-gray-6" :class="tile">
+  <span class="grid shrink-0 place-items-center bg-surface-gray-2 text-ink-gray-6" :class="tile">
     <span class="lucide-globe" :class="icon" />
   </span>
 </template>

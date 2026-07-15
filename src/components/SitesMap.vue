@@ -73,9 +73,7 @@
               <ProviderAvatar :provider="prov" :size="40" />
               <span class="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[var(--surface-base)]" :style="{ background: statusVar(server.status) }" />
             </span>
-            <span class="mt-2 whitespace-nowrap rounded-full border border-outline-gray-2 bg-surface-elevation-1 px-2.5 py-0.5 text-xs text-ink-gray-6 shadow-sm">
-              {{ region.flag }} {{ region.name }}
-            </span>
+            <Badge size="md" variant="outline" theme="gray" :label="`${region.flag} ${region.name}`" class="mt-2 whitespace-nowrap bg-surface-elevation-1 shadow-sm" />
           </div>
         </div>
 
@@ -89,7 +87,7 @@
           <div
             role="button"
             tabindex="0"
-            class="flex cursor-pointer items-center gap-2 rounded-lg border bg-surface-elevation-1 py-2 pl-3 pr-1.5 shadow-sm transition-[box-shadow,border-color] duration-150 ease-out hover:border-outline-gray-3 hover:shadow-md"
+            class="flex cursor-pointer items-center gap-2 rounded-xl border bg-surface-elevation-1 py-2 pl-3 pr-1.5 shadow-sm transition-[box-shadow,border-color] duration-150 ease-out hover:border-outline-gray-3 hover:shadow-md"
             :style="{ width: `${CARD_W}px` }"
             :class="highlightId === c.site.id ? 'border-outline-gray-4 shadow-md' : 'border-outline-gray-2'"
             @click="goSite(c.site)"
@@ -115,7 +113,7 @@
           :style="{ left: `${morePt.x - MORE_W / 2}px`, top: `${morePt.y - 18}px`, animationDelay: `${260 + cards.length * 70}ms` }"
         >
           <button
-            class="flex items-center gap-2 rounded-lg border border-dashed border-outline-gray-3 bg-surface-elevation-1/70 px-3 py-1.5 text-sm font-medium text-ink-gray-6 shadow-sm transition-[box-shadow,color] duration-150 ease-out hover:text-ink-gray-8 hover:shadow-md"
+            class="flex items-center gap-2 rounded-xl border border-dashed border-outline-gray-3 bg-surface-elevation-1/70 px-3 py-1.5 text-sm font-medium text-ink-gray-6 shadow-sm transition-[box-shadow,color] duration-150 ease-out hover:text-ink-gray-8 hover:shadow-md"
             :style="{ width: `${MORE_W}px` }"
             @click="panelOpen = true"
           >
@@ -132,7 +130,7 @@
       <Transition name="ssm-panel">
         <div
           v-if="panelOpen"
-          class="pointer-events-auto flex h-full w-80 flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
+          class="pointer-events-auto flex h-full w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
           :style="{ transformOrigin: 'top left' }"
         >
           <div class="flex items-center justify-between px-4 pb-2 pt-3.5">
@@ -143,32 +141,42 @@
               <span class="lucide-minimize-2 size-4" />
             </button>
           </div>
-          <div class="px-4 pb-2">
+          <div class="shrink-0 px-4 pb-3">
             <FormControl v-model="q" type="text" placeholder="Search" autocomplete="off" class="[&_input]:w-full">
-              <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
+              <template #prefix><span class="lucide-search size-4 text-ink-gray-5" /></template>
             </FormControl>
           </div>
-          <div class="min-h-0 flex-1 overflow-y-auto p-2 pt-0">
-            <p v-if="!panelSites.length" class="px-2 py-3 text-sm text-ink-gray-5">No sites match.</p>
+          <div class="min-h-0 flex-1 divide-y divide-outline-alpha-gray-1 overflow-y-auto border-t border-outline-alpha-gray-1 px-2 pb-2">
+            <p v-if="!panelSites.length" class="px-2.5 py-3 text-sm text-ink-gray-5">No sites match.</p>
             <div
               v-for="site in panelSites"
               :key="site.id"
               role="button"
               tabindex="0"
-              class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg p-2 text-left transition-colors hover:bg-surface-gray-2"
+              class="group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-3 text-left transition-colors hover:bg-surface-gray-2"
               @click="goSite(site)"
               @keydown.enter="goSite(site)"
               @mouseenter="highlightId = site.id"
               @mouseleave="highlightId = null"
             >
-              <span class="size-2 shrink-0 rounded-full" :style="{ background: siteStatusVar(site) }" />
-              <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink-gray-8">{{ site.name }}</span>
-              <Badge v-if="site.status !== 'live'" :theme="statusTheme(site)" variant="subtle" size="sm" :label="statusLabel(site)" class="shrink-0" />
-              <Dropdown :options="siteOptions(site)" placement="bottom-end">
-                <button class="grid size-6 shrink-0 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${site.name}`" @click.stop>
-                  <span class="lucide-ellipsis size-4" />
-                </button>
-              </Dropdown>
+              <span class="relative shrink-0">
+                <SiteIcon size="md" />
+                <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: siteStatusVar(site) }" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center gap-1.5">
+                  <span class="truncate text-sm font-medium text-ink-gray-9">{{ site.name }}</span>
+                  <Badge v-if="site.status !== 'live'" :theme="statusTheme(site)" variant="subtle" size="sm" :label="statusLabel(site)" class="shrink-0" />
+                </span>
+                <span class="mt-1 block truncate text-sm text-ink-gray-5">{{ subLine(site) }}</span>
+              </span>
+              <span @click.stop>
+                <Dropdown :options="siteOptions(site)" placement="bottom-end">
+                  <button class="grid size-6 shrink-0 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" :aria-label="`Actions for ${site.name}`" @click.stop>
+                    <span class="lucide-ellipsis size-4" />
+                  </button>
+                </Dropdown>
+              </span>
             </div>
           </div>
         </div>
@@ -185,7 +193,7 @@
     </div>
 
     <!-- Server — pill that expands into the compact detail card -->
-    <div class="absolute right-4 top-4 z-30">
+    <div ref="serverBox" class="absolute right-4 top-4 z-30">
       <Transition name="ssm-pill">
         <div
           v-if="serverOpen"
@@ -245,9 +253,14 @@
       </Transition>
     </div>
 
-    <!-- No sites yet: the map stays as the stage, the invitation floats on it -->
-    <div v-if="ready && !sites.length" class="absolute inset-0 z-20 grid place-items-center">
-      <div class="rounded-xl border border-outline-gray-1 bg-surface-elevation-1 px-8 py-6 text-center shadow-xl">
+    <!-- No sites yet: the invitation floats just below the server mark (clearing
+         the avatar + region badge) so it never covers the pin. -->
+    <div
+      v-if="ready && !sites.length"
+      class="pointer-events-none absolute z-20 -translate-x-1/2"
+      :style="{ left: `${serverPt.x}px`, top: `${serverPt.y + 64}px` }"
+    >
+      <div class="pointer-events-auto rounded-xl border border-outline-gray-1 bg-surface-elevation-1 px-8 py-6 text-center shadow-xl">
         <div class="text-base font-semibold text-ink-gray-9">No sites on this server yet</div>
         <div class="mt-1 text-sm text-ink-gray-5">Create your first site.</div>
         <Button
@@ -273,10 +286,11 @@ import { Badge, Button, Dropdown, FormControl, toast } from 'frappe-ui'
 import ChangeVersionDialog from './ChangeVersionDialog.vue'
 import ProviderAvatar from './ProviderAvatar.vue'
 import ServerActions from './ServerActions.vue'
+import SiteIcon from './SiteIcon.vue'
 import WorldDots from './WorldDots.vue'
 import { providerById } from '../data/catalog'
 import { useCloudStore } from '../stores/cloud'
-import { inr } from '../utils/format'
+import { inr, timeAgo } from '../utils/format'
 
 const props = defineProps({
   server: { type: Object, required: true },
@@ -348,8 +362,12 @@ onMounted(() => {
     ch.value = entry.contentRect.height
   })
   ro.observe(el.value)
+  document.addEventListener('pointerdown', onStagePointerDown, true)
 })
-onBeforeUnmount(() => ro?.disconnect())
+onBeforeUnmount(() => {
+  ro?.disconnect()
+  document.removeEventListener('pointerdown', onStagePointerDown, true)
+})
 
 // — Slots: five fixed positions fanned around the server, biased away from
 //   the corners the pills own. Angular spread (fix D): every occupied slot —
@@ -443,6 +461,18 @@ const versionOpen = ref(false)
 const highlightId = ref(null)
 const q = ref('')
 
+// The server card closes on outside click — it's a glance, not a workspace.
+// (The sites panel deliberately does NOT: it stays until dismissed.) Menus and
+// dialogs the card spawns portal to <body>, so clicks inside them must not
+// count as outside.
+const serverBox = ref(null)
+function onStagePointerDown(e) {
+  if (!serverOpen.value || versionOpen.value) return
+  if (serverBox.value?.contains(e.target)) return
+  if (e.target.closest?.('[role="menu"], [role="dialog"], [data-reka-popper-content-wrapper]')) return
+  serverOpen.value = false
+}
+
 const panelSites = computed(() => {
   const term = q.value.trim().toLowerCase()
   return ordered.value.filter((s) => !term || s.name.toLowerCase().includes(term))
@@ -467,7 +497,17 @@ function siteStatusVar(site) {
   return 'var(--ink-amber-7)'
 }
 function statusLabel(site) {
-  return { live: 'Active', creating: 'Setting up…', restoring: 'Restoring…', moving: 'Moving…', suspended: 'Paused' }[site.status] || site.status
+  return { live: 'Active', broken: 'Broken', creating: 'Setting up…', restoring: 'Restoring…', moving: 'Moving…', suspended: 'Paused' }[site.status] || site.status
+}
+function appsLabel(site) {
+  const n = site.apps?.length ?? 0
+  return n === 1 ? '1 app' : `${n} apps`
+}
+// Row subtext mirrors SiteCard: apps count, plus backup recency when there is
+// one. Lives on its own line so the status badge has room on the line above.
+function subLine(site) {
+  const backup = store.lastBackupOf(site)
+  return backup ? `${appsLabel(site)} · backed up ${timeAgo(backup.at)}` : appsLabel(site)
 }
 function statusTheme(site) {
   if (site.status === 'live') return 'green'
