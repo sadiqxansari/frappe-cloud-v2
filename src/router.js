@@ -20,8 +20,17 @@ const routes = [
   { path: '/settings', name: 'central-settings', component: () => import('./pages/manage/CentralSettingsPage.vue') },
   { path: '/users', redirect: '/settings' },
   // Server (operational) level. Marketplace lives here, scoped to the server.
-  { path: '/manage/:serverId?', name: 'server-overview', component: () => import('./pages/manage/OverviewPage.vue') },
-  { path: '/manage/:serverId/sites/:siteId', name: 'site-detail', component: () => import('./pages/manage/SiteDetailPage.vue') },
+  // The site detail is a child of the map page: it renders as a floating card
+  // over the (still-mounted) map, so opening/closing a site never re-runs the
+  // map's arrival choreography and the sites panel keeps its state.
+  {
+    path: '/manage/:serverId?',
+    name: 'server-overview',
+    component: () => import('./pages/manage/OverviewPage.vue'),
+    children: [
+      { path: 'sites/:siteId', name: 'site-detail', component: () => import('./pages/manage/SiteDetailPage.vue') },
+    ],
+  },
   { path: '/manage/:serverId/analytics', name: 'server-analytics', component: () => import('./pages/manage/AnalyticsPage.vue') },
   // Settings moved into a modal on the brand dropdown; keep old links working.
   { path: '/manage/:serverId/settings', redirect: (to) => `/manage/${to.params.serverId}` },
