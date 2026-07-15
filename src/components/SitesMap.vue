@@ -82,20 +82,23 @@
           v-for="(c, i) in cards"
           :key="c.site.id"
           class="ssm-land absolute z-10"
-          :style="{ left: `${c.x - CARD_W / 2}px`, top: `${c.y - 20}px`, animationDelay: `${260 + i * 70}ms` }"
+          :style="{ left: `${c.x - CARD_W / 2}px`, top: `${c.y - CARD_H / 2}px`, animationDelay: `${260 + i * 70}ms` }"
         >
           <div
             role="button"
             tabindex="0"
-            class="flex cursor-pointer items-center gap-2 rounded-xl border bg-surface-elevation-1 py-2 pl-3 pr-1.5 shadow-sm transition-[box-shadow,border-color] duration-150 ease-out hover:border-outline-gray-3 hover:shadow-md"
+            class="flex cursor-pointer items-center gap-2 rounded-xl border bg-surface-elevation-1 py-2 pl-2 pr-3 shadow-sm transition-[box-shadow,border-color] duration-150 ease-out hover:border-outline-gray-3 hover:shadow-md"
             :style="{ width: `${CARD_W}px` }"
             :class="highlightId === c.site.id ? 'border-outline-gray-4 shadow-md' : 'border-outline-gray-2'"
             @click="goSite(c.site)"
             @keydown.enter="goSite(c.site)"
           >
-            <span class="relative flex size-2 shrink-0">
-              <span v-if="c.site.status === 'broken'" class="ssm-pulse absolute -inset-1 rounded-full" style="background: var(--ink-red-7)" />
-              <span class="relative size-2 rounded-full" :style="{ background: siteStatusVar(c.site) }" />
+            <span class="relative shrink-0">
+              <SiteIcon size="md" />
+              <span class="absolute -bottom-px -right-px flex size-2.5">
+                <span v-if="c.site.status === 'broken'" class="ssm-pulse absolute -inset-1 rounded-full" style="background: var(--ink-red-7)" />
+                <span class="relative size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: siteStatusVar(c.site) }" />
+              </span>
             </span>
             <span class="min-w-0 flex-1 truncate text-sm font-medium text-ink-gray-8">{{ c.site.name }}</span>
             <Dropdown :options="siteOptions(c.site)" placement="bottom-end">
@@ -376,6 +379,7 @@ onBeforeUnmount(() => {
 //   octopus. Scaled down gently on small viewports and clamped inside the
 //   frame so nothing hides under the chrome.
 const CARD_W = 236
+const CARD_H = 48 // py-2 (16) + 32px SiteIcon tile; drives card offset + line landing
 const MORE_W = 128
 const SLOTS = [
   [-290, -88],
@@ -439,7 +443,7 @@ const lines = computed(() => {
     id: `site-${c.site.id}`,
     kind: 'site',
     delay: 80 + i * 70,
-    ...cubicTo(edgePoint(c, CARD_W / 2, 20)),
+    ...cubicTo(edgePoint(c, CARD_W / 2, CARD_H / 2)),
   }))
   if (extraCount.value > 0) {
     out.push({
