@@ -315,6 +315,23 @@ function grownState() {
       { id: uid('ph'), date: '28 Apr 2026', from: 'Business', to: 'Enterprise', direction: 'upgrade' },
     ],
   })
+  // A multi-tenant production server. The point of the long site list is the
+  // DB analyzer: "usage per database" overflows the top 5, so the "See all"
+  // panel (search · scroll · drill-in) is demonstrable in this handoff.
+  const tenants = [
+    'Acme', 'Globex', 'Initech', 'Umbrella', 'Wayne Enterprises', 'Stark Industries',
+    'Wonka', 'Hooli', 'Pied Piper', 'Soylent', 'Massive Dynamic', 'Cyberdyne',
+    'Tyrell', 'Oscorp', 'Aperture', 'Blue Sun', 'Gekko Co', 'Vandelay',
+  ]
+  const appMixes = [['erpnext'], ['erpnext', 'crm'], ['erpnext', 'hr'], ['erpnext', 'crm', 'hr']]
+  const prodServer = makeServer({
+    name: 'atlas-prod-01',
+    planId: 'enterprise',
+    creditBalance: 25,
+    creditTotal: 25,
+    sites: tenants.map((t, i) => makeSite(t, appMixes[i % appMixes.length])),
+    health: { cpuPct: 47, memUsedGb: 9.2, memTotalGb: 16, diskFrac: 0.62 },
+  })
   // A server that's fallen over — shows the red map pin + "Broken" state.
   const brokenServer = makeServer({
     name: 'atlas-build-01',
@@ -326,7 +343,7 @@ function grownState() {
     sites: [makeSite('Build Box', ['erpnext'])],
     health: { cpuPct: 0, memUsedGb: 0, memTotalGb: 1.0, diskFrac: 0.42 },
   })
-  s.servers = [server, euServer, sgServer, usServer, brokenServer]
+  s.servers = [server, euServer, sgServer, usServer, prodServer, brokenServer]
   s.cardOnFile = true // a paid user — no trial credit badge
   s.billingProfile = {
     taxRegion: 'IN',
@@ -1165,6 +1182,16 @@ export const useCloudStore = defineStore('cloud', {
         srv.diskAddonGb = addon
         this.logActivity(`Increased storage on ${srv.name} to ${base + addon} GB`, { tag: 'server' })
       }, 1200)
+    },
+
+    // Give back disk (e.g. purging binary logs from the DB analyzer). Runs
+    // synchronously — the caller owns its own delay/failure story.
+    reclaimServerDisk(serverId, gb) {
+      const srv = this.findServer(serverId)
+      if (!srv || !gb) return
+      const total = this.healthOf(srv).diskTotal
+      srv.health.diskFrac = Math.max(srv.health.diskFrac - gb / total, 0.02)
+      this.logActivity(`Purged ${gb} GB of binary logs on ${srv.name}`, { tag: 'server' })
     },
 
     // Migration is in-place — the same server entry changes status rather than
