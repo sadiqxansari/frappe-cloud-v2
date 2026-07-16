@@ -1,9 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="sm">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">{{ stepTitle }}</span>
-    </template>
-
+  <Dialog v-model:open="open" :title="stepTitle" size="sm">
     <!-- Step 1 — what happens -->
     <div v-if="step === 1" class="space-y-4">
       <div class="flex items-start gap-3 rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-3">

@@ -3,7 +3,7 @@
   <section
     :class="flat
       ? 'border-b border-outline-alpha-gray-1'
-      : 'mt-4 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1'"
+      : 'mt-4 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base'"
   >
     <!-- Header row: a flex-1 toggle for icon/title, an optional actions slot, then the chevron.
          Actions sit outside the toggle so their own controls (dropdowns) don't collapse the row. -->

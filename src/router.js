@@ -11,8 +11,10 @@ const routes = [
   // Old signup links now land on the new signup route.
   { path: '/setup', redirect: '/signup' },
   { path: '/setup/account', redirect: '/signup' },
-  { path: '/setup/app', component: () => import('./pages/setup/AppStep.vue') },
-  { path: '/setup/server', component: () => import('./pages/setup/ServerStep.vue') },
+  { path: '/setup/app', component: () => import('./pages/setup/SiteSetupPage.vue') },
+  // The server/plan step is gone from onboarding (the server is implied on the
+  // site-setup screen, matching Central) — keep old links working.
+  { path: '/setup/server', redirect: '/setup/app' },
   { path: '/setup/provisioning', component: () => import('./pages/setup/ProvisioningStep.vue') },
   { path: '/app', component: () => import('./pages/app/AppShell.vue') },
   // Mock payment gateway — the Pay round-trip's destination (returns to origin).
@@ -39,6 +41,7 @@ const routes = [
   { path: '/manage/:serverId/developer/database', name: 'server-database', component: () => import('./pages/manage/DatabasePage.vue') },
   { path: '/manage/:serverId/developer/sql', name: 'server-sql', component: () => import('./pages/manage/SqlPlaygroundPage.vue') },
   { path: '/manage/:serverId/developer/tasks', name: 'server-tasks', component: () => import('./pages/manage/TasksPage.vue') },
+  { path: '/manage/:serverId/developer/tasks/:taskId', name: 'server-task-detail', component: () => import('./pages/manage/TaskDetailPage.vue') },
   // Legacy redirects.
   { path: '/account', redirect: '/billing' },
   { path: '/marketplace', redirect: '/servers' },
@@ -53,7 +56,11 @@ router.beforeEach((to) => {
   const store = useCloudStore()
 
   if (to.path === '/') {
-    if (!store.server) return '/signup'
+    // Not signed in ⇒ start the funnel. A signed-in but server-less account
+    // (a non-product signup that hasn't created a site yet) lands in Central,
+    // whose empty state invites them to add their first server.
+    if (!store.isAuthed) return '/signup'
+    if (!store.server) return '/servers'
     // The landing fork (decisions 1 & 9): a single-server owner lives in the
     // Desk; a fleet operator — or anyone who's ever graduated to a 2nd server
     // (sticky `centralUnlocked`) — lands in Central, their home for the fleet.
@@ -61,10 +68,16 @@ router.beforeEach((to) => {
     return '/app'
   }
 
-  // Screens that need at least one server to exist.
+  // The Desk, the pay round-trip, and per-server surfaces can't exist without a
+  // server; bounce a server-less visitor to Central (if signed in) or signup.
+  const needsServer = to.path === '/app' || to.path === '/pay' || to.path.startsWith('/manage')
+  if (needsServer && !store.allServers.length) return store.isAuthed ? '/servers' : '/signup'
+
+  // Central (account-level) surfaces exist for a server-less account too, so
+  // they only require sign-in — not a server.
   const central = ['/servers', '/settings', '/users', '/account']
-  const needsServer = to.path === '/app' || to.path === '/pay' || to.path.startsWith('/manage') || to.path.startsWith('/billing') || central.includes(to.path)
-  if (needsServer && !store.allServers.length) return '/'
+  const needsAuth = to.path.startsWith('/billing') || central.includes(to.path)
+  if (needsAuth && !store.isAuthed) return '/signup'
 })
 
 export default router

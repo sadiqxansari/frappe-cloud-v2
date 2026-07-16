@@ -1,9 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="sm">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">Use your own domain</span>
-    </template>
-
+  <Dialog v-model:open="open" title="Use your own domain" size="sm">
     <FormControl v-model="domain" type="text" label="Domain" placeholder="shop.mycompany.in" />
     <p class="mt-2 text-p-sm text-ink-gray-5">
       We'll show the DNS records to add at your provider. Add them, then verify — we set up SSL once DNS checks out.

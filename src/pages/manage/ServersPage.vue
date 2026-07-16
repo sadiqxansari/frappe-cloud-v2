@@ -132,7 +132,7 @@
       <!-- First run: nothing deployed yet, so the map is all + spots -->
       <div v-if="!store.allServers.length" class="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-4">
         <EmptyState
-          class="pointer-events-auto w-[26rem] max-w-full rounded-xl border border-outline-gray-1 bg-surface-elevation-1 p-6 shadow-lg"
+          class="pointer-events-auto w-[26rem] max-w-full rounded-lg border border-outline-gray-1 bg-surface-elevation-1 p-6 shadow-lg"
           icon="lucide-server"
           title="No servers yet"
           description="Create your first server to host your sites — or pick a spot on the map."

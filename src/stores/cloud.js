@@ -4,6 +4,13 @@ import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planBy
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
+
+// Agent-style job id: YYYYMMDD-HHMMSS, matching the platform's run ids.
+function newJobId() {
+  const d = new Date()
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+}
 import { BACKGROUND_JOBS, makeProcesses } from '../data/system'
 import { fmtDateTime, slugify, usdToDisplay } from '../utils/format'
 
@@ -501,6 +508,12 @@ export const useCloudStore = defineStore('cloud', {
 
     allServers: (s) => s.servers,
 
+    // Signed in? A fresh persona has neither an email nor a server, so it's
+    // false until signUp() records an email (or the persona already owns a
+    // server). Gates the Central dashboard, which a server-less account may
+    // still reach (its empty state lives in ServersPage).
+    isAuthed: (s) => !!s.user.email || s.servers.length > 0,
+
     // How many servers the account has — forks the whole home experience.
     // 1 server (any number of sites) = Desk-home + FC modal; 2+ = Central-home
     // (decision 1). Many sites stay one bill, so they stay simple.
@@ -516,6 +529,11 @@ export const useCloudStore = defineStore('cloud', {
 
     findServer() {
       return (id) => this.allServers.find((srv) => srv.id === id) || null
+    },
+
+    // A single background job by id — powers the Tasks detail page.
+    findJob() {
+      return (id) => this.jobs.find((j) => j.id === id) || null
     },
 
     serverOfSite() {
@@ -713,7 +731,7 @@ export const useCloudStore = defineStore('cloud', {
     // success; pass `steps` for a richer breakdown (the Install/SSL flows do).
     logTask(name, { site = null, status = 'success', duration = null, steps = null } = {}) {
       const job = {
-        id: `job-${this.jobSeq++}`,
+        id: `${newJobId()}-${(this.jobSeq++).toString(16)}`,
         name,
         site,
         status,

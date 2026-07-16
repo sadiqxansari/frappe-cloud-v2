@@ -1,9 +1,5 @@
 <template>
-  <Dialog v-model:open="open" size="sm">
-    <template #title>
-      <span class="text-base font-semibold text-ink-gray-9">Migration scheduled</span>
-    </template>
-
+  <Dialog v-model:open="open" title="Migration scheduled" size="sm">
     <div v-if="server?.migration">
       <p class="text-p-sm text-ink-gray-6">
         {{ server.name }} is scheduled to migrate on
@@ -11,7 +7,7 @@
       </p>
 
       <!-- From → To -->
-      <div class="mt-4 flex items-center gap-3 rounded-xl border border-outline-gray-2 p-3">
+      <div class="mt-4 flex items-center gap-3 rounded-lg border border-outline-gray-2 p-3">
         <div class="min-w-0 flex-1">
           <div class="text-xs text-ink-gray-5">From</div>
           <div class="truncate text-sm font-medium text-ink-gray-9">{{ fromRegion?.name }}</div>

@@ -51,7 +51,7 @@
       </Tooltip>
     </div>
 
-    <Dialog v-model:open="showIncompatible" :options="{ title: 'Incompatible app', size: 'sm' }">
+    <Dialog v-model:open="showIncompatible" title="Incompatible app" size="sm">
       <template #body-content>
         <p class="text-sm text-ink-gray-7">{{ app.name }} needs {{ app.needs || 'a newer Frappe version' }} to install.</p>
         <div class="mt-3 flex flex-col gap-1.5 text-sm">

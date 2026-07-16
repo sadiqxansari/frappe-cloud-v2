@@ -2,68 +2,52 @@
   <!-- No branded header inside the Desk — the owner already knows they're in
        Frappe Cloud. Bare dialog → content runs edge-to-edge with no outer
        padding; we own the close button. Each panel carries its own title. -->
-  <Dialog v-model:open="open" size="5xl" bare>
-    <!-- A settings-style modal: a left rail of areas, content on the right.
-         No Overview — you land on a real task; the rail flags what needs you. -->
-    <div class="relative flex h-[40rem] overflow-hidden">
-      <button
-        class="absolute right-3 top-3 z-20 grid size-7 place-items-center rounded-md text-ink-gray-6 hover:bg-surface-gray-3"
-        aria-label="Close"
-        @click="open = false"
-      >
-        <span class="lucide-x size-4" />
-      </button>
-      <nav class="w-48 shrink-0 space-y-0.5 overflow-y-auto border-r border-outline-gray-2 bg-surface-gray-1 p-4">
-        <!-- The modal's name — a calm heading, not a tab. -->
-        <div class="mb-3 px-2.5 pt-1 text-sm font-semibold text-ink-gray-9">Cloud settings</div>
-        <button
-          v-for="t in tabs"
-          :key="t.label"
-          class="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors"
-          :class="active === t.label ? 'bg-surface-elevation-3 font-medium text-ink-gray-9 shadow-sm' : 'text-ink-gray-7 hover:bg-surface-gray-2'"
-          @click="active = t.label"
-        >
-          <span class="size-4 shrink-0 text-ink-gray-6" :class="t.icon" />
-          <span class="min-w-0 flex-1 truncate">{{ t.label }}</span>
-          <span v-if="t.badge" class="grid h-4 min-w-4 place-items-center rounded-full bg-surface-gray-3 px-1 text-[10px] font-semibold tabular-nums text-ink-gray-7">{{ t.badge }}</span>
-          <span v-else-if="t.dot" class="size-1.5 shrink-0 rounded-full bg-[var(--ink-amber-7)]" />
-        </button>
-      </nav>
+  <SettingsDialog v-model="open" v-model:tab="active" :shortcut="false" size="5xl">
+    <!-- bare Dialog has no chrome, so we own the close affordance. -->
+    <Button class="absolute right-4 top-4 z-20" variant="ghost" icon="lucide-x" aria-label="Close" @click="open = false" />
 
-      <div class="min-w-0 flex-1 overflow-y-auto">
-        <!-- Title (and the Marketplace search) stay pinned while the panel scrolls. -->
-        <div class="sticky top-0 z-10 space-y-3 bg-surface-elevation-1 px-10 pb-4 pt-8">
-          <header class="flex items-start justify-between gap-3 pr-8">
-            <div class="min-w-0">
-              <h2 class="text-lg font-semibold leading-tight text-ink-gray-9">{{ active }}</h2>
-              <p class="mt-0.5 text-p-sm text-ink-gray-5">{{ panelMeta[active] }}</p>
+    <SettingsSidebar>
+      <SettingsNavGroup label="Cloud settings">
+        <SettingsNavItem v-for="t in tabs" :key="t.label" :value="t.label">
+          <template #prefix>
+            <span class="size-4 shrink-0 text-ink-gray-6" :class="t.icon" />
+          </template>
+          {{ t.label }}
+          <template #suffix>
+            <span v-if="t.badge" class="grid h-4 min-w-4 place-items-center rounded-full bg-surface-gray-3 px-1 text-[10px] font-semibold tabular-nums text-ink-gray-7">{{ t.badge }}</span>
+            <span v-else-if="t.dot" class="size-1.5 shrink-0 rounded-full bg-[var(--ink-amber-7)]" />
+          </template>
+        </SettingsNavItem>
+      </SettingsNavGroup>
+    </SettingsSidebar>
+
+    <SettingsContent>
+      <!-- Marketplace — one grid that both installs and manages: an installed
+           app shows Update (when there's one) or Uninstall; a fresh one shows
+           Install, which runs a real-feeling progress ring you can cancel. -->
+      <SettingsPanel class="gap-6" value="Marketplace">
+        <SettingsHeader>
+          <div class="flex flex-col gap-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <h2 class="text-lg font-semibold leading-tight text-ink-gray-9">Marketplace</h2>
+                <p class="mt-0.5 text-p-sm text-ink-gray-5">Install apps and keep them up to date.</p>
+              </div>
+              <!-- Update all opens the same Updates dialog the server shell uses. -->
+              <Button v-if="siteUpdates.length" size="sm" variant="solid" :label="`Update all (${siteUpdates.length})`" class="shrink-0" @click="updatesOpen = true" />
             </div>
-            <!-- Update all opens the same Updates dialog the server shell uses —
-                 select which, schedule, or skip failing patches. -->
-            <Button
-              v-if="active === 'Marketplace' && siteUpdates.length"
-              size="sm"
-              variant="solid"
-              :label="`Update all (${siteUpdates.length})`"
-              class="shrink-0"
-              @click="updatesOpen = true"
-            />
-          </header>
-          <div v-if="active === 'Marketplace'" class="flex gap-2">
-            <div class="min-w-0 flex-1">
-              <FormControl v-model="appSearch" type="text" placeholder="Search apps" autocomplete="off" />
-            </div>
-            <div class="w-1/4 shrink-0">
-              <FormControl v-model="category" type="select" :options="categoryOptions" />
+            <div class="flex gap-2">
+              <div class="min-w-0 flex-1">
+                <FormControl v-model="appSearch" type="text" placeholder="Search apps" autocomplete="off" />
+              </div>
+              <div class="w-1/4 shrink-0">
+                <FormControl v-model="category" type="select" :options="categoryOptions" />
+              </div>
             </div>
           </div>
-        </div>
-
-        <div class="px-10 pb-8 pt-2">
-          <!-- Marketplace — one grid that both installs and manages: an installed
-               app shows Update (when there's one) or Uninstall; a fresh one shows
-               Install, which runs a real-feeling progress ring you can cancel. -->
-          <section v-if="active === 'Marketplace'">
+        </SettingsHeader>
+        <SettingsBody>
+          <section>
             <!-- No cards — compact rows divided by a rule that runs under the
                  text only (not the logo), like a list. -->
             <div class="app-grid grid gap-x-8 sm:grid-cols-2">
@@ -140,11 +124,16 @@
             </div>
           </div>
           <p v-if="!marketApps.length" class="py-3 text-p-sm text-ink-gray-5">No apps {{ category ? 'in this category' : 'match' }}{{ appSearch ? ` “${appSearch}”` : '' }}.</p>
-        </section>
+          </section>
+        </SettingsBody>
+      </SettingsPanel>
 
-        <!-- Domains — the default address plus any custom domains, connected
-             end to end (add → DNS → verify → SSL) right here. -->
-        <section v-else-if="active === 'Domains'" class="space-y-4">
+      <!-- Domains — the default address plus any custom domains, connected
+           end to end (add → DNS → verify → SSL) right here. -->
+      <SettingsPanel class="gap-6" value="Domains">
+        <SettingsHeader title="Domains" description="The addresses this site answers on." />
+        <SettingsBody>
+          <section class="space-y-4">
           <div class="flex gap-2">
             <FormControl
               v-model="newDomain"
@@ -221,13 +210,18 @@
 
             <p v-if="!domains.length" class="text-p-sm text-ink-gray-5">No custom domains yet. Add one above and we'll handle SSL once DNS checks out.</p>
           </div>
-        </section>
+          </section>
+        </SettingsBody>
+      </SettingsPanel>
 
-        <!-- Billing — plan, what it's using, cost, balance, payment method. -->
-        <section v-else-if="active === 'Billing'" class="space-y-4">
+      <!-- Billing — plan, what it's using, cost, balance, payment method. -->
+      <SettingsPanel class="gap-6" value="Billing">
+        <SettingsHeader title="Billing" description="Your plan, usage, credit and payment method." />
+        <SettingsBody>
+          <section class="space-y-4">
           <!-- Plan + live consumption in one card: the plan up top, the meters
                across the bottom. -->
-          <section class="rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+          <section class="rounded-lg border border-outline-gray-2 bg-surface-base p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <div class="text-sm text-ink-gray-5">Plan</div>
@@ -263,7 +257,7 @@
                until billing is set up), so both stay symmetric three-line stats. -->
           <div class="grid gap-4 sm:grid-cols-2">
             <!-- Estimated this cycle — the exact card from Central billing. -->
-            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="flex flex-col rounded-lg border border-outline-gray-2 bg-surface-base p-5">
               <span class="text-sm text-ink-gray-5">Estimated this cycle</span>
               <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(store.estimatedThisCycle) }}</div>
               <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
@@ -278,7 +272,7 @@
 
             <!-- Credit balance — coverage status, then Add credit + auto-recharge,
                  paired exactly like Central's wallet card. -->
-            <section class="flex flex-col rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-5">
+            <section class="flex flex-col rounded-lg border border-outline-gray-2 bg-surface-base p-5">
               <span class="text-sm text-ink-gray-5">{{ balanceLabel }}</span>
               <div class="mt-1.5 text-2xl font-semibold tabular-nums text-ink-gray-9">{{ money(balanceValue) }}</div>
               <p class="mt-1.5 flex items-center gap-1.5 text-xs" :class="covers ? 'text-ink-gray-5' : 'text-ink-amber-8'">
@@ -307,11 +301,16 @@
             </div>
             <Button class="mt-3" variant="solid" size="sm" label="Add payment method" icon-left="lucide-plus" @click="pmSetupOpen = true" />
           </div>
-        </section>
+          </section>
+        </SettingsBody>
+      </SettingsPanel>
 
-        <!-- Advanced — the escape hatches out of the Desk: the full server, and
-             the account. No cards; the action sits at the far right of each. -->
-        <section v-else-if="active === 'Advanced'">
+      <!-- Advanced — the escape hatches out of the Desk: the full server, and
+           the account. No cards; the action sits at the far right of each. -->
+      <SettingsPanel class="gap-6" value="Advanced">
+        <SettingsHeader title="Advanced" description="Deeper controls for your server." />
+        <SettingsBody>
+          <section>
           <div class="divide-y divide-outline-gray-2">
             <div class="flex items-start justify-between gap-3 py-4">
               <div class="min-w-0">
@@ -329,11 +328,11 @@
               <Button class="shrink-0" variant="subtle" size="sm" label="Manage account" icon-right="lucide-arrow-up-right" @click="openAccount" />
             </div>
           </div>
-        </section>
-        </div>
-      </div>
-    </div>
-  </Dialog>
+          </section>
+        </SettingsBody>
+      </SettingsPanel>
+    </SettingsContent>
+  </SettingsDialog>
 
   <!-- The batch Updates dialog, shared with the server shell (select / schedule
        / skip failing patches). Scoped to this owner's single server. -->
@@ -346,8 +345,7 @@
 
   <!-- Add credit — the same dialog Central uses; the credit lands in the shared
        wallet, so it shows up in Central too. Opened in-Desk, no redirect. -->
-  <Dialog v-model:open="creditOpen" size="sm">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Add credit</span></template>
+  <Dialog v-model:open="creditOpen" title="Add credit" size="sm">
     <div class="space-y-3">
       <div class="flex gap-2">
         <Button v-for="amt in [2000, 5000, 10000]" :key="amt" :variant="creditAmount === String(amt) ? 'solid' : 'subtle'" :label="money(amt)" @click="creditAmount = String(amt)" />
@@ -363,8 +361,7 @@
   </Dialog>
 
   <!-- Budget alert — same as Central. -->
-  <Dialog v-model:open="budgetOpen" size="sm">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Set a budget alert</span></template>
+  <Dialog v-model:open="budgetOpen" title="Set a budget alert" size="sm">
     <FormControl v-model="budget" type="number" label="Alert me when the cycle estimate exceeds" placeholder="20000" />
     <template #actions>
       <div class="flex justify-end gap-2">
@@ -375,8 +372,7 @@
   </Dialog>
 
   <!-- Auto-recharge — same as Central: turn on / configure / turn off all here. -->
-  <Dialog v-model:open="rechargeOpen" size="sm">
-    <template #title><span class="text-xl font-semibold text-ink-gray-9">Auto-recharge</span></template>
+  <Dialog v-model:open="rechargeOpen" title="Auto-recharge" size="sm">
     <div class="space-y-3">
       <p class="text-p-sm text-ink-gray-6">Auto top-up so a low balance never interrupts service.</p>
       <FormControl v-model="rechargeForm.threshold" type="number" label="Top up when the balance drops below" placeholder="2000" />
@@ -416,7 +412,23 @@
 <script setup>
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
+import {
+  Badge,
+  Button,
+  Dialog,
+  Dropdown,
+  FormControl,
+  SettingsBody,
+  SettingsContent,
+  SettingsDialog,
+  SettingsHeader,
+  SettingsNavGroup,
+  SettingsNavItem,
+  SettingsPanel,
+  SettingsSidebar,
+  Tooltip,
+  toast,
+} from 'frappe-ui'
 import Alert from './Alert.vue'
 import AppIcon from './AppIcon.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
@@ -756,14 +768,6 @@ const tabs = computed(() => [
   { label: 'Domains', icon: 'lucide-globe', dot: domainsNeedAttention.value },
   { label: 'Advanced', icon: 'lucide-settings-2' },
 ])
-
-// A one-line "what is this" under each panel title (the modal has no header).
-const panelMeta = {
-  Billing: 'Your plan, usage, credit and payment method.',
-  Marketplace: 'Install apps and keep them up to date.',
-  Domains: 'The addresses this site answers on.',
-  Advanced: 'Deeper controls for your server.',
-}
 
 // — Round-trips out of the Desk that must bring the user back (return-to-origin).
 function origin() {

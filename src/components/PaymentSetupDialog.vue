@@ -3,11 +3,7 @@
        don't have them yet), then choosing how to pay. We never collect the card
        or UPI ourselves — a gateway does. Shared by the Central billing page and
        the Desk's Frappe Cloud modal so there's one FTU, not two. -->
-  <Dialog v-model:open="open" size="md">
-    <template #title>
-      <span class="text-xl font-semibold text-ink-gray-9">{{ pmStep === 1 ? 'Add billing details' : editingPm ? 'Update payment method' : 'Add payment method' }}</span>
-    </template>
-
+  <Dialog v-model:open="open" :title="pmStep === 1 ? 'Add billing details' : editingPm ? 'Update payment method' : 'Add payment method'" size="md">
     <!-- Step 1: billing details (only when we don't have them yet) -->
     <div v-if="pmStep === 1" class="space-y-3">
       <p class="text-p-sm text-ink-gray-6">These go on every invoice — we'll need them before adding a payment method.</p>

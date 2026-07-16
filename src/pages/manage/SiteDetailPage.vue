@@ -1,5 +1,5 @@
 <template>
-  <ServerShell v-if="site" :server="server" :crumbs="crumbs">
+  <ServerShell v-if="site" :server="server" :crumbs="crumbs" class="site-detail-shell">
     <!-- Open site lives in the top nav bar (right-most action slot). -->
     <template #actions>
       <Button variant="subtle" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
@@ -13,7 +13,7 @@
          menu sit here; Open site is up in the nav bar. -->
     <div class="relative -mx-4 -mt-8 overflow-hidden px-4 pb-7 pt-8 sm:-mx-8 sm:px-8">
       <div class="dot-field pointer-events-none absolute inset-0" aria-hidden="true" />
-      <div class="relative flex items-start justify-between gap-4 rounded-xl border border-outline-gray-2 bg-surface-elevation-1 p-4">
+      <div class="relative flex items-start justify-between gap-4 rounded-lg border border-outline-gray-2 bg-surface-base p-4">
         <div class="flex min-w-0 items-center gap-3">
           <SiteIcon size="lg" />
           <div class="min-w-0">
@@ -71,18 +71,14 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="min-w-0">
           <div class="text-sm font-medium text-ink-gray-8">Automatic backups</div>
-          <div class="mt-0.5 text-p-sm text-ink-gray-5">Taken on a schedule and kept for 30 days.</div>
+          <div class="mt-0.5 text-p-sm text-ink-gray-5">{{ autoBackups ? 'Taken on a schedule. Keeping 7 daily · 4 weekly · 6 monthly · 1 yearly backups.' : 'Automatic backups are disabled.' }}</div>
         </div>
         <div class="flex items-center gap-2">
-          <div class="w-40">
-            <FormControl
-              type="select"
-              :modelValue="site.backupSchedule"
-              :options="scheduleOptions"
-              @update:modelValue="setSchedule"
-            />
-          </div>
-          <Button variant="subtle" size="sm" label="Back up now" icon-left="lucide-archive" @click="backupNow" />
+          <Button v-if="!autoBackups" variant="subtle" size="sm" label="Enable backups" @click="toggleAutoBackups" />
+          <Dropdown v-else :options="scheduleMenu" placement="bottom-end">
+            <Button variant="subtle" size="sm" :label="scheduleLabel" icon-right="lucide-chevron-down" />
+          </Dropdown>
+          <Button variant="subtle" size="sm" label="Backup now" icon-left="lucide-archive" @click="backupNow" />
         </div>
       </div>
 
@@ -101,15 +97,20 @@
             <span class="truncate text-sm font-medium text-ink-gray-8">{{ fmtDateTime(row._b.at) }}</span>
             <Badge v-if="row._b.kind === 'manual'" theme="gray" variant="subtle" label="Manual" />
           </div>
-          <span v-else-if="column.key === 'size'" class="text-sm tabular-nums text-ink-gray-6">{{ row._b.size }}</span>
-          <div v-else-if="column.key === 'actions'" class="flex items-center justify-end gap-1">
-            <Button variant="ghost" size="sm" label="Download" @click="download" />
-            <Button variant="ghost" size="sm" label="Restore" @click="askRestore(row._b)" />
-          </div>
+          <span v-else-if="column.key === 'database'" class="text-sm tabular-nums text-ink-gray-7">{{ row._b.database }}</span>
+          <span v-else-if="column.key === 'public'" class="text-sm tabular-nums text-ink-gray-6">{{ row._b.public }}</span>
+          <span v-else-if="column.key === 'private'" class="text-sm tabular-nums text-ink-gray-6">{{ row._b.private }}</span>
+          <span v-else-if="column.key === 'offsite'">
+            <span v-if="row._b.offsite" class="lucide-check size-4 text-ink-green-6" />
+            <span v-else class="lucide-x size-4 text-ink-gray-4" />
+          </span>
+          <Dropdown v-else-if="column.key === 'actions'" :options="backupMenu(row._b)" placement="bottom-end">
+            <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" aria-label="Backup actions"><span class="lucide-ellipsis size-4" /></button>
+          </Dropdown>
         </template>
       </ListView>
       <EmptyState v-else icon="lucide-archive" title="No backups yet" description="The first automatic backup runs tonight at 2 AM. You can also back up now.">
-        <Button variant="subtle" size="sm" label="Back up now" icon-left="lucide-archive" @click="backupNow" />
+        <Button variant="subtle" size="sm" label="Backup now" icon-left="lucide-archive" @click="backupNow" />
       </EmptyState>
     </section>
 
@@ -132,13 +133,9 @@
         row-key="key"
       >
         <template #cell="{ column, row }">
-          <div v-if="column.key === 'name'" class="min-w-0">
-            <div class="truncate text-sm font-medium text-ink-gray-8" :class="{ 'font-mono': !row.label }">{{ row.label || row.key }}</div>
-            <div v-if="row.label" class="truncate font-mono text-xs text-ink-gray-4">{{ row.key }}</div>
-          </div>
+          <span v-if="column.key === 'name'" class="truncate font-mono text-sm text-ink-gray-8">{{ row.key }}</span>
           <span v-else-if="column.key === 'value'" class="truncate font-mono text-xs text-ink-gray-7">{{ row.value }}</span>
-          <Badge v-else-if="column.key === 'type'" theme="gray" variant="subtle" :label="row.type" />
-          <Dropdown v-else-if="column.key === 'actions'" :options="configMenu(row)" placement="bottom-end">
+          <Dropdown v-else-if="column.key === 'actions' && row.key !== 'db_name'" :options="configMenu(row)" placement="bottom-end">
             <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Edit ${row.key}`"><span class="lucide-ellipsis size-4" /></button>
           </Dropdown>
         </template>
@@ -151,13 +148,6 @@
       <div>
         <h2 class="text-base font-semibold text-ink-gray-8">General</h2>
         <div class="mt-1">
-          <div class="flex flex-wrap items-center justify-between gap-4 border-b border-outline-alpha-gray-1 py-4">
-            <div class="min-w-0">
-              <div class="text-sm font-medium text-ink-gray-8">Frappe version</div>
-              <div class="mt-0.5 text-sm text-ink-gray-5">{{ versionLabel }} — set by the server this site runs on.</div>
-            </div>
-            <Button variant="subtle" size="sm" label="Change version" @click="openVersionMove" />
-          </div>
           <div v-for="opt in configOptions" :key="opt.key" class="flex flex-wrap items-center justify-between gap-4 border-b border-outline-alpha-gray-1 py-4 last:border-b-0">
             <div class="min-w-0">
               <div class="text-sm font-medium text-ink-gray-8">{{ opt.label }}</div>
@@ -177,7 +167,7 @@
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <span class="truncate text-sm font-medium text-ink-gray-8">{{ site.name }}</span>
-                <Badge theme="gray" variant="subtle" label="Included" />
+                <Badge theme="green" variant="subtle" label="Primary" />
               </div>
               <div class="mt-0.5 flex items-center gap-1 text-sm text-ink-green-6"><span class="lucide-lock size-3" /> SSL active</div>
             </div>
@@ -251,10 +241,10 @@
         <div class="mt-1">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-alpha-gray-1 py-4">
             <div class="min-w-0">
-              <div class="text-sm font-medium text-ink-gray-8">Deactivate this site</div>
-              <div class="mt-0.5 text-sm text-ink-gray-5">Takes {{ site.name }} offline without deleting anything. Reactivate anytime.</div>
+              <div class="text-sm font-medium text-ink-gray-8">Migrate site</div>
+              <div class="mt-0.5 text-sm text-ink-gray-5">Runs bench migrate for this site without taking a backup first.</div>
             </div>
-            <Button variant="subtle" :label="site.status === 'suspended' ? 'Reactivate site' : 'Deactivate site'" @click="deactivateOpen = true" />
+            <Button variant="subtle" theme="red" label="Migrate" @click="migrateSite" />
           </div>
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-alpha-gray-1 py-4">
             <div class="min-w-0">
@@ -279,8 +269,7 @@
     <DropSiteDialog v-model:open="dropOpen" :site="site" @confirm="dropSite" />
 
     <!-- Custom backup schedule (issue #40) -->
-    <Dialog v-model:open="customOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Custom backup schedule</span></template>
+    <Dialog v-model:open="customOpen" title="Custom backup schedule" size="sm">
       <div class="space-y-4">
         <FormControl v-model="custom.frequency" type="select" label="Frequency" :options="frequencyOptions" />
         <FormControl v-if="custom.frequency === 'weekly'" v-model="custom.day" type="select" label="Day of week" :options="dayOptions" />
@@ -402,7 +391,7 @@ function loginAsAdmin() {
 }
 const siteMenu = computed(() => [
   { label: 'Log in as administrator', icon: 'lucide-log-in', onClick: loginAsAdmin },
-  { label: 'Back up now', icon: 'lucide-archive', onClick: backupNow },
+  { label: 'Backup now', icon: 'lucide-archive', onClick: backupNow },
   {
     label: site.value.status === 'suspended' ? 'Reactivate site' : 'Deactivate site',
     icon: 'lucide-power',
@@ -459,14 +448,19 @@ function onMoved(target) {
 }
 
 // — Backups
-const scheduleOptions = computed(() => [
-  { label: 'Daily, 2 AM', value: 'daily' },
-  { label: 'Weekly, Sunday', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' },
-  {
-    label: site.value?.backupSchedule === 'custom' ? backupCustomLabel(site.value.backupCustom) : 'Custom…',
-    value: 'custom',
-  },
+// Once enabled, the schedule is picked from a dropdown (Daily / Weekly / Custom),
+// with Disable backups turning automatic backups back off.
+const scheduleLabel = computed(() => {
+  const s = site.value?.backupSchedule
+  if (s === 'weekly') return 'Weekly, Sunday 2:00 AM'
+  if (s === 'custom') return backupCustomLabel(site.value.backupCustom)
+  return 'Daily, 2:00 AM'
+})
+const scheduleMenu = computed(() => [
+  { label: 'Daily, 2:00 AM', onClick: () => setSchedule('daily') },
+  { label: 'Weekly, Sunday 2:00 AM', onClick: () => setSchedule('weekly') },
+  { label: 'Custom…', onClick: () => setSchedule('custom') },
+  { label: 'Disable backups', onClick: toggleAutoBackups },
 ])
 function setSchedule(v) {
   // 'Custom' opens a dialog rather than saving a preset straight away (issue #40).
@@ -518,8 +512,30 @@ function backupNow() {
     error: 'Backup failed',
   })
 }
+// Automatic backups are off by default (matches the implementation); the toggle
+// flips the state so the subtitle and button label track it.
+const autoBackups = ref(false)
+function toggleAutoBackups() {
+  autoBackups.value = !autoBackups.value
+  toast.success(autoBackups.value ? 'Automatic backups enabled' : 'Automatic backups disabled')
+}
 function download() {
   toast('In the real thing, this downloads the backup')
+}
+// Per-backup overflow: download each artifact, or delete the backup.
+function backupMenu(b) {
+  return [
+    { label: 'Download Database', icon: 'lucide-download', onClick: download },
+    { label: 'Download Public', icon: 'lucide-download', onClick: download },
+    { label: 'Download Private', icon: 'lucide-download', onClick: download },
+    { label: 'Download Config', icon: 'lucide-download', onClick: download },
+    { label: 'Delete backup', icon: 'lucide-trash-2', onClick: () => deleteBackup(b) },
+  ]
+}
+function deleteBackup(b) {
+  const i = site.value.backups.indexOf(b)
+  if (i >= 0) site.value.backups.splice(i, 1)
+  toast.success('Backup deleted')
 }
 const restoreOpen = ref(false)
 const pendingBackup = ref(null)
@@ -548,32 +564,37 @@ function toggle(opt) {
 
 // — Config tab: raw key/value table, rendered with frappe-ui's ListView.
 const backupColumns = [
-  { label: 'Backup', key: 'date', width: 2 },
-  { label: 'Size', key: 'size', width: 1 },
-  { label: '', key: 'actions', width: '11rem', align: 'right' },
+  { label: 'Date', key: 'date', width: 2 },
+  { label: 'Database', key: 'database', width: 1 },
+  { label: 'Public', key: 'public', width: 1 },
+  { label: 'Private', key: 'private', width: 1 },
+  { label: 'Offsite', key: 'offsite', width: 1 },
+  { label: '', key: 'actions', width: '52px', align: 'right' },
 ]
-const backupRows = computed(() => site.value.backups.map((b) => ({ id: b.id, _b: b })))
+// Split the single stored size into the implementation's Database/Public/Private
+// columns (public/private are small static values in the mock); offsite defaults off.
+const backupRows = computed(() =>
+  site.value.backups.map((b) => ({
+    id: b.id,
+    _b: { ...b, database: b.database || b.size || '943.5 KB', public: b.public || '10.0 KB', private: b.private || '10.0 KB', offsite: b.offsite ?? false },
+  })),
+)
 
 const configColumns = [
-  { label: 'Config name', key: 'name', width: 2 },
-  { label: 'Value', key: 'value', width: 2 },
-  { label: 'Type', key: 'type', width: 1 },
+  { label: 'Key', key: 'name', width: 2 },
+  { label: 'Value', key: 'value', width: 3 },
   { label: '', key: 'actions', width: '52px' },
 ]
 // Size the list to its rows so it shows everything without an inner scrollbar.
 const configListHeight = computed(() => `${56 + configRows.value.length * 48}px`)
+// Mirrors the implementation's site_config.json view: the db name plus the two
+// secrets (masked). Add config appends more.
 const configRows = computed(() => {
   const dbName = '_' + site.value.id.replace(/[^a-z0-9]/gi, '').slice(0, 12)
   return [
-    { key: 'db_name', value: dbName, type: 'String' },
-    { key: 'db_type', value: 'mariadb', type: 'String' },
-    { key: 'db_password', value: '•••••••', type: 'Password' },
-    { key: 'mail_login', label: 'Mail login', value: `notifications@${site.value.name}`, type: 'String' },
-    { key: 'mail_server', label: 'Mail server', value: 'smtp.frappemail.com', type: 'String' },
-    { key: 'mail_port', label: 'Mail port', value: '587', type: 'String' },
-    { key: 'maintenance_mode', value: site.value.config.maintenance ? '1' : '0', type: 'Boolean' },
-    { key: 'scheduler_enabled', value: site.value.config.scheduler ? 'true' : 'false', type: 'Boolean' },
-    { key: 'developer_mode', value: site.value.config.devMode ? '1' : '0', type: 'Boolean' },
+    { key: 'db_name', value: dbName },
+    { key: 'api_key', value: '••••••' },
+    { key: 'encryption_key', value: '••••••' },
   ]
 })
 function addConfig() {
@@ -589,9 +610,6 @@ function configMenu(c) {
 // — Site actions (the general actions that live at the site level)
 const siteActions = computed(() => [
   { label: 'Clear cache', desc: 'Clear this site’s cache if something looks stale.', action: 'Clear', onClick: () => toast.success('Cache cleared') },
-  { label: 'Database users', desc: 'Manage who can connect to this site’s database.', action: 'Manage', onClick: () => toast('In the real thing, this manages database users') },
-  { label: 'Email notifications', desc: 'Choose which alerts this site sends out.', action: 'Manage', onClick: () => toast('In the real thing, this opens notification settings') },
-  { label: 'Transfer site', desc: 'Move this site to another team.', action: 'Transfer', onClick: () => toast('In the real thing, this starts a transfer') },
 ])
 
 // — Danger
@@ -609,6 +627,9 @@ function deactivate() {
 function resetSite() {
   toast.success('Resetting — a fresh database will be ready in a minute')
 }
+function migrateSite() {
+  toast.success('Running bench migrate — this can take a minute')
+}
 </script>
 
 <style scoped>
@@ -622,5 +643,10 @@ function resetSite() {
      and spread out to the left and right before dissolving into the page. */
   -webkit-mask-image: radial-gradient(135% 120% at 50% 22%, rgb(0 0 0 / 0.95) 0%, transparent 72%);
   mask-image: radial-gradient(135% 120% at 50% 22%, rgb(0 0 0 / 0.95) 0%, transparent 72%);
+}
+
+/* Widen the shell's content container to max-w-4xl (ServerShell only ships 3xl/5xl). */
+.site-detail-shell :deep(main > div) {
+  max-width: 56rem;
 }
 </style>

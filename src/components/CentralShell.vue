@@ -12,7 +12,7 @@
           :class="collapsed && 'justify-center'"
           :title="collapsed ? `Frappe Cloud · ${store.team.name}` : undefined"
         >
-          <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0 rounded-md" />
+          <img :src="cloudLogo" alt="Frappe Cloud" class="size-7 shrink-0" />
           <template v-if="!collapsed">
             <span class="min-w-0 flex-1 text-left">
               <span class="block truncate text-p-sm font-semibold text-ink-gray-9">Frappe Cloud</span>
@@ -99,7 +99,7 @@
         <div v-if="store.busy > 0" class="console-bar absolute inset-y-0 left-0 bg-[var(--ink-gray-8)]" />
       </div>
 
-      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-alpha-gray-1 bg-surface-elevation-1 px-4">
+      <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-outline-alpha-gray-1 bg-surface-base px-4">
         <Breadcrumbs v-if="crumbs?.length" :items="crumbs" class="min-w-0" />
         <div v-else />
         <div class="flex shrink-0 items-center gap-2">
@@ -158,8 +158,7 @@
     </Dialog>
 
     <!-- Create team -->
-    <Dialog v-model:open="createTeamOpen" size="sm">
-      <template #title><span class="text-xl font-semibold text-ink-gray-9">Create a team</span></template>
+    <Dialog v-model:open="createTeamOpen" title="Create a team" size="sm">
       <FormControl v-model="newTeamName" type="text" label="Team name" placeholder="e.g. Acme Innovations" />
       <p class="mt-2 text-p-sm text-ink-gray-5">You'll switch to the new team right away. Add servers and members from there.</p>
       <template #actions>
@@ -176,7 +175,7 @@
 import { computed, h, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
-import cloudLogo from '../assets/apps/cloud.png'
+import cloudLogo from '../assets/frappe-cloud-logo.svg'
 import ProfileDialog from './ProfileDialog.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'

@@ -8,7 +8,7 @@
     <div class="flex min-h-0 flex-col-reverse lg:h-[calc(100vh-50px)] lg:flex-row-reverse">
       <!-- Map (right) -->
       <div class="border-t border-outline-alpha-gray-1 p-4 lg:flex-1 lg:border-l lg:border-t-0">
-        <div class="relative h-72 w-full overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-gray-1 lg:h-full">
+        <div class="relative h-72 w-full overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-gray-1 lg:h-full">
           <WorldMap
             :pins="pins"
             :focus="focus"

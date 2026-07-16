@@ -7,7 +7,7 @@
     </p>
 
     <form class="mt-6 space-y-4" @submit.prevent="verify">
-      <OtpInput v-model="otp" :disabled="loading" />
+      <OtpInput v-model="otp" :disabled="loading" @complete="verify" />
       <p class="text-p-sm text-ink-gray-5">Demo — any 6 digits work.</p>
 
       <Transition name="error-fade">
@@ -29,7 +29,7 @@
       <button
         type="button"
         class="font-medium text-ink-gray-8 transition-colors hover:text-ink-gray-9"
-        @click="router.push('/signup')"
+        @click="router.push({ path: '/signup', query: product ? { product } : {} })"
       >
         Use a different email
       </button>
@@ -58,6 +58,8 @@ const store = useCloudStore()
 
 // Prefer the address passed from signup; fall back to the one already stored.
 const email = computed(() => (route.query.email ? String(route.query.email) : store.user.email))
+// The product an app-aware signup arrived with; carried on into site setup.
+const product = computed(() => (route.query.product ? String(route.query.product) : ''))
 
 const otp = ref('')
 const loading = ref(false)
@@ -69,7 +71,19 @@ watch(otp, (v) => {
 
 function verify() {
   if (loading.value || otp.value.length !== 6) return
-  router.push('/setup/app')
+  // Mock: no backend, so hold a brief spinner beat before navigating — mirrors
+  // Central, where the button shows a loader while the code is checked.
+  loading.value = true
+  setTimeout(() => {
+    // Two funnels diverge here. A product signup continues into app-aware site
+    // setup; a plain signup is done — drop straight into the Central dashboard,
+    // where the empty state invites them to spin up their first server.
+    if (product.value) {
+      router.push({ path: '/setup/app', query: { product: product.value } })
+    } else {
+      router.push('/servers')
+    }
+  }, 700)
 }
 
 function resend() {

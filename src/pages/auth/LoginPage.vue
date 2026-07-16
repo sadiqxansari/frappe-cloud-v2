@@ -9,7 +9,7 @@
       </p>
 
       <form class="mt-6 space-y-4" @submit.prevent="submitOtp">
-        <OtpInput v-model="otp" :disabled="loading" />
+        <OtpInput v-model="otp" :disabled="loading" @complete="submitOtp" />
         <p class="text-p-sm text-ink-gray-5">Demo — any 6 digits work.</p>
         <Transition name="error-fade">
           <ErrorMessage v-if="error" :message="error" />
@@ -45,7 +45,7 @@
           label="Work email"
           type="email"
           autocomplete="username"
-          placeholder="rahul@mycompany.in"
+          placeholder="name@company.com"
           :validator="(v) => validateEmail(v, { required: true })"
           :submitted="submitted"
         />
@@ -101,8 +101,10 @@ import MinimalAuthShell from '../../components/MinimalAuthShell.vue'
 import ValidatedFormControl from '../../components/ValidatedFormControl.vue'
 import OtpInput from '../../components/OtpInput.vue'
 import { validateEmail, validateRequired } from '../../utils/validate'
+import { useCloudStore } from '../../stores/cloud'
 
 const router = useRouter()
+const store = useCloudStore()
 
 const email = ref('')
 const password = ref('')
@@ -132,9 +134,13 @@ function submitPassword() {
 
 function submitOtp() {
   if (loading.value || otp.value.length !== 6) return
-  // Success → let the router guard route by persona: a persona with servers
-  // lands in the dashboard; a fresh one falls through to /signup.
-  router.push('/')
+  // Mock: hold a brief spinner beat, then let the router guard route by persona.
+  // Record the signed-in email so a persona without a server still counts as
+  // authed (the guard sends it to Central); one with servers lands in the Desk
+  // or dashboard. Mirrors Central, which shows a loader while verifying.
+  loading.value = true
+  if (!store.user.email) store.signUp(store.user.name || '', email.value.trim())
+  setTimeout(() => router.push('/'), 700)
 }
 
 function cancelChallenge() {
