@@ -2,7 +2,7 @@
   <CentralShell :crumbs="crumbs" wide>
     <div class="flex h-full overflow-hidden">
       <div class="min-w-0 flex-1 overflow-y-auto">
-        <div class="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
+        <div class="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-8">
           <!-- Header -->
           <div class="flex flex-col gap-1">
             <h1 class="text-xl font-semibold text-ink-gray-9">Spending limits</h1>
@@ -12,115 +12,98 @@
             </p>
           </div>
 
-          <!-- Current standing -->
-          <div class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="flex flex-col gap-1">
-                <div class="text-sm text-ink-gray-6">Monthly spend</div>
-                <span class="text-xl font-semibold text-ink-gray-9">
-                  {{ formatAmount(totalSubscribed) }}
-                </span>
-              </div>
-              <div class="flex flex-col gap-1 text-right">
-                <div class="text-sm text-ink-gray-6">
-                  Paying since
-                  <span class="font-medium text-ink-gray-9">{{ payingSinceLabel }}</span>
-                </div>
-                <div class="text-sm text-ink-gray-6">
-                  Last paid invoice
-                  <span class="font-medium text-ink-gray-9">
-                    {{ formatAmount(metrics.last_invoice_amount) }}
-                  </span>
-                </div>
-              </div>
+          <!-- Current standing — a flat stat strip, no box. Three figures with
+               the same quiet label-over-value rhythm; whitespace separates. -->
+          <div class="flex flex-wrap gap-x-12 gap-y-4">
+            <div class="flex flex-col gap-1">
+              <div class="text-sm text-ink-gray-5">Monthly spend</div>
+              <span class="text-xl font-semibold tabular-nums text-ink-gray-9">{{ formatAmount(totalSubscribed) }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <div class="text-sm text-ink-gray-5">Paying since</div>
+              <span class="text-xl font-semibold text-ink-gray-9">{{ payingSinceLabel }}</span>
+            </div>
+            <div class="flex flex-col gap-1">
+              <div class="text-sm text-ink-gray-5">Last paid invoice</div>
+              <span class="text-xl font-semibold tabular-nums text-ink-gray-9">{{ formatAmount(metrics.last_invoice_amount) }}</span>
             </div>
           </div>
 
-          <!-- Tiers table -->
-          <div class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base">
-            <table class="w-full text-left">
-              <thead>
-                <tr class="border-b border-outline-gray-2 bg-surface-gray-1">
-                  <th class="px-4 py-3 text-base font-medium tracking-wide text-ink-gray-5">Tier</th>
-                  <th class="px-4 py-3 text-base font-medium tracking-wide text-ink-gray-5">Requirements</th>
-                  <th class="px-4 py-3 text-right text-base font-medium tracking-wide text-ink-gray-5">Spending limit</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-outline-gray-2">
-                <tr
-                  v-for="(tier, idx) in TIERS"
-                  :key="tier.name"
-                  class="transition-colors hover:bg-surface-gray-1"
-                >
-                  <td class="px-4 py-4 align-middle">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="text-sm font-semibold text-ink-gray-9">{{ tier.tier }}</span>
-                      <Badge v-if="isCurrentTier(tier)" theme="blue" label="Current" />
-                    </div>
-                  </td>
-                  <td class="px-4 py-4 align-top">
-                    <ul class="flex flex-col gap-1.5">
-                      <li
-                        v-for="(req, i) in requirementsFor(tier, idx)"
-                        :key="i"
-                        class="flex items-center gap-2"
+          <!-- Tiers — same list family as the invoice panel: hairline header
+               and row rules on the bare surface, no outer box, no header fill,
+               no hover (rows aren't clickable). -->
+          <List :columns="['7rem', 'minmax(0,1fr)', 'auto']" divider="full">
+            <ListHeader>
+              <ListHeaderCell>Tier</ListHeaderCell>
+              <ListHeaderCell>Requirements</ListHeaderCell>
+              <ListHeaderCell class="justify-end">Spending limit</ListHeaderCell>
+            </ListHeader>
+            <ListRows :items="TIERS" row-key="name" v-slot="{ item: tier, index: idx }">
+              <ListRow class="py-3.5">
+                <ListCell class="self-start pt-0.5">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-semibold text-ink-gray-9">{{ tier.tier }}</span>
+                    <Badge v-if="isCurrentTier(tier)" theme="blue" label="Current" />
+                  </div>
+                </ListCell>
+                <ListCell>
+                  <ul class="flex min-w-0 flex-col gap-1.5">
+                    <li
+                      v-for="(req, i) in requirementsFor(tier, idx)"
+                      :key="i"
+                      class="flex items-center gap-2"
+                    >
+                      <span
+                        class="size-3.5 shrink-0"
+                        :class="req.met ? 'lucide-check-circle-2 text-ink-green-6' : 'lucide-circle-dashed text-ink-gray-4'"
+                      />
+                      <span class="text-sm" :class="req.met ? 'text-ink-gray-9' : 'text-ink-gray-6'">
+                        {{ req.text }}
+                      </span>
+                      <RouterLink
+                        v-if="req.nudge"
+                        :to="req.nudge"
+                        class="text-sm text-ink-blue-8 transition-opacity hover:opacity-80"
                       >
-                        <span
-                          class="size-3.5 shrink-0"
-                          :class="req.met ? 'lucide-check-circle-2 text-ink-green-6' : 'lucide-circle-dashed text-ink-gray-4'"
-                        />
-                        <span class="text-sm" :class="req.met ? 'text-ink-gray-9' : 'text-ink-gray-6'">
-                          {{ req.text }}
-                        </span>
-                        <RouterLink
-                          v-if="req.nudge"
-                          :to="req.nudge"
-                          class="text-sm text-ink-blue-8 transition-opacity hover:opacity-80"
-                        >
-                          Go to Billing →
-                        </RouterLink>
-                      </li>
-                    </ul>
-                  </td>
-                  <td class="px-4 py-4 text-right align-middle">
-                    <span class="text-sm font-semibold text-ink-gray-9">{{ formatAmount(tier.amount) }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                        Go to Billing →
+                      </RouterLink>
+                    </li>
+                  </ul>
+                </ListCell>
+                <ListCell class="justify-end self-start pt-0.5">
+                  <span class="text-sm font-semibold tabular-nums text-ink-gray-9">{{ formatAmount(tier.amount) }}</span>
+                </ListCell>
+              </ListRow>
+            </ListRows>
+          </List>
 
-          <!-- How tiers work -->
-          <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-5">
-            <div class="flex flex-col gap-2">
-              <div class="flex items-center gap-2">
-                <span class="lucide-info size-5 shrink-0 text-ink-gray-5" />
-                <div class="text-base font-medium text-ink-gray-9">How tier upgrades work</div>
-              </div>
-              <ul class="flex list-disc flex-col gap-1.5 pl-5 text-p-sm text-ink-gray-7">
-                <li>Tiers control the maximum amount your team can spend in a billing cycle.</li>
-                <li>
-                  You are automatically upgraded to a higher tier when your last paid
-                  subscription invoice meets that tier's threshold and you have at least
-                  three consecutive paid invoices.
-                </li>
-                <li>
-                  New teams start at the base tier. Add a payment method or prepaid
-                  credits to stay there.
-                </li>
-                <li>
-                  Need a higher limit now? Contact
-                  <a
-                    href="https://support.frappe.io"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-ink-blue-8 underline underline-offset-2 transition-opacity hover:opacity-80"
-                  >support</a>
-                  and we'll review your account.
-                </li>
-              </ul>
-            </div>
-          </div>
+          <!-- How tiers work — plain prose under a single rule, not a card.
+               The icon was decoration; the heading carries it. -->
+          <section class="border-t border-outline-gray-1 pt-6">
+            <h2 class="text-base font-medium text-ink-gray-9">How tier upgrades work</h2>
+            <ul class="mt-2.5 flex list-disc flex-col gap-1.5 pl-4 text-p-sm text-ink-gray-6">
+              <li>Tiers control the maximum amount your team can spend in a billing cycle.</li>
+              <li>
+                You are automatically upgraded to a higher tier when your last paid
+                subscription invoice meets that tier's threshold and you have at least
+                three consecutive paid invoices.
+              </li>
+              <li>
+                New teams start at the base tier. Add a payment method or prepaid
+                credits to stay there.
+              </li>
+              <li>
+                Need a higher limit now? Contact
+                <a
+                  href="https://support.frappe.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-ink-blue-8 underline underline-offset-2 transition-opacity hover:opacity-80"
+                >support</a>
+                and we'll review your account.
+              </li>
+            </ul>
+          </section>
         </div>
       </div>
     </div>
@@ -130,6 +113,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Badge } from 'frappe-ui'
+import { List, ListCell, ListHeader, ListHeaderCell, ListRow, ListRows } from 'frappe-ui/list'
 import CentralShell from '../../components/CentralShell.vue'
 import { useCloudStore } from '../../stores/cloud'
 
@@ -180,7 +164,7 @@ function requirementsFor(tier) {
   }
   return [
     {
-      text: `Paying user for at least ${tier.paying_user_since} months`,
+      text: `Paying user for at least ${tier.paying_user_since} month${tier.paying_user_since === 1 ? '' : 's'}`,
       met: (m.paying_since_months ?? 0) >= tier.paying_user_since,
     },
     {

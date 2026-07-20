@@ -170,6 +170,37 @@ function makeEvent(agoMs, title, { tag = 'server', status = 'success', detail = 
   return { id: uid('act'), at: Date.now() - agoMs, title, tag, status, detail }
 }
 
+// — Invoice history, generated relative to today rather than pinned to a fixed
+// calendar. A frozen history goes stale the moment the demo is opened a month
+// later: the date-range filter's "Last month" preset would match nothing and
+// read as broken. Monthly cycles bill on the 1st of the following month.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+function fmtDate(d) {
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+// The nth-most-recent completed billing month. n=0 is the month that just
+// closed, so its invoice was issued on the 1st of the current month.
+function billingMonth(n) {
+  const now = new Date()
+  const period = new Date(now.getFullYear(), now.getMonth() - 1 - n, 1)
+  const issued = new Date(now.getFullYear(), now.getMonth() - n, 1)
+  return {
+    period: `${MONTHS[period.getMonth()]} ${period.getFullYear()}`,
+    issued: fmtDate(issued),
+    issuedISO: isoDate(issued),
+    // Days actually billed in that period.
+    days: new Date(period.getFullYear(), period.getMonth() + 1, 0).getDate(),
+    // Invoice numbers run backwards from the newest (0006 → 0001).
+    number: `INV-${issued.getFullYear()}-${String(6 - n).padStart(4, '0')}`,
+  }
+}
+function line(label, plan, days, perDay) {
+  return { label, plan, days, perDay, amount: days * perDay }
+}
+
 function baseState() {
   return {
     scenario: 'fresh', // 'fresh' | 'grown'
@@ -384,34 +415,50 @@ function grownState() {
     { id: uid('pm'), kind: 'card', label: 'Visa', detail: '•••• 4242', expiry: '07/26', primary: true },
     { id: uid('pm'), kind: 'upi', label: 'UPI', detail: 'rahul@okhdfc', primary: false },
   ]
-  // Past invoices with per-day line items (30-day cycle).
+  // Past invoices with per-day line items, dated relative to today (see
+  // billingMonth) so the date-range filter always has recent invoices to match.
+  // The newest one is deliberately long — a fleet since consolidated — so the
+  // invoice panel's line-item list is exercised at length.
   s.invoices = [
     {
-      number: 'INV-2026-0005', period: 'May 2026', issued: '1 Jun 2026', status: 'Paid', credits: 1000,
+      ...billingMonth(0), status: 'Paid', credits: 1000, paidWith: 'Visa •••• 4242',
       items: [
-        { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
-        { label: 'atlas-eu-01', plan: 'Starter', days: 30, perDay: 55, amount: 1650 },
+        line('atlas-web-01', 'Business', 30, 137),
+        line('atlas-web-02', 'Business', 30, 137),
+        line('atlas-eu-01', 'Starter', 30, 55),
+        line('atlas-eu-02', 'Starter', 30, 55),
+        line('atlas-api-01', 'Business', 30, 137),
+        line('atlas-api-02', 'Business', 18, 137),
+        line('atlas-jobs-01', 'Standard', 30, 96),
+        line('atlas-jobs-02', 'Standard', 30, 96),
+        line('atlas-db-01', 'Business', 30, 137),
+        line('atlas-db-02', 'Business', 30, 137),
+        line('atlas-staging-01', 'Starter', 30, 55),
+        line('atlas-staging-02', 'Starter', 12, 55),
+        line('atlas-sg-01', 'Standard', 30, 96),
+        line('atlas-us-01', 'Standard', 30, 96),
+        line('atlas-backup-01', 'Starter', 30, 55),
       ],
     },
     {
-      number: 'INV-2026-0004', period: 'April 2026', issued: '1 May 2026', status: 'Paid', credits: 500,
-      items: [{ label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 }],
+      ...billingMonth(1), status: 'Paid', credits: 500, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Business', billingMonth(1).days, 137)],
     },
     {
-      number: 'INV-2026-0003', period: 'March 2026', issued: '1 Apr 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 30, perDay: 68, amount: 2040 }],
+      ...billingMonth(2), status: 'Paid', credits: 0, paidWith: 'UPI rahul@okhdfc',
+      items: [line('atlas-web-01', 'Starter', billingMonth(2).days, 68)],
     },
     {
-      number: 'INV-2026-0002', period: 'February 2026', issued: '1 Mar 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 28, perDay: 68, amount: 1904 }],
+      ...billingMonth(3), status: 'Paid', credits: 0, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Starter', billingMonth(3).days, 68)],
     },
     {
-      number: 'INV-2026-0001', period: 'January 2026', issued: '1 Feb 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 31, perDay: 68, amount: 2108 }],
+      ...billingMonth(4), status: 'Paid', credits: 0, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Starter', billingMonth(4).days, 68)],
     },
     {
-      number: 'INV-2025-0012', period: 'December 2025', issued: '1 Jan 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 31, perDay: 40, amount: 1240 }],
+      ...billingMonth(5), status: 'Paid', credits: 0, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Starter', billingMonth(5).days, 40)],
     },
   ]
   s.payoutBalance = 0
@@ -1660,6 +1707,11 @@ export const useCloudStore = defineStore('cloud', {
         }
         inv.status = 'Paid'
         inv.overdue = false
+        // Record the method that actually settled it — the invoice keeps its own
+        // record, so a card swapped out later doesn't rewrite paid history.
+        const charged = this.paymentMethods.find((p) => p.primary && p.status !== 'declined')
+          || this.paymentMethods.find((p) => p.status !== 'declined')
+        if (charged) inv.paidWith = `${charged.label} ${charged.detail}`
         this.logActivity(`Paid invoice ${number}`, { tag: 'billing' })
       }, 1200)
     },
@@ -1786,15 +1838,18 @@ export const useCloudStore = defineStore('cloud', {
       // — Wallet won't cover the next invoice.
       this.walletBalance = 1240
 
-      // — An overdue, unpaid invoice at the top of the list.
-      this.invoices.unshift({
-        number: 'INV-2026-0006', period: 'June 2026', issued: '1 Jun 2026',
-        status: 'Unpaid', overdue: true, dueDate: '8 Jun 2026', credits: 0,
+      // — The most recent invoice went unpaid and is now overdue. It replaces
+      // the paid one for that period rather than sitting alongside it, so the
+      // history stays coherent: one invoice per billing month.
+      this.invoices[0] = {
+        ...billingMonth(0),
+        status: 'Unpaid', overdue: true, credits: 0,
+        dueDate: fmtDate(new Date(Date.now() - 7 * DAY)),
         items: [
-          { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
-          { label: 'atlas-eu-01', plan: 'Starter', days: 30, perDay: 55, amount: 1650 },
+          line('atlas-web-01', 'Business', 30, 137),
+          line('atlas-eu-01', 'Starter', 30, 55),
         ],
-      })
+      }
 
       // — Marketplace earnings, but no payout account to send them to.
       this.marketplaceDeveloper = true
