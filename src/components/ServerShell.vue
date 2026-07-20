@@ -190,7 +190,6 @@ const items = computed(() => {
   const b = base.value
   return [
     { label: 'Sites', icon: 'lucide-layout-grid', to: b, active: route.path === b || route.path.startsWith(`${b}/sites`) },
-    { label: 'Server', icon: 'lucide-server', to: `${b}/server`, active: route.path === `${b}/server` },
     { label: 'Marketplace', icon: 'lucide-store', to: `${b}/marketplace`, active: route.path.startsWith(`${b}/marketplace`) },
   ]
 })
