@@ -111,8 +111,8 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto">
-        <div :class="wide ? 'h-full w-full' : roomy ? 'mx-auto w-full max-w-5xl px-4 py-8 sm:px-6' : 'mx-auto w-full max-w-3xl px-4 py-8 sm:px-6'">
+      <main class="fc-scroll flex-1 overflow-y-auto">
+        <div :class="containerClass || (wide ? 'h-full w-full' : roomy ? 'mx-auto w-full max-w-5xl px-4 py-8 sm:px-6' : 'mx-auto w-full max-w-3xl px-4 py-8 sm:px-6')">
           <slot :server="server" />
         </div>
       </main>
@@ -136,6 +136,9 @@ const props = defineProps({
   wide: { type: Boolean, default: false },
   // Wider centred container (~1000px) for pages with side-by-side panels.
   roomy: { type: Boolean, default: false },
+  // Full override for the centred container's classes, for a page that needs
+  // a one-off content width without changing every other roomy/wide page.
+  containerClass: { type: String, default: null },
 })
 
 const store = useCloudStore()
