@@ -118,7 +118,7 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto">
+      <main class="fc-scroll flex-1 overflow-y-auto">
         <div :class="wide ? 'h-full w-full' : 'mx-auto w-full max-w-3xl px-4 py-8 sm:px-6'">
           <slot />
         </div>

@@ -1,187 +1,105 @@
 <template>
-  <!-- Database + App storage: on a unified server MariaDB and the apps share
-       one disk, so these read as two usage meters against the same total —
-       each bar fills to that workload's footprint. OS overhead and free space
-       are shared (neither workload), so they're the gray remainder, not a row.
-       One card split by a divider that runs edge to edge (vertical on wide
-       screens, horizontal when stacked); padding lives on each section so the
-       divider is flush. -->
-  <div class="mt-10 overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1">
-    <div class="grid grid-cols-1 divide-y divide-outline-gray-2 xl:grid-cols-2 xl:divide-x xl:divide-y-0">
-    <!-- Database storage: what MariaDB is doing with the disk. Binary logs are
-         usually the surprise, so they get a purge affordance right here. -->
-    <StorageBreakdownCard
-      class="p-6 xl:pr-4"
-      inset-right
-      title="Database storage"
-      icon="lucide-database"
-      :used-gb="dbSegmentsTotal"
-      :segments="dbSegments"
-      :total-gb="disk.diskTotal"
-    >
-      <template #footer>
-        <div class="mt-4 border-t border-outline-alpha-gray-1 pt-3">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <h3 class="text-p-sm font-medium text-ink-gray-7">{{ topDbTitle }}</h3>
-              <Badge theme="gray" variant="subtle" size="sm" :label="String(sortedDbs.length)" />
-            </div>
-            <Button v-if="sortedDbs.length > 5" variant="ghost" size="sm" label="See all" @click="panelOpen = true" />
-          </div>
-
-          <EmptyState
-            v-if="!siteDbs.length"
-            class="mt-2 mr-2"
-            icon="lucide-database"
-            title="No databases yet"
-            description="Databases appear here once a site on this server is live."
-          />
-          <div v-else class="mt-1 mr-2 divide-y divide-outline-alpha-gray-1">
-            <component
-              :is="db.system ? 'div' : 'button'"
-              v-for="db in topDbs"
-              :key="db.dbName"
-              class="group flex w-full items-center justify-between gap-3 py-2 text-left"
-              @click="!db.system && emit('drill', db.siteId)"
-            >
-              <span class="flex min-w-0 items-center gap-2">
-                <span :class="db.system ? 'lucide-database' : 'lucide-globe'" class="size-3.5 shrink-0 text-ink-gray-4" />
-                <span class="truncate text-sm" :class="db.system ? 'text-ink-gray-6' : 'text-ink-gray-8 group-hover:text-ink-gray-9'">{{ db.siteName }}</span>
-                <Badge v-if="db.system" theme="gray" variant="subtle" size="sm" label="system" />
-                <span v-else class="hidden truncate font-mono text-p-xs text-ink-gray-4 sm:block">{{ db.dbName }}</span>
-                <span v-if="!db.system" class="lucide-chevron-right size-3.5 shrink-0 text-ink-gray-4 opacity-0 transition-opacity group-hover:opacity-100" />
-              </span>
-              <span class="shrink-0 tabular-nums text-sm text-ink-gray-7">{{ fmtMb(dbFileMb(db)) }}</span>
-            </component>
-          </div>
-        </div>
-
-        <!-- The reclaim story at server level: binlogs. -->
-        <div v-if="buckets.binlog > 1" class="mt-3 mr-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-blue-1 px-3 py-2">
-          <span class="text-p-sm text-ink-blue-8">Binary logs are using {{ fmtGb(buckets.binlog) }}. Purge them or reduce retention to free up space.</span>
-          <span class="flex items-center gap-1.5">
-            <Button size="sm" variant="ghost" label="Docs" @click="toast.success('Opening binary log documentation…')" />
-            <Button size="sm" variant="subtle" label="Purge binary logs" :loading="purging" @click="purgeOpen = true" />
+  <!-- Server-wide diagnostics. One MariaDB serves every site, so processes,
+       locks and binary logs live here; per-database work lives in the site view.
+       A flat stacked list, not cards — these are read-outs, not top-level
+       sections. The site filter is applied by the page header. -->
+  <div>
+    <Disclosure first icon="lucide-activity" title="Database processes" :subtitle="edgeBroken ? 'Unavailable' : `${filteredProcesses.length} connection${filteredProcesses.length === 1 ? '' : 's'}`" :open="openKey === 'processes'" @update:open="(v) => (openKey = v ? 'processes' : null)">
+      <ErrorState
+        v-if="edgeBroken"
+        icon="lucide-database-zap"
+        title="Couldn't reach the database server"
+        description="The process list didn't load. This usually passes in a few seconds."
+      >
+        <Button size="sm" variant="subtle" label="Retry" @click="toast.error('Still can\'t reach the database server')" />
+      </ErrorState>
+      <PaginatedListView
+        v-else
+        :columns="processColumns"
+        :rows="processRows"
+        :options="processOptions"
+        row-key="id"
+        :page-length="10"
+        :page-length-options="[10, 20, 50]"
+      >
+        <template #cell="{ column, row }">
+          <span v-if="column.key === 'id'" class="tabular-nums text-ink-gray-5">{{ row.id }}</span>
+          <span v-else-if="column.key === 'command'" class="truncate text-ink-gray-6" :title="row._p.state ? `${row.command} · ${row._p.state}` : row.command">{{ row.command }}<span v-if="row._p.state" class="text-ink-gray-4"> · {{ row._p.state }}</span></span>
+          <span v-else-if="column.key === 'user'" class="truncate font-mono text-ink-gray-5">{{ row._p.user }}</span>
+          <span v-else-if="column.key === 'site'" class="flex min-w-0 items-center gap-1.5 truncate text-ink-gray-5">
+            <span v-if="siteNameOf(row._p.siteId)" class="lucide-globe size-3.5 shrink-0 text-ink-gray-4" />
+            <span class="truncate">{{ siteNameOf(row._p.siteId) || 'system' }}</span>
           </span>
-        </div>
-      </template>
-    </StorageBreakdownCard>
+          <span v-else-if="column.key === 'query'" class="truncate font-mono text-ink-gray-7" :title="row._p.info || ''">{{ row._p.info || '—' }}</span>
+          <span v-else-if="column.key === 'time'" class="tabular-nums" :class="isSlow(row._p) ? 'text-ink-amber-7' : 'text-ink-gray-5'">{{ row._p.time }}</span>
+          <Button v-else-if="column.key === 'actions'" size="sm" variant="ghost" theme="red" label="Kill" @click.stop="askKill(row._p)" />
+        </template>
+      </PaginatedListView>
+    </Disclosure>
 
-    <!-- App storage: the same disk grouped by what your team put on it. -->
-    <StorageBreakdownCard
-      class="p-6"
-      title="App storage"
-      icon="lucide-package"
-      :used-gb="appSegmentsTotal"
-      :segments="appSegments"
-      :total-gb="disk.diskTotal"
-    />
-    </div>
-  </div>
+    <Disclosure icon="lucide-lock" title="Database locks" :subtitle="filteredLocks.length ? `${filteredLocks.length} blocked` : 'None'" :open="openKey === 'locks'" @update:open="(v) => (openKey = v ? 'locks' : null)">
+      <PaginatedListView
+        :columns="lockColumns"
+        :rows="lockRows"
+        :options="lockOptions"
+        row-key="id"
+      >
+        <template #cell="{ column, row }">
+          <span v-if="column.key === 'waiting'" class="tabular-nums text-ink-amber-8">{{ row.waiting }}</span>
+          <span v-else-if="column.key === 'blocking'" class="tabular-nums text-ink-gray-7">{{ row.blocking }}</span>
+          <span v-else-if="column.key === 'waited'" class="tabular-nums text-ink-gray-6">{{ row.waited }}</span>
+          <span v-else-if="column.key === 'site'" class="flex min-w-0 items-center gap-1.5 truncate text-ink-gray-5">
+            <span v-if="siteNameOf(row._l.siteId)" class="lucide-globe size-3.5 shrink-0 text-ink-gray-4" />
+            <span class="truncate">{{ siteNameOf(row._l.siteId) || 'system' }}</span>
+          </span>
+          <span v-else-if="column.key === 'query'" class="truncate font-mono text-ink-amber-7" :title="row._l.waitingQuery">{{ row._l.waitingQuery }}</span>
+        </template>
+      </PaginatedListView>
+    </Disclosure>
 
-  <!-- Server-wide diagnostics. One MariaDB serves every site, so processes and
-       locks only make sense here; per-database work lives in the site view.
-       A flat stacked list, not cards — these are read-outs, not top-level sections. -->
-  <div class="mt-16">
-    <h2 class="text-base font-medium text-ink-gray-9">Diagnostics</h2>
-    <div class="mt-4">
-  <Disclosure flat title="Database processes" :subtitle="edgeBroken ? 'Unavailable' : `${filteredProcesses.length} connection${filteredProcesses.length === 1 ? '' : 's'}`" :default-open="notableProcesses">
-    <template v-if="!edgeBroken && siteDbs.length > 1" #actions>
-      <Dropdown :options="siteFilterOptions" placement="bottom-end">
-        <Button variant="outline" size="sm" icon-right="lucide-chevron-down" :label="siteFilterLabel" />
-      </Dropdown>
-    </template>
-    <ErrorState
-      v-if="edgeBroken"
-      icon="lucide-database-zap"
-      title="Couldn't reach the database server"
-      description="The process list didn't load. This usually passes in a few seconds."
-    >
-      <Button size="sm" variant="subtle" label="Retry" @click="toast.error('Still can\'t reach the database server')" />
-    </ErrorState>
-    <template v-else>
-      <p v-if="!filteredProcesses.length" class="text-p-sm text-ink-gray-5">No active connections{{ siteFilter ? ' for this site' : '' }}.</p>
-      <div v-else>
-        <div class="flex items-center gap-3 border-b border-outline-gray-2 pb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
-          <span class="w-12 shrink-0">ID</span>
-          <span class="w-24 shrink-0">Command</span>
-          <span class="hidden w-36 shrink-0 md:block">Site</span>
-          <span class="min-w-0 flex-1">Query</span>
-          <span class="w-12 shrink-0 text-right">Time</span>
-          <span class="w-14 shrink-0" />
-        </div>
-        <div class="divide-y divide-outline-alpha-gray-1">
-          <div v-for="p in visibleProcesses" :key="p.id" class="flex items-center gap-3 py-2 text-sm">
-            <span class="w-12 shrink-0 tabular-nums text-ink-gray-5">{{ p.id }}</span>
-            <span class="w-24 shrink-0 truncate text-ink-gray-6">{{ p.command }}<span v-if="p.state" class="text-ink-gray-4"> · {{ p.state }}</span></span>
-            <span class="hidden w-36 shrink-0 items-center gap-1.5 truncate text-ink-gray-5 md:flex">
-              <span v-if="siteNameOf(p.siteId)" class="lucide-globe size-3.5 shrink-0 text-ink-gray-4" />
-              <span class="truncate">{{ siteNameOf(p.siteId) || 'system' }}</span>
-            </span>
-            <span class="min-w-0 flex-1 truncate font-mono text-ink-gray-7">{{ p.info || '—' }}</span>
-            <span class="w-12 shrink-0 text-right tabular-nums" :class="isSlow(p) ? 'text-ink-amber-7' : 'text-ink-gray-5'">{{ p.time }}</span>
-            <span class="w-14 shrink-0 text-right">
-              <Button size="sm" variant="ghost" theme="red" label="Kill" @click="askKill(p)" />
-            </span>
-          </div>
-        </div>
-        <button
-          v-if="otherCount"
-          class="mt-2 flex items-center gap-1 text-p-sm text-ink-gray-5 hover:text-ink-gray-7"
-          @click="showAllOther = !showAllOther"
-        >
-          <span class="lucide-chevron-down size-3.5 shrink-0 transition-transform" :class="showAllOther ? 'rotate-180' : ''" />
-          {{ showAllOther ? 'Show fewer' : `Show ${otherCount} other connection${otherCount === 1 ? '' : 's'}` }}
-        </button>
-      </div>
-    </template>
-  </Disclosure>
-
-  <Disclosure flat title="Database locks" :subtitle="data.locks.length ? `${data.locks.length} blocked` : 'None'">
-    <p v-if="!data.locks.length" class="text-p-sm text-ink-gray-5">No transactions are waiting on a lock.</p>
-    <div v-else class="space-y-2">
-      <div v-for="(l, i) in data.locks" :key="i" class="rounded-lg border border-outline-amber-1 bg-surface-amber-1 p-3 text-xs text-ink-amber-8">
-        <div>
-          Connection <span class="font-medium tabular-nums">{{ l.waitingId }}</span> waited {{ l.waitedFor }} on
-          <span class="font-medium tabular-nums">{{ l.blockingId }}</span><template v-if="siteNameOf(l.siteId)"> · <span class="lucide-globe inline-block size-3 shrink-0 -translate-y-px align-middle" />&nbsp;{{ siteNameOf(l.siteId) }}</template>.
-        </div>
-        <code class="mt-1.5 block truncate font-mono text-ink-amber-7">{{ l.waitingQuery }}</code>
-      </div>
-    </div>
-  </Disclosure>
-
-  <Disclosure flat title="Slow queries" :subtitle="`${allSlowQueries.length} slow across ${siteDbs.length} database${siteDbs.length === 1 ? '' : 's'} · last 24h`">
-    <p v-if="!allSlowQueries.length" class="text-p-sm text-ink-gray-5">No slow queries in the last 24 hours.</p>
-    <div v-else class="space-y-3">
-      <div v-for="(q, i) in allSlowQueries" :key="i" class="rounded-lg border border-outline-gray-2 p-3">
-        <div class="flex items-start justify-between gap-3">
-          <code class="block min-w-0 truncate font-mono text-xs text-ink-gray-8">{{ q.digest }}</code>
-          <button class="flex shrink-0 items-center gap-1 text-p-xs text-ink-gray-5 underline-offset-2 hover:underline" @click="emit('drill', q.siteId)">
+    <Disclosure icon="lucide-timer" title="Slow queries" :subtitle="`${filteredSlow.length} slow across ${slowDbCount} database${slowDbCount === 1 ? '' : 's'} · last 24h`" :open="openKey === 'slow'" @update:open="(v) => (openKey = v ? 'slow' : null)">
+      <PaginatedListView
+        :columns="slowColumns"
+        :rows="slowRows"
+        :options="slowOptions"
+        row-key="id"
+      >
+        <template #cell="{ column, row }">
+          <span v-if="column.key === 'query'" class="truncate font-mono text-ink-gray-8" :title="row._q.digest">{{ row._q.digest }}</span>
+          <button v-else-if="column.key === 'site'" class="flex min-w-0 items-center gap-1 truncate text-ink-gray-6 underline-offset-2 hover:underline" @click.stop="emit('drill', row._q.siteId)">
             <span class="lucide-globe size-3.5 shrink-0 text-ink-gray-4" />
-            {{ q.siteName }} →
+            <span class="truncate">{{ row._q.siteName }}</span>
           </button>
-        </div>
-        <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-gray-5">
-          <span><span class="tabular-nums text-ink-gray-7">{{ q.avgMs }}</span> ms avg</span>
-          <span><span class="tabular-nums text-ink-gray-7">{{ q.calls.toLocaleString() }}</span> calls</span>
-          <span><span class="tabular-nums text-ink-gray-7">{{ q.rowsAvg.toLocaleString() }}</span> rows avg</span>
-          <span><span class="tabular-nums text-ink-gray-7">{{ Math.round(q.totalSec / 60).toLocaleString() }}</span> min total</span>
-        </div>
+          <span v-else-if="column.key === 'avg'" class="tabular-nums text-ink-gray-7">{{ row._q.avgMs }} ms</span>
+          <span v-else-if="column.key === 'calls'" class="tabular-nums text-ink-gray-6">{{ row._q.calls.toLocaleString() }}</span>
+          <span v-else-if="column.key === 'rows'" class="tabular-nums text-ink-gray-6">{{ row._q.rowsAvg.toLocaleString() }}</span>
+          <span v-else-if="column.key === 'total'" class="tabular-nums text-ink-gray-6">{{ Math.round(row._q.totalSec / 60).toLocaleString() }} min</span>
+        </template>
+      </PaginatedListView>
+    </Disclosure>
+
+    <Disclosure icon="lucide-scroll-text" title="Database binary logs" :subtitle="`${data.binlogs.length} file${data.binlogs.length === 1 ? '' : 's'} · ${fmtGb(binlogTotalGb)}`" :open="openKey === 'binlogs'" @update:open="(v) => (openKey = v ? 'binlogs' : null)">
+      <div v-if="data.binlogs.length" class="mb-2 flex items-center justify-end gap-1.5">
+        <Button v-if="selected.size" size="sm" variant="subtle" :label="`Remove ${selected.size} selected`" @click="askRemove([...selected])" />
+        <Button size="sm" variant="ghost" label="Purge all" @click="askPurgeAll" />
       </div>
-    </div>
-  </Disclosure>
-    </div>
+      <PaginatedListView
+        :columns="binlogColumns"
+        :rows="binlogRows"
+        :options="binlogOptions"
+        row-key="name"
+        @update:selections="selected = $event"
+      >
+        <template #cell="{ column, row }">
+          <span v-if="column.key === 'name'" class="truncate font-mono text-ink-gray-8">{{ row.name }}</span>
+          <span v-else-if="column.key === 'date'" class="text-ink-gray-6">{{ row.date }}</span>
+          <span v-else-if="column.key === 'size'" class="tabular-nums text-ink-gray-7">{{ fmtMb(row._f.sizeMb) }}</span>
+          <Button v-else-if="column.key === 'actions'" size="sm" variant="ghost" label="Remove" @click.stop="askRemove([row.name])" />
+        </template>
+      </PaginatedListView>
+    </Disclosure>
   </div>
 
-  <AllDatabasesPanel v-model:open="panelOpen" :databases="sortedDbs" @drill="openSite" />
-
-  <ConfirmDialog
-    v-model:open="purgeOpen"
-    title="Purge binary logs?"
-    :message="`Binary logs older than the retention window are deleted, freeing about ${fmtGb(purgeableGb)}. Recent logs are kept so replication and point-in-time recovery keep working.`"
-    confirm-label="Purge"
-    @confirm="purge"
-  />
   <ConfirmDialog
     v-model:open="killOpen"
     theme="red"
@@ -190,103 +108,57 @@
     confirm-label="Kill"
     @confirm="kill"
   />
+  <ConfirmDialog
+    v-model:open="removeOpen"
+    :title="pendingRemove.length > 1 ? `Remove ${pendingRemove.length} binary logs?` : 'Remove this binary log?'"
+    :message="`This frees about ${fmtGb(pendingRemoveGb)}. Removing a log that replication or point-in-time recovery still needs can't be undone.`"
+    confirm-label="Remove"
+    @confirm="removeBinlogs"
+  />
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Badge, Button, Dropdown, toast } from 'frappe-ui'
+import { Button, toast } from 'frappe-ui'
 import Disclosure from '../Disclosure.vue'
+import PaginatedListView from './PaginatedListView.vue'
 import ConfirmDialog from '../ConfirmDialog.vue'
-import EmptyState from '../EmptyState.vue'
 import ErrorState from '../ErrorState.vue'
-import StorageBreakdownCard from './StorageBreakdownCard.vue'
-import AllDatabasesPanel from './AllDatabasesPanel.vue'
-import { getServerDbData, getSiteDbData, dbFileMb } from '../../data/dbAnalyzer'
+import { getServerDbData, getSiteDbData } from '../../data/dbAnalyzer'
 import { fmtGb, fmtMb } from './format'
 import { useCloudStore } from '../../stores/cloud'
 
 const props = defineProps({
   server: { type: Object, required: true },
   liveSites: { type: Array, required: true },
+  // Site id to scope processes / locks / slow queries by, or null for all.
+  siteFilter: { type: String, default: null },
 })
 const emit = defineEmits(['drill'])
 
 const store = useCloudStore()
-
 const disk = computed(() => store.healthOf(props.server))
 const data = getServerDbData(props.server, props.liveSites, disk.value)
 const buckets = data.buckets
 const siteDbs = computed(() => props.liveSites.map(getSiteDbData))
+const siteNameOf = (id) => props.liveSites.find((s) => s.id === id)?.name || null
+const round1 = (v) => Math.round(v * 10) / 10
 
-// — Two workloads on one disk. Each card lists only its own footprint; the
-// shared OS overhead and free space stay unlabeled (the bar's gray remainder),
-// so no card claims disk the other workload — or nobody — is using.
-const dbSegments = computed(() => {
-  const dbCount = siteDbs.value.length + data.systemDbs.length // sites + mysql, sys, performance_schema
-  return [
-    { label: 'MariaDB binary log', gb: buckets.binlog, color: 'var(--ink-orange-5)' },
-    { label: `${dbCount} databases (including mysql, sys, perf_schema)`, gb: buckets.databases, color: 'var(--ink-purple-5)' },
-    { label: 'MariaDB core', gb: buckets.mariadbCore, color: 'var(--ink-cyan-5)' },
-    { label: 'MariaDB owned system files', gb: buckets.systemFiles, color: 'var(--ink-red-5)' },
-    { label: 'MariaDB error log', gb: buckets.errorLog, color: 'var(--ink-amber-5)' },
-    { label: 'MariaDB slow log', gb: buckets.slowLog, color: 'var(--ink-teal-5)' },
-    { label: 'MariaDB binlog indexes', gb: buckets.binlogIndexes, color: 'var(--ink-blue-5)' },
-  ]
-})
-const dbSegmentsTotal = computed(() => dbSegments.value.reduce((a, s) => a + s.gb, 0))
+// ListView options — resizable columns, base row height, and ListView's own
+// empty state per table. `scoped` tweaks the copy when a site filter is active.
+const baseOptions = { selectable: false, showTooltip: false, resizeColumn: true, rowHeight: 44 }
+const scoped = (thing) => (props.siteFilter ? `${thing} for this site` : thing)
+const processOptions = computed(() => ({ ...baseOptions, emptyState: { title: scoped('No active connections') } }))
+const lockOptions = computed(() => ({ ...baseOptions, emptyState: { title: scoped('No transactions are waiting on a lock') } }))
+const slowOptions = computed(() => ({ ...baseOptions, emptyState: { title: scoped('No slow queries in the last 24 hours') } }))
+const binlogOptions = { ...baseOptions, selectable: true, emptyState: { title: 'No binary logs on disk' } }
 
-const appSegments = computed(() => [
-  { label: 'Apps', gb: buckets.apps, color: 'var(--ink-blue-5)', children: data.appChildren },
-  { label: 'Site files', gb: buckets.siteFiles, color: 'var(--ink-violet-5)', children: data.siteChildren },
-  { label: 'Logs', gb: buckets.logs, color: 'var(--ink-amber-5)' },
-])
-const appSegmentsTotal = computed(() => appSegments.value.reduce((a, s) => a + s.gb, 0))
-
-// — Databases list. Sites plus the system schemas MariaDB keeps for itself,
-// largest first. Beyond five, "See all" opens the full master–detail panel
-// rather than growing the card.
-const panelOpen = ref(false)
-const allDbs = computed(() => [...siteDbs.value, ...data.systemDbs])
-const sortedDbs = computed(() => [...allDbs.value].sort((a, b) => dbFileMb(b) - dbFileMb(a)))
-const topDbs = computed(() => sortedDbs.value.slice(0, 5))
-const topDbTitle = computed(() =>
-  sortedDbs.value.length > 5 ? 'Usage of top 5 databases' : 'Usage per database'
-)
-const openSite = (siteId) => emit('drill', siteId)
-
-// — Purge binary logs. Keeps a retention floor; the freed space flows into
-// the store so ServerHealth and Central agree afterwards.
-const purgeOpen = ref(false)
-const purging = ref(false)
-const purgeableGb = computed(() => Math.max(Math.round((buckets.binlog * 0.85) * 10) / 10, 0))
-function purge() {
-  purging.value = true
-  setTimeout(() => {
-    purging.value = false
-    if (store.edgeMode) {
-      toast.error("Couldn't purge binary logs — the database server didn't respond.")
-      return
-    }
-    const freed = purgeableGb.value
-    buckets.binlog = Math.round((buckets.binlog - freed) * 10) / 10
-    store.reclaimServerDisk(props.server.id, freed)
-    toast.success(`Purged ${fmtGb(freed)} of binary logs`)
-  }, 1200)
-}
-
-// — Processes: filterable by site, killable with confirm.
+// — Processes: filtered by site (from the header), notable first, paginated.
 const edgeBroken = computed(() => store.edgeMode)
-const siteFilter = ref(null)
-const siteFilterLabel = computed(() => siteNameOf(siteFilter.value) || 'All sites')
-const siteFilterOptions = computed(() => [
-  { label: 'All sites', onClick: () => (siteFilter.value = null) },
-  ...props.liveSites.map((s) => ({ label: s.name, onClick: () => (siteFilter.value = s.id) })),
-])
-// Running queries lead, slowest first; idle Sleep connections sink to the
-// bottom — the way a DBA actually reads a processlist.
 const secs = (t) => parseFloat(t) || 0
+const isSlow = (p) => p.command === 'Query' && /^\d+s$/.test(p.time) && parseInt(p.time) >= 5
 const filteredProcesses = computed(() => {
-  const list = siteFilter.value ? data.processes.filter((p) => p.siteId === siteFilter.value) : data.processes
+  const list = props.siteFilter ? data.processes.filter((p) => p.siteId === props.siteFilter) : data.processes
   return [...list].sort((a, b) => {
     const aActive = a.command === 'Query'
     const bActive = b.command === 'Query'
@@ -294,36 +166,31 @@ const filteredProcesses = computed(() => {
     return secs(b.time) - secs(a.time)
   })
 })
-
-// What's worth triaging: a long-running query, or a connection tangled in a
-// lock. A 0.02s query is as much noise as an idle Sleep — duration is the
-// signal, not command. Fast queries and idle connections fold away together.
-const lockedIds = computed(() => {
-  const s = new Set()
-  data.locks.forEach((l) => { s.add(l.waitingId); s.add(l.blockingId) })
-  return s
-})
-const isNotable = (p) => isSlow(p) || lockedIds.value.has(p.id)
-const notableProcs = computed(() => filteredProcesses.value.filter(isNotable))
-const otherProcs = computed(() => filteredProcesses.value.filter((p) => !isNotable(p)))
-const showAllOther = ref(false)
-// Healthy server (nothing notable): expanding just shows the lot, no toggle.
-// Otherwise lead with the notable rows and fold the rest behind a toggle.
-const visibleProcesses = computed(() => {
-  if (!notableProcs.value.length) return filteredProcesses.value
-  return showAllOther.value ? [...notableProcs.value, ...otherProcs.value] : notableProcs.value
-})
-const otherCount = computed(() => (notableProcs.value.length ? otherProcs.value.length : 0))
-// A running query is slow past ~5s; idle Sleep connections don't count however
-// long they've sat.
-const isSlow = (p) => p.command === 'Query' && /^\d+s$/.test(p.time) && parseInt(p.time) >= 5
-const siteNameOf = (id) => props.liveSites.find((s) => s.id === id)?.name || null
-
-// Open the process list on load only when it's worth a look — a long-running
-// query, a blocked lock, or an outage. Otherwise it stays folded like the rest.
-const notableProcesses = computed(
-  () => edgeBroken.value || data.locks.length > 0 || data.processes.some((p) => isSlow(p))
+// Fixed widths, not fr — frappe-ui's grid tracks don't shrink below a cell's
+// min-content, so a long query string on an fr track blows the table wide.
+// Fixed tracks + truncate clip cleanly; the wrapper scrolls if space is tight.
+const processColumns = [
+  { label: 'ID', key: 'id', width: '3.5rem' },
+  { label: 'Command', key: 'command', width: '8rem' },
+  { label: 'User', key: 'user', width: '4.5rem' },
+  { label: 'Site', key: 'site', width: '9rem' },
+  { label: 'Query', key: 'query', width: '17rem' },
+  { label: 'Time', key: 'time', width: '5rem', align: 'right' },
+  { label: '', key: 'actions', width: '4.5rem', align: 'right' },
+]
+const processRows = computed(() =>
+  filteredProcesses.value.map((p) => ({ id: p.id, command: p.command, _p: p }))
 )
+
+// Exclusive accordion: one panel open at a time. On load it opens the most
+// notable panel — an outage or a slow query surfaces the process list, a blocked
+// transaction surfaces the locks. Nothing notable ⇒ everything stays folded.
+function mostNotable() {
+  if (edgeBroken.value || data.processes.some((p) => isSlow(p))) return 'processes'
+  if (data.locks.length > 0) return 'locks'
+  return null
+}
+const openKey = ref(mostNotable())
 
 const killOpen = ref(false)
 const pendingKill = ref(null)
@@ -344,10 +211,82 @@ function kill() {
   toast.success(`Killed connection ${id}`)
 }
 
-// — Slow queries across every database, worst offenders first.
+// — Locks, filtered by site.
+const filteredLocks = computed(() =>
+  props.siteFilter ? data.locks.filter((l) => l.siteId === props.siteFilter) : data.locks
+)
+const lockColumns = [
+  { label: 'Waiting', key: 'waiting', width: '6rem' },
+  { label: 'Blocking', key: 'blocking', width: '6rem' },
+  { label: 'Waited', key: 'waited', width: '5rem' },
+  { label: 'Site', key: 'site', width: '11rem' },
+  { label: 'Query', key: 'query', width: '20rem' },
+]
+const lockRows = computed(() =>
+  filteredLocks.value.map((l, i) => ({ id: i, waiting: l.waitingId, blocking: l.blockingId, waited: l.waitedFor, _l: l }))
+)
+
+// — Slow queries across every database (or one, when filtered), worst first.
 const allSlowQueries = computed(() =>
   siteDbs.value
     .flatMap((db) => db.slowQueries.map((q) => ({ ...q, siteId: db.siteId, siteName: db.siteName })))
     .sort((a, b) => b.totalSec - a.totalSec)
 )
+const filteredSlow = computed(() =>
+  props.siteFilter ? allSlowQueries.value.filter((q) => q.siteId === props.siteFilter) : allSlowQueries.value
+)
+const slowDbCount = computed(() => (props.siteFilter ? 1 : siteDbs.value.length))
+const slowColumns = [
+  { label: 'Query', key: 'query', width: '22rem' },
+  { label: 'Site', key: 'site', width: '11rem' },
+  { label: 'Avg', key: 'avg', width: '6rem', align: 'right' },
+  { label: 'Calls', key: 'calls', width: '6rem', align: 'right' },
+  { label: 'Rows', key: 'rows', width: '6rem', align: 'right' },
+  { label: 'Total', key: 'total', width: '6rem', align: 'right' },
+]
+const slowRows = computed(() => filteredSlow.value.map((q, i) => ({ id: i, _q: q })))
+
+// — Binary logs: list files, remove one/selected/all. Freed space flows to the
+// store (and shrinks the binlog bucket) so the Server storage page agrees.
+const selected = ref(new Set())
+const binlogTotalGb = computed(() => round1(data.binlogs.reduce((a, f) => a + f.sizeMb, 0) / 1024))
+const binlogColumns = [
+  { label: 'File', key: 'name', width: '16rem' },
+  { label: 'Date', key: 'date', width: '12rem' },
+  { label: 'Size', key: 'size', width: '8rem', align: 'right' },
+  { label: '', key: 'actions', width: '6rem', align: 'right' },
+]
+const binlogRows = computed(() => data.binlogs.map((f) => ({ name: f.name, date: f.date, _f: f })))
+
+const removeOpen = ref(false)
+const pendingRemove = ref([])
+const pendingRemoveGb = computed(() =>
+  round1(data.binlogs.filter((f) => pendingRemove.value.includes(f.name)).reduce((a, f) => a + f.sizeMb, 0) / 1024)
+)
+function askRemove(names) {
+  pendingRemove.value = names
+  removeOpen.value = true
+}
+function askPurgeAll() {
+  // Retention floor: keep the newest file so replication keeps working.
+  pendingRemove.value = data.binlogs.slice(0, -1).map((f) => f.name)
+  if (!pendingRemove.value.length) {
+    toast.success('Nothing to purge — only the current log remains.')
+    return
+  }
+  removeOpen.value = true
+}
+function removeBinlogs() {
+  if (store.edgeMode) {
+    toast.error("Couldn't remove binary logs — the database server didn't respond.")
+    return
+  }
+  const names = new Set(pendingRemove.value)
+  const freed = pendingRemoveGb.value
+  data.binlogs = data.binlogs.filter((f) => !names.has(f.name))
+  buckets.binlog = round1(Math.max(buckets.binlog - freed, 0))
+  store.reclaimServerDisk(props.server.id, freed)
+  selected.value = new Set()
+  toast.success(`Removed ${names.size} binary log${names.size === 1 ? '' : 's'}, freed ${fmtGb(freed)}`)
+}
 </script>

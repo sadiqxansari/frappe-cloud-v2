@@ -111,7 +111,7 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto">
+      <main class="fc-scroll flex-1 overflow-y-auto">
         <div :class="wide ? 'h-full w-full' : roomy ? 'mx-auto w-full max-w-5xl px-4 py-8 sm:px-6' : 'mx-auto w-full max-w-3xl px-4 py-8 sm:px-6'">
           <slot :server="server" />
         </div>
@@ -187,6 +187,7 @@ const items = computed(() => {
   const b = base.value
   return [
     { label: 'Sites', icon: 'lucide-layout-grid', to: b, active: route.path === b || route.path.startsWith(`${b}/sites`) },
+    { label: 'Server', icon: 'lucide-server', to: `${b}/server`, active: route.path === `${b}/server` },
     { label: 'Marketplace', icon: 'lucide-store', to: `${b}/marketplace`, active: route.path.startsWith(`${b}/marketplace`) },
   ]
 })

@@ -247,6 +247,31 @@ function makeServerProcesses(server, siteDbs) {
   return rows
 }
 
+// The binary log files behind the `binlog` bucket. MariaDB rolls a new file at
+// ~1 GB, so model 700 MB–1 GB files, oldest first (.000001). Sizes sum to the
+// binlog bucket, so removing files and shrinking the bucket stay in lockstep.
+function makeServerBinlogs(server, binlogGb) {
+  const totalMb = Math.round(binlogGb * 1024)
+  if (totalMb <= 0) return []
+  const r = rng(server.id + ':binlog')
+  const files = []
+  let remaining = totalMb
+  while (remaining > 0 && files.length < 400) {
+    const size = Math.min(remaining, Math.round(between(r, 700, 1024)))
+    files.push({ sizeMb: size })
+    remaining -= size
+  }
+  const count = files.length
+  return files.map((f, i) => {
+    const daysAgo = count - 1 - i // last file is newest
+    return {
+      name: 'mysql-bin.' + String(i + 1).padStart(6, '0'),
+      sizeMb: f.sizeMb,
+      date: daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`,
+    }
+  })
+}
+
 function makeServerLocks(processes) {
   // One believable lock chain: the long-running query blocks a write.
   const blocking = processes.find((p) => p.time === '12s')
@@ -288,7 +313,12 @@ export function getServerDbData(server, liveSites, disk) {
     const processes = makeServerProcesses(server, siteDbs)
     serverCache.set(
       server.id,
-      reactive({ ...storage, processes, locks: makeServerLocks(processes) })
+      reactive({
+        ...storage,
+        processes,
+        locks: makeServerLocks(processes),
+        binlogs: makeServerBinlogs(server, storage.buckets.binlog),
+      })
     )
   }
   return serverCache.get(server.id)
