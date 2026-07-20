@@ -29,7 +29,6 @@ const routes = [
   { path: '/users', redirect: '/settings' },
   // Server (operational) level. Marketplace lives here, scoped to the server.
   { path: '/manage/:serverId?', name: 'server-overview', component: () => import('./pages/manage/OverviewPage.vue') },
-  { path: '/manage/:serverId/server', name: 'server-storage', component: () => import('./pages/manage/ServerStoragePage.vue') },
   { path: '/manage/:serverId/sites/:siteId', name: 'site-detail', component: () => import('./pages/manage/SiteDetailPage.vue') },
   { path: '/manage/:serverId/analytics', name: 'server-analytics', component: () => import('./pages/manage/AnalyticsPage.vue') },
   // Settings moved into a modal on the brand dropdown; keep old links working.
