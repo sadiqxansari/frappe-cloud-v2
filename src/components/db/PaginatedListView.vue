@@ -1,8 +1,10 @@
 <template>
   <div>
-    <!-- overflow-x-auto lets wide tables scroll sideways; vertical growth is
-         handled by the .fc-listview CSS (no inner vertical scrollbar). -->
-    <div class="overflow-x-auto">
+    <!-- Sticky table headers (index.css's div:has(> .fc-listview) rule) need this
+         wrapper — and ListView's own hardcoded overflow-x-auto wrapper — to carry
+         no scroll container of their own; our fixed column widths fit within
+         .fc-scroll's content width anyway, so there's no horizontal scroll to lose. -->
+    <div>
       <ListView
         class="fc-listview"
         :columns="columns"
@@ -11,6 +13,24 @@
         :row-key="rowKey"
         v-bind="$attrs"
       >
+        <!-- Only overridden when a caller wants bulk actions on selected rows —
+             ListView's own default slot bundles header/rows/select-banner
+             together, so reaching the banner's `actions` slot means
+             reconstructing that default rather than layering on top of it.
+             Callers that don't need this keep ListView's untouched default. -->
+        <template v-if="$slots.selectionActions" #default="{ showGroupedRows, selectable }">
+          <ListHeader />
+          <template v-if="visibleRows.length">
+            <ListGroups v-if="showGroupedRows" />
+            <ListRows v-else />
+          </template>
+          <ListEmptyState v-else />
+          <ListSelectBanner v-if="selectable">
+            <template #actions="bannerSlotProps">
+              <slot name="selectionActions" v-bind="bannerSlotProps" />
+            </template>
+          </ListSelectBanner>
+        </template>
         <template #cell="slotProps">
           <slot name="cell" v-bind="slotProps" />
         </template>
@@ -37,7 +57,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Button, ListView, ListFooter } from 'frappe-ui'
+import { Button, ListView, ListFooter, ListHeader, ListRows, ListGroups, ListEmptyState, ListSelectBanner } from 'frappe-ui'
 
 // A ListView that pages long lists with frappe-ui's ListFooter. Renders only the
 // visible slice, so the table never grows unbounded and never needs an inner

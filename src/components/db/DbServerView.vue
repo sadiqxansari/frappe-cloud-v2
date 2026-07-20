@@ -4,7 +4,8 @@
        A flat stacked list, not cards — these are read-outs, not top-level
        sections. The site filter is applied by the page header. -->
   <div>
-    <Disclosure first icon="lucide-activity" title="Database processes" :subtitle="edgeBroken ? 'Unavailable' : `${filteredProcesses.length} connection${filteredProcesses.length === 1 ? '' : 's'}`" :open="openKey === 'processes'" @update:open="(v) => (openKey = v ? 'processes' : null)">
+    <p class="mb-2 text-p-base font-medium text-ink-gray-6">Live</p>
+    <Disclosure first icon="lucide-activity" title="Database processes" :subtitle="edgeBroken ? 'Unavailable' : ''" :open="openKey === 'processes'" @update:open="(v) => emit('update:openKey', v ? 'processes' : null)">
       <ErrorState
         v-if="edgeBroken"
         icon="lucide-database-zap"
@@ -26,10 +27,11 @@
           <span v-if="column.key === 'id'" class="tabular-nums text-ink-gray-5">{{ row.id }}</span>
           <span v-else-if="column.key === 'command'" class="truncate text-ink-gray-6" :title="row._p.state ? `${row.command} · ${row._p.state}` : row.command">{{ row.command }}<span v-if="row._p.state" class="text-ink-gray-4"> · {{ row._p.state }}</span></span>
           <span v-else-if="column.key === 'user'" class="truncate font-mono text-ink-gray-5">{{ row._p.user }}</span>
-          <span v-else-if="column.key === 'site'" class="flex min-w-0 items-center gap-1.5 truncate text-ink-gray-5">
-            <span v-if="siteNameOf(row._p.siteId)" class="lucide-globe size-3.5 shrink-0 text-ink-gray-4" />
-            <span class="truncate">{{ siteNameOf(row._p.siteId) || 'system' }}</span>
-          </span>
+          <button v-else-if="column.key === 'site' && siteNameOf(row._p.siteId)" class="group flex w-full min-w-0 items-center gap-1.5 text-left text-ink-gray-5 transition-colors hover-hover:text-ink-gray-8" @click.stop="emit('drill', row._p.siteId)">
+            <span class="lucide-globe size-3.5 shrink-0 text-ink-gray-4 transition-colors group-hover-hover:text-ink-gray-6" />
+            <span class="min-w-0 flex-1 truncate">{{ siteNameOf(row._p.siteId) }}</span>
+          </button>
+          <span v-else-if="column.key === 'site'" class="truncate text-ink-gray-5">system</span>
           <span v-else-if="column.key === 'query'" class="truncate font-mono text-ink-gray-7" :title="row._p.info || ''">{{ row._p.info || '—' }}</span>
           <span v-else-if="column.key === 'time'" class="tabular-nums" :class="isSlow(row._p) ? 'text-ink-amber-7' : 'text-ink-gray-5'">{{ row._p.time }}</span>
           <Button v-else-if="column.key === 'actions'" size="sm" variant="ghost" theme="red" label="Kill" @click.stop="askKill(row._p)" />
@@ -37,7 +39,7 @@
       </PaginatedListView>
     </Disclosure>
 
-    <Disclosure icon="lucide-lock" title="Database locks" :subtitle="filteredLocks.length ? `${filteredLocks.length} blocked` : 'None'" :open="openKey === 'locks'" @update:open="(v) => (openKey = v ? 'locks' : null)">
+    <Disclosure icon="lucide-lock" title="Database locks" :open="openKey === 'locks'" @update:open="(v) => emit('update:openKey', v ? 'locks' : null)">
       <PaginatedListView
         :columns="lockColumns"
         :rows="lockRows"
@@ -57,7 +59,8 @@
       </PaginatedListView>
     </Disclosure>
 
-    <Disclosure icon="lucide-timer" title="Slow queries" :subtitle="`${filteredSlow.length} slow across ${slowDbCount} database${slowDbCount === 1 ? '' : 's'} · last 24h`" :open="openKey === 'slow'" @update:open="(v) => (openKey = v ? 'slow' : null)">
+    <p class="mb-2 mt-10 text-p-base font-medium text-ink-gray-6">History and maintenance</p>
+    <Disclosure icon="lucide-timer" title="Slow queries" :subtitle="filteredSlow.length ? `Across ${slowDbCount} database${slowDbCount === 1 ? '' : 's'}` : ''" :open="openKey === 'slow'" @update:open="(v) => emit('update:openKey', v ? 'slow' : null)">
       <PaginatedListView
         :columns="slowColumns"
         :rows="slowRows"
@@ -66,9 +69,9 @@
       >
         <template #cell="{ column, row }">
           <span v-if="column.key === 'query'" class="truncate font-mono text-ink-gray-8" :title="row._q.digest">{{ row._q.digest }}</span>
-          <button v-else-if="column.key === 'site'" class="flex min-w-0 items-center gap-1 truncate text-ink-gray-6 underline-offset-2 hover:underline" @click.stop="emit('drill', row._q.siteId)">
-            <span class="lucide-globe size-3.5 shrink-0 text-ink-gray-4" />
-            <span class="truncate">{{ row._q.siteName }}</span>
+          <button v-else-if="column.key === 'site'" class="group flex w-full min-w-0 items-center gap-1.5 text-ink-gray-6 transition-colors hover-hover:text-ink-gray-8" @click.stop="emit('drill', row._q.siteId)">
+            <span class="lucide-globe size-3.5 shrink-0 text-ink-gray-4 transition-colors group-hover-hover:text-ink-gray-6" />
+            <span class="min-w-0 flex-1 truncate text-left">{{ row._q.siteName }}</span>
           </button>
           <span v-else-if="column.key === 'avg'" class="tabular-nums text-ink-gray-7">{{ row._q.avgMs }} ms</span>
           <span v-else-if="column.key === 'calls'" class="tabular-nums text-ink-gray-6">{{ row._q.calls.toLocaleString() }}</span>
@@ -78,23 +81,24 @@
       </PaginatedListView>
     </Disclosure>
 
-    <Disclosure icon="lucide-scroll-text" title="Database binary logs" :subtitle="`${data.binlogs.length} file${data.binlogs.length === 1 ? '' : 's'} · ${fmtGb(binlogTotalGb)}`" :open="openKey === 'binlogs'" @update:open="(v) => (openKey = v ? 'binlogs' : null)">
-      <div v-if="data.binlogs.length" class="mb-2 flex items-center justify-end gap-1.5">
-        <Button v-if="selected.size" size="sm" variant="subtle" :label="`Remove ${selected.size} selected`" @click="askRemove([...selected])" />
-        <Button size="sm" variant="ghost" label="Purge all" @click="askPurgeAll" />
-      </div>
+    <Disclosure icon="lucide-scroll-text" title="Database binary logs" :subtitle="data.binlogs.length ? `${data.binlogs.length} file${data.binlogs.length === 1 ? '' : 's'}` : ''" :open="openKey === 'binlogs'" @update:open="(v) => emit('update:openKey', v ? 'binlogs' : null)">
       <PaginatedListView
         :columns="binlogColumns"
         :rows="binlogRows"
         :options="binlogOptions"
         row-key="name"
-        @update:selections="selected = $event"
       >
         <template #cell="{ column, row }">
           <span v-if="column.key === 'name'" class="truncate font-mono text-ink-gray-8">{{ row.name }}</span>
           <span v-else-if="column.key === 'date'" class="text-ink-gray-6">{{ row.date }}</span>
           <span v-else-if="column.key === 'size'" class="tabular-nums text-ink-gray-7">{{ fmtMb(row._f.sizeMb) }}</span>
-          <Button v-else-if="column.key === 'actions'" size="sm" variant="ghost" label="Remove" @click.stop="askRemove([row.name])" />
+          <Button v-else-if="column.key === 'actions'" size="sm" variant="ghost" theme="red" icon="lucide-trash-2" tooltip="Remove" aria-label="Remove" @click.stop="askRemove([row.name])" />
+        </template>
+        <!-- Bulk removal now lives in ListView's own selection banner (triggered
+             by the header/row checkboxes) instead of a separate button we had
+             to show/hide ourselves. -->
+        <template #selectionActions="{ selections, unselectAll }">
+          <Button size="sm" variant="ghost" theme="red" icon="lucide-trash-2" :tooltip="`Remove ${selections.size}`" :aria-label="`Remove ${selections.size}`" @click="askRemove([...selections], unselectAll)" />
         </template>
       </PaginatedListView>
     </Disclosure>
@@ -133,8 +137,12 @@ const props = defineProps({
   liveSites: { type: Array, required: true },
   // Site id to scope processes / locks / slow queries by, or null for all.
   siteFilter: { type: String, default: null },
+  // Which accordion is open — owned by the page so the header's vitals strip
+  // (which sits outside this component) can drive and reflect it too.
+  openKey: { type: String, default: null },
 })
-const emit = defineEmits(['drill'])
+const emit = defineEmits(['drill', 'update:openKey'])
+const openKey = computed(() => props.openKey)
 
 const store = useCloudStore()
 const disk = computed(() => store.healthOf(props.server))
@@ -171,26 +179,16 @@ const filteredProcesses = computed(() => {
 // Fixed tracks + truncate clip cleanly; the wrapper scrolls if space is tight.
 const processColumns = [
   { label: 'ID', key: 'id', width: '3.5rem' },
-  { label: 'Command', key: 'command', width: '8rem' },
+  { label: 'Command', key: 'command', width: '7rem' },
   { label: 'User', key: 'user', width: '4.5rem' },
-  { label: 'Site', key: 'site', width: '9rem' },
-  { label: 'Query', key: 'query', width: '17rem' },
+  { label: 'Site', key: 'site', width: '8rem' },
+  { label: 'Query', key: 'query', width: '14rem' },
   { label: 'Time', key: 'time', width: '5rem', align: 'right' },
   { label: '', key: 'actions', width: '4.5rem', align: 'right' },
 ]
 const processRows = computed(() =>
   filteredProcesses.value.map((p) => ({ id: p.id, command: p.command, _p: p }))
 )
-
-// Exclusive accordion: one panel open at a time. On load it opens the most
-// notable panel — an outage or a slow query surfaces the process list, a blocked
-// transaction surfaces the locks. Nothing notable ⇒ everything stays folded.
-function mostNotable() {
-  if (edgeBroken.value || data.processes.some((p) => isSlow(p))) return 'processes'
-  if (data.locks.length > 0) return 'locks'
-  return null
-}
-const openKey = ref(mostNotable())
 
 const killOpen = ref(false)
 const pendingKill = ref(null)
@@ -237,21 +235,21 @@ const filteredSlow = computed(() =>
 )
 const slowDbCount = computed(() => (props.siteFilter ? 1 : siteDbs.value.length))
 const slowColumns = [
-  { label: 'Query', key: 'query', width: '22rem' },
-  { label: 'Site', key: 'site', width: '11rem' },
-  { label: 'Avg', key: 'avg', width: '6rem', align: 'right' },
-  { label: 'Calls', key: 'calls', width: '6rem', align: 'right' },
-  { label: 'Rows', key: 'rows', width: '6rem', align: 'right' },
-  { label: 'Total', key: 'total', width: '6rem', align: 'right' },
+  { label: 'Query', key: 'query', width: '16rem' },
+  { label: 'Site', key: 'site', width: '12rem' },
+  { label: 'Avg', key: 'avg', width: '5rem', align: 'right' },
+  { label: 'Calls', key: 'calls', width: '5rem', align: 'right' },
+  { label: 'Rows', key: 'rows', width: '5rem', align: 'right' },
+  { label: 'Total', key: 'total', width: '5rem', align: 'right' },
 ]
 const slowRows = computed(() => filteredSlow.value.map((q, i) => ({ id: i, _q: q })))
 
 // — Binary logs: list files, remove one/selected/all. Freed space flows to the
 // store (and shrinks the binlog bucket) so the Server storage page agrees.
-const selected = ref(new Set())
-const binlogTotalGb = computed(() => round1(data.binlogs.reduce((a, f) => a + f.sizeMb, 0) / 1024))
+// File has no fixed width, so it takes the 1fr default and stretches to fill
+// the row — the only way to push the actions column flush to the right edge.
 const binlogColumns = [
-  { label: 'File', key: 'name', width: '16rem' },
+  { label: 'File', key: 'name' },
   { label: 'Date', key: 'date', width: '12rem' },
   { label: 'Size', key: 'size', width: '8rem', align: 'right' },
   { label: '', key: 'actions', width: '6rem', align: 'right' },
@@ -260,20 +258,15 @@ const binlogRows = computed(() => data.binlogs.map((f) => ({ name: f.name, date:
 
 const removeOpen = ref(false)
 const pendingRemove = ref([])
+// Set when removal comes from the selection banner, so a confirmed bulk
+// remove also clears the checkboxes it was raised from.
+const pendingUnselectAll = ref(null)
 const pendingRemoveGb = computed(() =>
   round1(data.binlogs.filter((f) => pendingRemove.value.includes(f.name)).reduce((a, f) => a + f.sizeMb, 0) / 1024)
 )
-function askRemove(names) {
+function askRemove(names, unselectAll = null) {
   pendingRemove.value = names
-  removeOpen.value = true
-}
-function askPurgeAll() {
-  // Retention floor: keep the newest file so replication keeps working.
-  pendingRemove.value = data.binlogs.slice(0, -1).map((f) => f.name)
-  if (!pendingRemove.value.length) {
-    toast.success('Nothing to purge — only the current log remains.')
-    return
-  }
+  pendingUnselectAll.value = unselectAll
   removeOpen.value = true
 }
 function removeBinlogs() {
@@ -286,7 +279,8 @@ function removeBinlogs() {
   data.binlogs = data.binlogs.filter((f) => !names.has(f.name))
   buckets.binlog = round1(Math.max(buckets.binlog - freed, 0))
   store.reclaimServerDisk(props.server.id, freed)
-  selected.value = new Set()
+  pendingUnselectAll.value?.()
+  pendingUnselectAll.value = null
   toast.success(`Removed ${names.size} binary log${names.size === 1 ? '' : 's'}, freed ${fmtGb(freed)}`)
 }
 </script>

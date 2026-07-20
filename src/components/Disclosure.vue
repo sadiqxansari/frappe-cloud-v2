@@ -4,7 +4,7 @@
     ref="sectionEl"
     :class="flat
       ? 'border-b border-outline-alpha-gray-1'
-      : 'mt-4 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base'"
+      : 'mt-4 rounded-lg border border-outline-gray-1 bg-surface-base'"
   >
     <!-- Header row: a flex-1 toggle for icon/title, an optional actions slot, then the chevron.
          Actions sit outside the toggle so their own controls (dropdowns) don't collapse the row. -->
@@ -17,20 +17,23 @@
         :class="flat ? 'hover:opacity-80' : ''"
         @click="toggle"
       >
-        <span v-if="icon" class="grid size-7 shrink-0 place-items-center rounded-md bg-surface-gray-1">
-          <span :class="icon" class="size-4 text-ink-gray-5" />
-        </span>
+        <span v-if="icon" :class="icon" class="size-4 shrink-0 text-ink-gray-5" />
         <span class="flex min-w-0 flex-1 items-baseline gap-2">
-          <span class="shrink-0 text-base font-medium text-ink-gray-7">{{ title }}</span>
+          <span class="shrink-0 text-base font-medium text-ink-gray-9">{{ title }}</span>
           <span v-if="subtitle" class="truncate text-p-sm text-ink-gray-5">{{ subtitle }}</span>
         </span>
       </button>
       <slot name="actions" />
-      <button class="shrink-0" aria-label="Toggle" @click="toggle">
-        <span class="lucide-chevron-down size-4 text-ink-gray-5 transition-transform" :class="isOpen ? 'rotate-180' : ''" />
-      </button>
+      <Button
+        variant="ghost"
+        icon="lucide-chevron-down"
+        aria-label="Toggle"
+        class="shrink-0 transition-transform"
+        :class="isOpen ? 'rotate-180' : ''"
+        @click="toggle"
+      />
     </div>
-    <div v-if="isOpen" :class="flat ? 'pb-4' : 'p-4'">
+    <div v-if="isOpen" :class="flat ? 'pb-4' : 'px-4 pb-4'">
       <slot />
     </div>
   </section>
@@ -38,6 +41,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import { Button } from 'frappe-ui'
 
 // A plain expandable card — header with an icon/title/subtitle, body in the slot.
 // Uncontrolled by default (owns its own open state). Pass `open` (+ listen to

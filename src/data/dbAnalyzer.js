@@ -59,6 +59,18 @@ const INDEX_SUGGESTIONS = [
   { table: 'tabStock Ledger Entry', columns: ['item_code', 'warehouse'], reason: 'Range scans on every stock report' },
 ]
 
+const FULL_SCAN_QUERY_POOL = [
+  { digest: 'SELECT * FROM `tabItem` WHERE `disabled` = 0', table: 'tabItem' },
+  { digest: 'SELECT … FROM `tabFile` WHERE `attached_to_name` = ?', table: 'tabFile' },
+  { digest: 'SELECT COUNT(*) FROM `tabNotification Log` WHERE `for_user` = ?', table: 'tabNotification Log' },
+  { digest: 'SELECT * FROM `tabLead` WHERE `status` = ?', table: 'tabLead' },
+]
+
+const REDUNDANT_INDEX_POOL = [
+  { table: 'tabSales Invoice', index: 'customer_idx', redundantWith: 'customer_status_idx' },
+  { table: 'tabGL Entry', index: 'account_idx', redundantWith: 'account_posting_date_idx' },
+]
+
 function makeSiteDb(site) {
   const r = rng(site.id)
   const appFactor = 1 + (site.apps?.length || 1) * 0.6
@@ -81,12 +93,18 @@ function makeSiteDb(site) {
 
   const sum = (key) => tables.reduce((a, t) => a + t[key], 0)
   const slowCount = 2 + Math.floor(r() * 3)
+  // Time-consuming/full-scan queries and index suggestions all read from
+  // performance_schema, unlike slow queries (the slow query log) — so a site
+  // whose server has it turned off still gets a useful slow-query list, just
+  // not the deeper analysis.
+  const perfSchemaEnabled = r() < 0.8
   return {
     siteId: site.id,
     siteName: site.name,
     dbName: '_' + seedFrom(site.id).toString(16).padStart(8, '0') + seedFrom(site.name).toString(16).slice(0, 8),
     size: { dataMb: sum('dataMb'), indexMb: sum('indexMb'), claimableMb: sum('claimableMb') },
     tables,
+    perfSchemaEnabled,
     slowQueries: [...SLOW_QUERY_POOL]
       .sort(() => r() - 0.5)
       .slice(0, slowCount)
@@ -96,10 +114,26 @@ function makeSiteDb(site) {
         return { digest, calls, avgMs, rowsAvg: Math.round(between(r, 1, 6000)), totalSec: Math.round((calls * avgMs) / 1000) }
       })
       .sort((a, b) => b.totalSec - a.totalSec),
+    timeConsumingQueries: [...SLOW_QUERY_POOL]
+      .sort(() => r() - 0.5)
+      .slice(0, 2 + Math.floor(r() * 2))
+      .map((digest) => {
+        const calls = Math.round(between(r, 2000, 40000))
+        const avgMs = Math.round(between(r, 50, 400))
+        return { digest, calls, avgMs, totalSec: Math.round((calls * avgMs) / 1000) }
+      })
+      .sort((a, b) => b.totalSec - a.totalSec),
+    fullTableScanQueries: [...FULL_SCAN_QUERY_POOL]
+      .sort(() => r() - 0.5)
+      .slice(0, 1 + Math.floor(r() * 2))
+      .map((q) => ({ ...q, rowsExamined: Math.round(between(r, 5000, 400000)), calls: Math.round(between(r, 50, 2000)) }))
+      .sort((a, b) => b.rowsExamined - a.rowsExamined),
     suggestedIndexes: [...INDEX_SUGGESTIONS]
       .sort(() => r() - 0.5)
       .slice(0, 1 + Math.floor(r() * 2))
       .map((s) => ({ ...s, estGainPct: Math.round(between(r, 25, 80)) })),
+    redundantIndexes:
+      r() < 0.5 ? [{ ...pick(r, REDUNDANT_INDEX_POOL), sizeMb: Math.round(between(r, 4, 30)) }] : [],
     unusedIndexes:
       r() < 0.7
         ? [{ table: pick(r, names), name: 'owner_creation_idx', sizeMb: Math.round(between(r, 3, 24)), lastUsed: 'never' }]

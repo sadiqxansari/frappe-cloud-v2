@@ -36,15 +36,29 @@
   background-attachment: local, scroll;
 }
 
+/* Dialog overlay has no explicit z-index of its own, so a sticky ListView
+   header's z-index: 1 (below) was winning the stacking comparison and showing
+   through on top of the dimmed backdrop. Give the overlay + its content a
+   z-index safely above any in-page sticky element. */
+.dialog-overlay {
+  z-index: 40;
+}
+
 /* ListView header: swap frappe-ui's default gray-pill for a clean, bordered
    header (transparent, hairline underline). The class lands on ListView's inner
    container via $attrs.class, so its first child is the ListHeader. Add
    `fc-listview` to any ListView to get this look. */
 .fc-listview > :first-child {
-  background-color: transparent;
+  background-color: var(--surface-base);
   border-radius: 0;
   margin-bottom: 0;
   border-bottom: 1px solid var(--outline-gray-2);
+  /* Long tables never scroll internally (see below), so the header sticks to
+     the *page's* own scroll container instead — needs its own opaque
+     background or rows scrolling underneath would show through. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 /* Custom `#cell` slots bypass ListView's default text-base wrapper, so they'd
    otherwise inherit the app root (16px). Pin the table body to base (14px); the
@@ -60,6 +74,19 @@
 .fc-listview .overflow-y-auto {
   height: auto;
   overflow-y: visible;
+}
+/* ListView's own root wrapper hardcodes overflow-x-auto (for horizontal scroll
+   on narrow viewports) — but ANY non-visible overflow-y on this element, even
+   `clip`, makes it the sticky header's scroll container instead of
+   `.fc-scroll` above, and since it's never taller than its own content, the
+   header then gets no room to actually stick (confirmed: `clip` still traps
+   sticky, it isn't just an "auto-promotion" artifact). Our tables use fixed
+   column widths sized to fit `.fc-scroll`'s content width, so trading away
+   this inner horizontal scroll for a working sticky header is the right call
+   here — force both axes back to visible so no scroll container forms here
+   at all. */
+div:has(> .fc-listview) {
+  overflow: visible;
 }
 /* frappe-ui's row cell wrapper carries the column's justify-* class but isn't a
    flex container, so a custom #cell slot's content ignores it and sits left even

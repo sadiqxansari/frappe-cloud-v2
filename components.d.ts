@@ -67,6 +67,7 @@ declare module 'vue' {
     StorageBreakdownCard: typeof import('./src/components/db/StorageBreakdownCard.vue')['default']
     UpdateServerDialog: typeof import('./src/components/UpdateServerDialog.vue')['default']
     ValidatedFormControl: typeof import('./src/components/ValidatedFormControl.vue')['default']
+    VitalsStrip: typeof import('./src/components/db/VitalsStrip.vue')['default']
     WorldDots: typeof import('./src/components/WorldDots.vue')['default']
     WorldMap: typeof import('./src/components/WorldMap.vue')['default']
   }
