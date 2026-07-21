@@ -577,6 +577,86 @@ function grownState() {
   return s
 }
 
+// — Partner: a reseller hosting other people's businesses. Two servers per
+// client (prod + staging), which is why the names pair up and why a client's
+// pair always shares a region.
+//
+// Mumbai deliberately carries 22 of the 50. A partner's book really does bunch
+// like this, and it's the case worth designing against: fifty pins spread
+// evenly would never test whether the map clusters or just stacks dots on one
+// spot, and the list has to stay usable when a third of it lives in one place.
+const PARTNER_REGIONS = [
+  ['aws-mumbai', 22],
+  ['do-blr', 5],
+  ['aws-singapore', 4],
+  ['aws-frankfurt', 4],
+  ['aws-virginia', 4],
+  ['hetzner-falkenstein', 3],
+  ['do-nyc', 3],
+  ['aws-london', 3],
+  ['oracle-jeddah', 2],
+]
+
+// 25 clients × prod/staging = the 50 servers.
+const PARTNER_CLIENTS = [
+  'acme', 'northwind', 'vertex', 'lumen', 'kestrel',
+  'anvil', 'brightline', 'cobalt', 'dovetail', 'ember',
+  'foxglove', 'granite', 'harbour', 'ironwood', 'juniper',
+  'kiln', 'lantern', 'meridian', 'nimbus', 'orchard',
+  'pinnacle', 'quarry', 'ridgeline', 'summit', 'tessera',
+]
+
+function partnerState() {
+  // Built on the grown baseline so team, billing profile and history stay
+  // realistic — only the fleet is replaced.
+  const s = grownState()
+  s.scenario = 'partner'
+  s.teams = [{ id: 'team-1', name: 'Atlas Partners', avatar: null }]
+  s.currentTeamId = 'team-1'
+
+  const servers = []
+  let i = 0
+  for (const [regionId, count] of PARTNER_REGIONS) {
+    for (let n = 0; n < count; n += 1, i += 1) {
+      const client = PARTNER_CLIENTS[Math.floor(i / 2)]
+      const isProd = i % 2 === 0
+      const name = `${client}-${isProd ? 'prod' : 'staging'}`
+      // Staging boxes sit on the cheapest plan; every sixth production one is a
+      // big client. A couple of unhealthy servers keep the status filter honest
+      // at this size.
+      const planId = isProd ? (i % 6 === 0 ? 'enterprise' : 'business') : 'starter'
+      const status = i === 7 ? 'suspended' : i === 26 ? 'broken' : 'active'
+      servers.push(
+        makeServer({
+          name,
+          regionId,
+          planId,
+          status,
+          createdAt: Date.now() - (40 + i * 3) * DAY,
+          sites: [makeSite(name, isProd ? ['erpnext', 'hr'] : ['erpnext'])],
+          health:
+            status === 'broken'
+              ? { cpuPct: 0, memUsedGb: 0, memTotalGb: 4, diskFrac: 0.5 }
+              : { cpuPct: 12 + ((i * 7) % 46), memUsedGb: 1.4 + ((i * 3) % 7), memTotalGb: 8, diskFrac: 0.2 + ((i % 6) * 0.1) },
+        }),
+      )
+    }
+  }
+  s.servers = servers
+
+  // Fifty subscriptions dwarf the grown baseline's numbers, so rebase anything
+  // quoted in rupees — otherwise the estimate reads as a 600% jump on a
+  // last-cycle figure that belonged to a six-server account.
+  const monthly = servers.reduce(
+    (sum, srv) => (srv.status === 'suspended' ? sum : sum + planById(srv.planId).priceMonthly),
+    0,
+  )
+  s.lastCycleTotal = Math.round(monthly * 0.94)
+  s.budgetAlert = Math.round((monthly * 1.15) / 1000) * 1000
+  s.walletBalance = 42000
+  return s
+}
+
 // — Ravi: a solo, non-technical owner. One server, one site, one bill. He lives
 // inside his app's Desk; the FC modal is his whole console (decision 2). Indian
 // (₹ display), a paying customer (no trial badge). His site carries Frappe HR,
@@ -891,6 +971,7 @@ export const useCloudStore = defineStore('cloud', {
         fresh: freshState,
         grown: grownState,
         solo: soloState,
+        partner: partnerState,
       }
       this.$state = (states[name] || freshState)()
     },
