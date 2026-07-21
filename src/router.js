@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useCloudStore } from './stores/cloud'
+import { sitesByAttention } from './utils/sites'
 
 const routes = [
   { path: '/', name: 'home', component: { render: () => null } },
@@ -20,7 +21,21 @@ const routes = [
   { path: '/settings', name: 'central-settings', component: () => import('./pages/manage/CentralSettingsPage.vue') },
   { path: '/users', redirect: '/settings' },
   // Server (operational) level. Marketplace lives here, scoped to the server.
-  { path: '/manage/:serverId?', name: 'server-overview', component: () => import('./pages/manage/OverviewPage.vue') },
+  // There's no map/list "home" anymore — landing on a server always opens a
+  // site. Attention order picks the one that most needs eyes; an empty server
+  // (no sites yet) gets its own small empty state instead.
+  {
+    path: '/manage/:serverId?',
+    name: 'server-overview',
+    redirect: (to) => {
+      const store = useCloudStore()
+      const server = to.params.serverId ? store.findServer(to.params.serverId) : store.server
+      if (!server) return '/'
+      const [first] = sitesByAttention(server.sites)
+      return first ? `/manage/${server.id}/sites/${first.id}` : `/manage/${server.id}/empty`
+    },
+  },
+  { path: '/manage/:serverId/empty', name: 'server-empty', component: () => import('./pages/manage/ServerEmptyPage.vue') },
   { path: '/manage/:serverId/sites/:siteId', name: 'site-detail', component: () => import('./pages/manage/SiteDetailPage.vue') },
   { path: '/manage/:serverId/analytics', name: 'server-analytics', component: () => import('./pages/manage/AnalyticsPage.vue') },
   // Settings moved into a modal on the brand dropdown; keep old links working.

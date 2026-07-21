@@ -1,11 +1,9 @@
 import { ref } from 'vue'
 import { toast } from 'frappe-ui'
 
-// One shared open-state for the "All sites" pill ⇄ panel. The map and the
-// site page render the panel in the same corner, so sharing the state means
-// crossing between them reads as the panel standing still — and Esc's chain
-// works: site page → map (panel still open) → pill. Session-only on purpose;
-// a fresh load starts at the pill.
+// Shared open-state for the "All sites" pill ⇄ panel on the site page, so it
+// stays open (or collapsed) while walking between sites. Session-only on
+// purpose; a fresh load starts at the pill.
 export const sitesPanelOpen = ref(false)
 
 // Sites that need eyes come first, so they never hide in the overflow.
@@ -32,6 +30,15 @@ export function statusTheme(site) {
 export function appsLabel(site) {
   const n = site.apps?.length ?? 0
   return n === 1 ? '1 app' : `${n} apps`
+}
+
+// No real per-site disk metric in the data model yet — a stable hash of the
+// site's id stands in for one, so the same site always shows the same size
+// instead of jumping around on every render.
+export function siteStorageGb(site) {
+  const hash = [...site.id].reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 5381)
+  const base = 0.4 + ((hash % 1000) / 1000) * 2 // spread ~0.4–2.4 GB
+  return Math.round((base + (site.apps?.length ?? 0) * 0.6) * 10) / 10
 }
 
 // The per-site overflow menu shared by map cards and panel rows.

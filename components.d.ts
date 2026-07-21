@@ -51,6 +51,7 @@ declare module 'vue' {
     ScheduleField: typeof import('./src/components/ScheduleField.vue')['default']
     ServerActions: typeof import('./src/components/ServerActions.vue')['default']
     ServerHealth: typeof import('./src/components/ServerHealth.vue')['default']
+    ServerLifecycleBanners: typeof import('./src/components/ServerLifecycleBanners.vue')['default']
     ServerMap: typeof import('./src/components/ServerMap.vue')['default']
     ServerOverviewModal: typeof import('./src/components/ServerOverviewModal.vue')['default']
     ServerSettingsDialog: typeof import('./src/components/ServerSettingsDialog.vue')['default']

@@ -59,9 +59,6 @@ import { slugify } from '../utils/format'
 
 const props = defineProps({
   server: { type: Object, default: null },
-  // Stay on the current page after creating (the sites map shows the new
-  // site landing in place) instead of jumping into the site.
-  stay: { type: Boolean, default: false },
 })
 
 const open = defineModel('open', { type: Boolean, default: false })
@@ -107,8 +104,7 @@ function create() {
   const site = store.createSite(props.server.id, label.value.trim(), selected.value)
   open.value = false
   toast.success(`Setting up ${site.name}…`)
-  // Land on the site so they can watch the deploy progress if they want (#35)
-  // — unless the caller wants to stay put (the sites map).
-  if (!props.stay) router.push(`/manage/${props.server.id}/sites/${site.id}`)
+  // Land on the site so they can watch the deploy progress if they want (#35).
+  router.push(`/manage/${props.server.id}/sites/${site.id}`)
 }
 </script>

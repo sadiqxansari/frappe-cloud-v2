@@ -7,38 +7,32 @@
     <Transition name="ssp-panel">
       <div
         v-if="open"
-        class="pointer-events-auto flex h-full w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
+        class="pointer-events-auto flex h-full w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl bg-surface-elevation-1 shadow-sm"
         :style="{ transformOrigin: 'top left' }"
       >
-        <div class="flex items-center justify-between px-4 pb-2 pt-3.5">
-          <div class="text-base font-semibold text-ink-gray-9">
+        <div class="flex items-center justify-between px-5 pb-3 pt-4">
+          <div class="text-base font-medium text-ink-gray-7">
             All sites <span class="font-normal text-ink-gray-5">({{ sites.length }})</span>
           </div>
           <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" aria-label="Collapse site list" @click="emit('update:open', false)">
             <span class="lucide-minimize-2 size-4" />
           </button>
         </div>
-        <div class="shrink-0 px-4 pb-3">
-          <FormControl v-model="q" type="text" placeholder="Search" autocomplete="off" class="[&_input]:w-full">
-            <template #prefix><span class="lucide-search size-4 text-ink-gray-5" /></template>
-          </FormControl>
-        </div>
-        <div class="min-h-0 flex-1 divide-y divide-outline-alpha-gray-1 overflow-y-auto border-t border-outline-alpha-gray-1 px-2 pb-2">
-          <p v-if="!panelSites.length" class="px-2.5 py-3 text-sm text-ink-gray-5">No sites match.</p>
+        <div class="min-h-0 flex-1 divide-y divide-outline-alpha-gray-1 overflow-y-auto px-3 pb-3">
+          <p v-if="!panelSites.length" class="px-3.5 py-3.5 text-sm text-ink-gray-5">No sites yet.</p>
           <div
             v-for="site in panelSites"
             :key="site.id"
             role="button"
             tabindex="0"
-            class="group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-3 text-left transition-colors hover:bg-surface-gray-2"
-            :class="site.id === activeSiteId && 'bg-surface-gray-2'"
+            class="group flex cursor-pointer items-start gap-3 rounded-lg py-3.5 pl-4 pr-3.5 text-left"
             :aria-current="site.id === activeSiteId ? 'page' : undefined"
             @click="emit('select', site)"
             @keydown.enter="emit('select', site)"
             @mouseenter="emit('hover', site.id)"
             @mouseleave="emit('hover', null)"
           >
-            <span class="relative shrink-0">
+            <span class="relative shrink-0 opacity-80 transition-opacity group-hover:opacity-100">
               <SiteIcon size="md" />
               <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: siteStatusVar(site) }" />
             </span>
@@ -47,7 +41,13 @@
                 <span class="truncate text-sm font-medium text-ink-gray-9">{{ site.name }}</span>
                 <Badge v-if="site.status !== 'live'" :theme="statusTheme(site)" variant="subtle" size="sm" :label="statusLabel(site)" class="shrink-0" />
               </span>
-              <span class="mt-1 block truncate text-sm text-ink-gray-5">{{ appsLabel(site) }}</span>
+              <span class="mt-1 block truncate text-sm text-ink-gray-5 transition-colors group-hover:text-ink-gray-7">{{ appsLabel(site) }}</span>
+              <span class="mt-2 flex items-center gap-2">
+                <span class="w-16 shrink-0 opacity-70">
+                  <Progress size="sm" :value="storagePct(site)" />
+                </span>
+                <span class="shrink-0 text-xs tabular-nums text-ink-gray-4">{{ siteStorageGb(site) }} GB</span>
+              </span>
             </span>
             <span @click.stop>
               <Dropdown :options="siteOptions(site)" placement="bottom-end">
@@ -73,12 +73,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Dropdown, FormControl } from 'frappe-ui'
+import { Badge, Dropdown, Progress } from 'frappe-ui'
 import SiteIcon from './SiteIcon.vue'
 import { useCloudStore } from '../stores/cloud'
-import { appsLabel, siteRowOptions, sitesByAttention, siteStatusVar, statusLabel, statusTheme } from '../utils/sites'
+import { appsLabel, siteRowOptions, sitesByAttention, siteStatusVar, siteStorageGb, statusLabel, statusTheme } from '../utils/sites'
 
 const props = defineProps({
   server: { type: Object, required: true },
@@ -92,12 +92,13 @@ const store = useCloudStore()
 const router = useRouter()
 
 const sites = computed(() => props.server.sites)
-const q = ref('')
-const panelSites = computed(() => {
-  const term = q.value.trim().toLowerCase()
-  return sitesByAttention(sites.value).filter((s) => !term || s.name.toLowerCase().includes(term))
-})
+const panelSites = computed(() => sitesByAttention(sites.value))
 const siteOptions = (site) => siteRowOptions(site, { store, router })
+
+// Bars read relative to the biggest site in this list, not some absolute
+// disk total — the point is "which of my sites is heaviest", not a %-of-plan.
+const maxStorageGb = computed(() => Math.max(...sites.value.map(siteStorageGb), 1))
+const storagePct = (site) => Math.round((siteStorageGb(site) / maxStorageGb.value) * 100)
 </script>
 
 <style scoped>

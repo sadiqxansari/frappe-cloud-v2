@@ -1,7 +1,9 @@
 <template>
   <ServerShell v-if="site" :server="server" :crumbs="crumbs" wide>
-    <!-- Open site lives in the top nav bar (right-most action slot). -->
+    <!-- New site is a server-level action, kept here since this page is the
+         server's home now. Open site lives in the top nav bar too. -->
     <template #actions>
+      <Button variant="subtle" size="sm" label="New site" icon-left="lucide-plus" :disabled="server.status !== 'active'" @click="newSiteOpen = true" />
       <Button variant="subtle" size="sm" label="Open site" icon-left="lucide-external-link" @click="openSite" />
       <Dropdown :options="siteMenu" placement="bottom-end">
         <Button variant="ghost" size="sm" icon="lucide-ellipsis-vertical" aria-label="More actions" />
@@ -9,9 +11,9 @@
     </template>
 
     <!-- Split view: the page pane scrolls on its own; the sites list floats
-         beside it in the same corner the map's panel occupies, so crossing
-         map ⇄ site reads as the panel standing still. Collapsing the list
-         hands the full width back to the page. -->
+         beside it in the same corner, docked open by default — there's
+         always a site open, so the list is this page's "home" affordance.
+         Collapsing it hands the full width back to the page. -->
     <div class="relative h-full">
       <div
         ref="scroller"
@@ -19,6 +21,8 @@
         :class="listOpen ? 'lg:pl-[25rem]' : ''"
       >
         <div class="sdl-page mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+
+    <ServerLifecycleBanners :server="server" />
 
     <!-- Site header — the identity sits over a faded dot field that anchors the
          page, then dissolves into the normal background. Install app and the ⋯
@@ -278,11 +282,12 @@
         </div>
       </div>
 
-      <!-- The same panel the map shows — here it's the split's left column.
+      <!-- The split's left column — the full list of the server's sites.
            Selecting swaps the page instantly; minimize gives the width back. -->
       <SitesPanel v-model:open="listOpen" :server="server" :active-site-id="site.id" @select="goSite" />
     </div>
 
+    <NewSiteDialog v-model:open="newSiteOpen" :server="server" />
     <MoveSiteDialog v-model:open="moveOpen" :site="site" :server="server" :required-version="moveVersion" @moved="onMoved" />
     <AddDomainDialog v-model:open="addDomainOpen" :site="site" />
     <DropSiteDialog v-model:open="dropOpen" :site="site" @confirm="dropSite" />
@@ -352,6 +357,8 @@ import SiteIcon from '../../components/SiteIcon.vue'
 import SitesPanel from '../../components/SitesPanel.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
 import MoveSiteDialog from '../../components/MoveSiteDialog.vue'
+import NewSiteDialog from '../../components/NewSiteDialog.vue'
+import ServerLifecycleBanners from '../../components/ServerLifecycleBanners.vue'
 import { versionById } from '../../data/catalog'
 import { backupCustomLabel, useCloudStore } from '../../stores/cloud'
 import { fmtDateTime } from '../../utils/format'
@@ -384,10 +391,10 @@ const tabs = [
   { label: 'Settings', value: 'settings' },
 ]
 
-// — Split view. The list shares its open state with the map's panel; landing
-// here on a desktop viewport docks it open (playing the pill → panel morph if
-// it was collapsed). The active tab is deliberately NOT reset when switching
-// sites — walking the list comparing one tab is the hot path.
+// — Split view. Session-only open state (sitesPanelOpen); landing here on a
+// desktop viewport docks it open (playing the pill → panel morph if it was
+// collapsed). The active tab is deliberately NOT reset when switching sites
+// — walking the list comparing one tab is the hot path.
 const listOpen = sitesPanelOpen
 const scroller = ref(null)
 
@@ -410,9 +417,9 @@ onMounted(() => {
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
-// Esc leaves for the map — where the panel is still open, and a second Esc
-// collapses it to the pill. One key, always "out". ↑/↓ walk the sites in the
-// list's attention-first order.
+// There's no map to leave for anymore — a site is always open here. Esc just
+// collapses the list back to its pill (if it's open); ↑/↓ walk the sites in
+// the list's attention-first order.
 function onKeydown(e) {
   if (e.defaultPrevented || !server.value || !site.value) return
   const t = e.target
@@ -423,7 +430,7 @@ function onKeydown(e) {
       t.blur()
       return
     }
-    router.push(`/manage/${server.value.id}`)
+    if (listOpen.value) listOpen.value = false
   } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !typing && listOpen.value) {
     const list = sitesByAttention(server.value.sites)
     const i = list.findIndex((s) => s.id === site.value.id)
@@ -447,6 +454,7 @@ function copyValue(text) {
 const dropOpen = ref(false)
 const deactivateOpen = ref(false)
 const resetOpen = ref(false)
+const newSiteOpen = ref(false)
 
 // — Header identity + actions
 // In the mockup, "Open site" routes to the in-app view rather than the real

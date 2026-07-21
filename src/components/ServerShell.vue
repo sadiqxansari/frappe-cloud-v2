@@ -169,7 +169,7 @@ const appUpdateCount = computed(() => {
 const hasUpdates = computed(() => appUpdateCount.value > 0)
 const scheduledUpdate = computed(() => server.value?.scheduledUpdate || null)
 // On the sites pages the global button stays quiet — site rows carry their own cues.
-const siteContext = computed(() => ['server-overview', 'site-detail'].includes(route.name))
+const siteContext = computed(() => ['site-detail', 'server-empty'].includes(route.name))
 const updateLabel = computed(() =>
   scheduledUpdate.value ? 'Update scheduled' : hasUpdates.value ? 'Updates available' : 'Check for updates',
 )
