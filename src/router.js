@@ -25,6 +25,14 @@ const routes = [
   { path: '/billing', name: 'billing', component: () => import('./pages/manage/CentralBillingPage.vue') },
   { path: '/billing/invoices', name: 'billing-invoices', component: () => import('./pages/manage/CentralBillingPage.vue') },
   { path: '/billing/limit-tiers', name: 'billing-limit-tiers', component: () => import('./pages/manage/LimitTiersPage.vue') },
+  // Add-ons — services you buy by consumption, not by the month. The index is
+  // the catalogue (hub); each service that's on gets its own page (spoke) and
+  // graduates into the sidebar. Account-level, like billing.
+  { path: '/addons', name: 'addons', component: () => import('./pages/manage/AddonsPage.vue') },
+  { path: '/addons/ai', name: 'addon-ai', component: () => import('./pages/manage/addons/AiAddonPage.vue') },
+  { path: '/addons/storage', name: 'addon-storage', component: () => import('./pages/manage/addons/StorageAddonPage.vue') },
+  { path: '/addons/email', name: 'addon-email', component: () => import('./pages/manage/addons/EmailAddonPage.vue') },
+  { path: '/addons/pdf', name: 'addon-pdf', component: () => import('./pages/manage/addons/PdfAddonPage.vue') },
   { path: '/settings', name: 'central-settings', component: () => import('./pages/manage/CentralSettingsPage.vue') },
   { path: '/users', redirect: '/settings' },
   // Server (operational) level. Marketplace lives here, scoped to the server.
@@ -76,7 +84,7 @@ router.beforeEach((to) => {
   // Central (account-level) surfaces exist for a server-less account too, so
   // they only require sign-in — not a server.
   const central = ['/servers', '/settings', '/users', '/account']
-  const needsAuth = to.path.startsWith('/billing') || central.includes(to.path)
+  const needsAuth = to.path.startsWith('/billing') || to.path.startsWith('/addons') || central.includes(to.path)
   if (needsAuth && !store.isAuthed) return '/signup'
 })
 

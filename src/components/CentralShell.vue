@@ -211,9 +211,16 @@ const utilityItems = [
 ]
 
 const billingActive = computed(() => route.path.startsWith('/billing'))
+
+// ORDER MATTERS: a group renders as a caption plus flat children with nothing
+// closing it, so a plain item placed after one reads as another of its children.
+// Keep every plain item above every group.
 const items = computed(() => [
   { label: 'Servers', icon: 'lucide-server', to: '/servers', active: route.path === '/servers' || route.path.startsWith('/servers/') },
   { label: 'Teams', icon: 'lucide-users', to: '/settings', active: route.path.startsWith('/settings') },
+  // One entry, whatever is switched on. The services are reached from the page
+  // itself, so the rail stays the same length as the account grows.
+  { label: 'Add-on services', icon: 'lucide-blocks', to: '/addons', active: route.path.startsWith('/addons') },
   {
     label: 'Billing',
     icon: 'lucide-wallet',
