@@ -173,6 +173,62 @@
               </div>
             </section>
 
+            <!-- Metered usage — the consumed half of the bill, sibling to
+                 Subscriptions above. Every row carries its own allowance, so the
+                 amount on the right is always explainable without leaving the
+                 page; the bar is the fastest read of "how much room is left".
+                 Grouped by service so six meters land as three blocks. -->
+            <section v-if="store.meteredGroups.length" class="rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-1.5">
+                  <h2 class="text-base font-semibold text-ink-gray-8">Metered usage</h2>
+                  <Tooltip text="Charged only past what your plan and add-ons include.">
+                    <span class="lucide-info size-3.5 text-ink-gray-4" />
+                  </Tooltip>
+                </div>
+                <span class="text-base font-medium tabular-nums text-ink-gray-9">{{ inr(store.meteredThisCycle) }}</span>
+              </div>
+
+              <!-- One row per service: what it is and what it cost. The meters
+                   behind it live on the service's own page — this card is for
+                   reading the bill, not auditing it. Deliberately the same row
+                   shape as Subscriptions above, so the recurring and consumed
+                   halves of the bill scan as one list. -->
+              <div class="mt-2 divide-y divide-outline-alpha-gray-1">
+                <div v-for="group in billableGroups" :key="group.source" class="flex items-center justify-between gap-3 py-3">
+                  <component
+                    :is="group.to ? 'button' : 'div'"
+                    class="group/src flex min-w-0 items-start gap-2.5 text-left"
+                    @click="group.to && router.push(group.to)"
+                  >
+                    <span class="mt-1 size-4 shrink-0 text-ink-gray-5" :class="group.icon" />
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-1.5">
+                        <span class="truncate text-base font-medium text-ink-gray-9" :class="group.to && 'transition-colors group-hover/src:text-ink-gray-7'">{{ group.source }}</span>
+                        <span v-if="group.to" class="lucide-arrow-up-right size-3 shrink-0 text-ink-gray-4 opacity-0 transition-opacity group-hover/src:opacity-100" />
+                      </div>
+                      <div v-if="breakdownOf(group)" class="truncate text-p-sm text-ink-gray-5">{{ breakdownOf(group) }}</div>
+                    </div>
+                  </component>
+                  <span class="shrink-0 text-base font-medium tabular-nums text-ink-gray-9">{{ inr(group.cost) }}</span>
+                </div>
+              </div>
+
+              <!-- Add-ons that haven't cost anything yet get a name-check rather
+                   than rows of zeroes. They're never hidden — every meter is
+                   always visible on the add-on's own page, so nobody meets a
+                   meter for the first time as a charge. -->
+              <p v-if="freeGroups.length" class="pt-3 text-p-sm text-ink-gray-5">
+                Included this cycle: {{ freeGroupNames }}
+              </p>
+
+              <!-- Says the two things that stop most billing questions: usage
+                   lags a little, and this is the same data the invoice is built
+                   from. A meter nobody trusts is worse than no meter. -->
+              <p class="mt-3 text-p-xs text-ink-gray-4">Updated every few minutes. Your invoice is built from these numbers.</p>
+              <Button class="mt-2 -ml-2" variant="ghost" size="sm" label="Manage add-on services" icon-left="lucide-blocks" @click="router.push('/addons')" />
+            </section>
+
             <!-- Marketplace payouts — always shown for discoverability (issue
                  #19). Before you publish anything it's an invitation; once you're
                  a developer it shows your withdrawable earnings. -->
@@ -406,7 +462,12 @@
                         <ListCell>
                           <div class="min-w-0">
                             <div class="truncate text-sm text-ink-gray-7">{{ it.label }}</div>
-                            <div class="text-p-sm text-ink-gray-5">{{ it.plan }} · {{ it.days }} × {{ inr(it.perDay) }}/day</div>
+                            <!-- Two line-item shapes share this list: a subscription
+                                 is plan × days, a metered one is quantity × rate.
+                                 Only the billable quantity appears — what the
+                                 allowance covered was never charged. -->
+                            <div v-if="it.kind === 'metered'" class="text-p-sm text-ink-gray-5">{{ qty(it.qty) }} {{ it.unit }} × {{ rate(it.rate) }}</div>
+                            <div v-else class="text-p-sm text-ink-gray-5">{{ it.plan }} · {{ it.days }} × {{ inr(it.perDay) }}/day</div>
                           </div>
                         </ListCell>
                         <ListCell class="justify-end">
@@ -683,7 +744,7 @@ import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
 import { useCloudStore } from '../../stores/cloud'
-import { inr, usd } from '../../utils/format'
+import { inr, qty, rate, usd } from '../../utils/format'
 import { validateEmail, validateTaxId } from '../../utils/validate'
 
 const store = useCloudStore()
@@ -697,6 +758,25 @@ const crumbs = computed(() =>
     ? [{ label: 'Billing', route: '/billing' }, { label: 'Invoices' }]
     : [{ label: 'Billing', route: '/billing' }],
 )
+
+// The bill leads with what's actually being charged; anything still inside its
+// allowance collapses to one line below, so turning on a fourth add-on doesn't
+// add three rows of zeroes to the page you check your spend on.
+const billableGroups = computed(() => store.meteredGroups.filter((g) => g.cost > 0))
+
+// A one-line cost split for services metered on more than one thing, so "why
+// ₹1,046?" is answerable without leaving the page. With a single meter it would
+// only restate the total, so it's left off.
+function breakdownOf(group) {
+  const billable = group.rows.filter((r) => r.cost > 0)
+  if (billable.length < 2) return ''
+  return billable.map((r) => `${r.label} ${inr(Math.round(r.cost))}`).join(' · ')
+}
+const freeGroups = computed(() => store.meteredGroups.filter((g) => g.cost <= 0))
+// Reuses the word the zero-cost rows already use ("Included"), so the summary
+// line and the rows it stands in for say the same thing — and it reads the same
+// whether one service is listed or three.
+const freeGroupNames = computed(() => freeGroups.value.map((g) => g.source).join(', '))
 
 // — Problem states (mostly surfaced by Edge mode, but real once the API is live)
 const overdueInvoice = computed(() => store.invoices.find((i) => i.overdue || i.status === 'Unpaid') || null)
