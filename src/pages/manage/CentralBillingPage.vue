@@ -173,6 +173,62 @@
               </div>
             </section>
 
+            <!-- Metered usage — the consumed half of the bill, sibling to
+                 Subscriptions above. Every row carries its own allowance, so the
+                 amount on the right is always explainable without leaving the
+                 page; the bar is the fastest read of "how much room is left".
+                 Grouped by service so six meters land as three blocks. -->
+            <section v-if="store.meteredGroups.length" class="rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-1.5">
+                  <h2 class="text-base font-semibold text-ink-gray-8">Metered usage</h2>
+                  <Tooltip text="Charged only past what your plan and add-ons include.">
+                    <span class="lucide-info size-3.5 text-ink-gray-4" />
+                  </Tooltip>
+                </div>
+                <span class="text-base font-medium tabular-nums text-ink-gray-9">{{ inr(store.meteredThisCycle) }}</span>
+              </div>
+
+              <!-- One row per service: what it is and what it cost. The meters
+                   behind it live on the service's own page — this card is for
+                   reading the bill, not auditing it. Deliberately the same row
+                   shape as Subscriptions above, so the recurring and consumed
+                   halves of the bill scan as one list. -->
+              <div class="mt-2 divide-y divide-outline-alpha-gray-1">
+                <div v-for="group in billableGroups" :key="group.source" class="flex items-center justify-between gap-3 py-3">
+                  <component
+                    :is="group.to ? 'button' : 'div'"
+                    class="group/src flex min-w-0 items-start gap-2.5 text-left"
+                    @click="group.to && router.push(group.to)"
+                  >
+                    <span class="mt-1 size-4 shrink-0 text-ink-gray-5" :class="group.icon" />
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-1.5">
+                        <span class="truncate text-base font-medium text-ink-gray-9" :class="group.to && 'transition-colors group-hover/src:text-ink-gray-7'">{{ group.source }}</span>
+                        <span v-if="group.to" class="lucide-arrow-up-right size-3 shrink-0 text-ink-gray-4 opacity-0 transition-opacity group-hover/src:opacity-100" />
+                      </div>
+                      <div v-if="breakdownOf(group)" class="truncate text-p-sm text-ink-gray-5">{{ breakdownOf(group) }}</div>
+                    </div>
+                  </component>
+                  <span class="shrink-0 text-base font-medium tabular-nums text-ink-gray-9">{{ inr(group.cost) }}</span>
+                </div>
+              </div>
+
+              <!-- Add-ons that haven't cost anything yet get a name-check rather
+                   than rows of zeroes. They're never hidden — every meter is
+                   always visible on the add-on's own page, so nobody meets a
+                   meter for the first time as a charge. -->
+              <p v-if="freeGroups.length" class="pt-3 text-p-sm text-ink-gray-5">
+                Included this cycle: {{ freeGroupNames }}
+              </p>
+
+              <!-- Says the two things that stop most billing questions: usage
+                   lags a little, and this is the same data the invoice is built
+                   from. A meter nobody trusts is worse than no meter. -->
+              <p class="mt-3 text-p-xs text-ink-gray-4">Updated every few minutes. Your invoice is built from these numbers.</p>
+              <Button class="mt-2 -ml-2" variant="ghost" size="sm" label="Manage add-on services" icon-left="lucide-blocks" @click="router.push('/addons')" />
+            </section>
+
             <!-- Marketplace payouts — always shown for discoverability (issue
                  #19). Before you publish anything it's an invitation; once you're
                  a developer it shows your withdrawable earnings. -->
@@ -234,20 +290,21 @@
 
         <!-- ── Invoices ─────────────────────────────────────────── -->
         <template v-else>
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <h1 class="text-xl font-semibold text-ink-gray-9">Invoices</h1>
-              <p class="mt-1 text-p-base text-ink-gray-5">
-                Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }} · in {{ langLabel(store.billingProfile.invoiceLanguage) }}
-              </p>
-            </div>
-            <button class="mt-1 flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-sm text-ink-gray-5 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" @click="openInvoiceSettings">
-              <span class="lucide-pencil size-3.5" />
-              Recipient &amp; language
-            </button>
+          <div>
+            <h1 class="text-xl font-semibold text-ink-gray-9">Invoices</h1>
+            <!-- The recipient/language control is an icon on the line it edits —
+                 it's a settings shortcut, not an action worth a labelled button. -->
+            <p class="mt-1 flex flex-wrap items-center gap-x-1.5 text-p-base text-ink-gray-5">
+              Sent to {{ store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email }} · in {{ langLabel(store.billingProfile.invoiceLanguage) }}
+              <Tooltip text="Edit recipient &amp; language">
+                <button class="grid size-6 place-items-center rounded text-ink-gray-4 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-7" aria-label="Edit invoice recipient and language" @click="openInvoiceSettings">
+                  <span class="lucide-pencil size-3.5" />
+                </button>
+              </Tooltip>
+            </p>
           </div>
 
-          <!-- Search + status filter, side by side (issue #12) -->
+          <!-- Search + date range + status filter, side by side (issue #12) -->
           <div v-if="store.invoices.length" class="mt-5 flex items-center gap-2">
             <div class="min-w-0 flex-1">
               <FormControl
@@ -259,7 +316,37 @@
                 <template #prefix><span class="lucide-search size-4 text-ink-gray-4" /></template>
               </FormControl>
             </div>
-            <div class="w-36 shrink-0">
+            <!-- Presets carry the real weight here — nobody hunts for an invoice
+                 by picking two exact dates, they think in "last 6 months". -->
+            <DateRangePicker
+              v-model="invoiceRange"
+              class="w-44 shrink-0"
+              size="sm"
+              format="D MMM"
+              placeholder="Any date"
+              :max="today"
+            >
+              <template #prefix><span class="lucide-calendar size-4 text-ink-gray-4" /></template>
+              <template #actions="{ setRange, clear, close }">
+                <button
+                  v-for="p in datePresets"
+                  :key="p.label"
+                  type="button"
+                  class="w-full rounded px-2 py-1.5 text-left text-base text-ink-gray-7 hover:bg-surface-gray-2"
+                  @click="() => { setRange(p.range()); close() }"
+                >
+                  {{ p.label }}
+                </button>
+                <button
+                  type="button"
+                  class="w-full rounded px-2 py-1.5 text-left text-base text-ink-gray-5 hover:bg-surface-gray-2"
+                  @click="() => { clear(); close() }"
+                >
+                  Any date
+                </button>
+              </template>
+            </DateRangePicker>
+            <div class="w-32 shrink-0">
               <FormControl
                 v-model="invoiceStatusFilter"
                 type="select"
@@ -283,18 +370,28 @@
                   {{ inv.number }} · {{ inv.overdue ? `Due ${inv.dueDate}` : `Issued ${inv.issued}` }}
                 </div>
               </div>
+              <!-- Badge first, amount last: the amounts form a clean right-
+                   aligned column for scanning. No chevron — hover and the
+                   active highlight already say "opens". -->
               <div class="flex shrink-0 items-center gap-3">
-                <span class="tabular-nums text-ink-gray-8">{{ inr(total(inv)) }}</span>
                 <Badge :theme="statusTheme(inv.status)" variant="subtle" :label="inv.status" />
-                <span class="lucide-chevron-right size-4 text-ink-gray-4" />
+                <span class="tabular-nums text-ink-gray-8">{{ inr(total(inv)) }}</span>
               </div>
             </button>
-            <p v-if="!filteredInvoices.length" class="px-3 py-8 text-center text-p-sm text-ink-gray-4">
-              No invoices match your search.
-            </p>
           </div>
+          <!-- Filtered down to nothing — the same empty-state pattern as the
+               no-invoices-yet case, with a way back out of the filters. -->
           <EmptyState
-            v-else
+            v-if="store.invoices.length && !filteredInvoices.length"
+            class="mt-3"
+            icon="lucide-search-x"
+            title="No invoices match your filters"
+            description="Try a wider date range or a different status."
+          >
+            <Button variant="subtle" size="sm" label="Clear filters" @click="clearInvoiceFilters" />
+          </EmptyState>
+          <EmptyState
+            v-if="!store.invoices.length"
             class="mt-5"
             icon="lucide-receipt"
             title="No invoices yet"
@@ -309,61 +406,117 @@
         <aside v-if="openPanel" class="flex w-[24rem] shrink-0 flex-col border-l border-outline-gray-2 bg-surface-base">
           <!-- Invoice -->
           <template v-if="openPanel.type === 'invoice'">
+            <!-- Email / download are the two things you do to any invoice
+                 regardless of state, so they live in the header as icons and
+                 leave the footer to the one state-dependent action (Pay). -->
+            <!-- Header carries all invoice identity: number + status together,
+                 so the body never needs a labelled "Status" form row. -->
             <div class="flex items-start justify-between gap-3 border-b border-outline-gray-2 p-4">
               <div class="min-w-0">
-                <div class="truncate text-base font-semibold text-ink-gray-9">{{ openPanel.data.number }}</div>
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-base font-semibold text-ink-gray-9">{{ openPanel.data.number }}</span>
+                  <Badge :theme="statusTheme(openPanel.data.status)" variant="subtle" :label="openPanel.data.status" />
+                </div>
                 <div class="text-sm text-ink-gray-5">{{ openPanel.data.period }} · Issued {{ openPanel.data.issued }}</div>
               </div>
-              <button class="grid size-7 shrink-0 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-2" aria-label="Close" @click="openPanel = null">
-                <span class="lucide-x size-4" />
-              </button>
+              <div class="flex shrink-0 items-center gap-0.5">
+                <Tooltip text="Email invoice">
+                  <button class="grid size-7 place-items-center rounded text-ink-gray-5 transition hover:bg-surface-gray-2 hover:text-ink-gray-7 active:scale-95" aria-label="Email invoice" @click="emailInvoice">
+                    <span class="lucide-mail size-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip text="Download PDF">
+                  <button class="grid size-7 place-items-center rounded text-ink-gray-5 transition hover:bg-surface-gray-2 hover:text-ink-gray-7 active:scale-95" aria-label="Download PDF" @click="download">
+                    <span class="lucide-download size-4" />
+                  </button>
+                </Tooltip>
+                <span class="mx-1 h-4 w-px bg-outline-gray-2" />
+                <button class="grid size-7 place-items-center rounded text-ink-gray-5 transition hover:bg-surface-gray-2 active:scale-95" aria-label="Close" @click="openPanel = null">
+                  <span class="lucide-x size-4" />
+                </button>
+              </div>
             </div>
 
             <div class="flex-1 space-y-4 overflow-y-auto p-4">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-ink-gray-5">Status</span>
-                <Badge :theme="statusTheme(openPanel.data.status)" variant="subtle" :label="openPanel.data.status" />
-              </div>
-              <div v-if="openPanel.data.overdue" class="flex items-center justify-between text-sm">
-                <span class="text-ink-gray-5">Due</span>
-                <span class="text-ink-red-8">{{ openPanel.data.dueDate }} (overdue)</span>
-              </div>
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-ink-gray-5">Billed to</span>
-                <span class="text-ink-gray-8">{{ store.billingProfile.billingEmail || store.user.email }}</span>
-              </div>
+              <!-- The one pre-items line, and only in the problem state — the
+                   panel's single use of color above the fold. -->
+              <p v-if="openPanel.data.overdue" class="flex items-center gap-1.5 text-p-sm text-ink-red-8">
+                <span class="lucide-triangle-alert size-3.5 shrink-0" />
+                Due {{ openPanel.data.dueDate }} — overdue
+              </p>
 
-              <div class="overflow-hidden rounded-lg border border-outline-gray-2">
-                <div class="flex items-center justify-between gap-3 border-b border-outline-alpha-gray-1 bg-surface-gray-1 px-3 py-2 text-xs font-medium text-ink-gray-5">
-                  <span>Item</span><span>Amount</span>
-                </div>
-                <div v-for="(it, i) in openPanel.data.items" :key="i" class="flex items-center justify-between gap-3 border-b border-outline-alpha-gray-1 px-3 py-2.5 text-sm last:border-b-0">
-                  <div class="min-w-0">
-                    <div class="truncate text-ink-gray-7">{{ it.label }}</div>
-                    <div class="text-p-sm text-ink-gray-5">{{ it.plan }} · {{ it.days }} × {{ inr(it.perDay) }}/day</div>
+              <!-- The receipt: rows scroll inside a fixed height so a 15-server
+                   fleet never pushes the total off-screen; totals stay pinned
+                   below. No column header — item/amount is self-evident — and
+                   every rule inside is the lightest token so the only strong
+                   lines in the panel are its header and footer. -->
+              <section class="-mx-4 border-b border-outline-gray-1">
+                <List
+                  :columns="['minmax(0,1fr)', 'auto']"
+                  divider="full"
+                  class="px-4"
+                >
+                  <div class="max-h-72 overflow-y-auto">
+                    <ListRows :items="openPanel.data.items" row-key="label" v-slot="{ item: it }">
+                      <ListRow class="py-2">
+                        <ListCell>
+                          <div class="min-w-0">
+                            <div class="truncate text-sm text-ink-gray-7">{{ it.label }}</div>
+                            <!-- Two line-item shapes share this list: a subscription
+                                 is plan × days, a metered one is quantity × rate.
+                                 Only the billable quantity appears — what the
+                                 allowance covered was never charged. -->
+                            <div v-if="it.kind === 'metered'" class="text-p-sm text-ink-gray-5">{{ qty(it.qty) }} {{ it.unit }} × {{ rate(it.rate) }}</div>
+                            <div v-else class="text-p-sm text-ink-gray-5">{{ it.plan }} · {{ it.days }} × {{ inr(it.perDay) }}/day</div>
+                          </div>
+                        </ListCell>
+                        <ListCell class="justify-end">
+                          <span class="text-sm tabular-nums text-ink-gray-8">{{ inr(it.amount) }}</span>
+                        </ListCell>
+                      </ListRow>
+                    </ListRows>
                   </div>
-                  <span class="shrink-0 tabular-nums text-ink-gray-8">{{ inr(it.amount) }}</span>
-                </div>
-              </div>
+                </List>
 
-              <dl class="space-y-1.5 text-sm">
-                <div class="flex justify-between"><dt class="text-ink-gray-5">Subtotal</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(subtotal(openPanel.data)) }}</dd></div>
-                <div class="flex justify-between"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openPanel.data)) }}</dd></div>
-                <div v-if="openPanel.data.credits" class="flex justify-between"><dt class="text-ink-green-6">Credits applied</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(openPanel.data.credits) }}</dd></div>
-                <div class="flex justify-between border-t border-outline-alpha-gray-1 pt-1.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data)) }}</dd></div>
-                <!-- Wallet credit is auto-applied on payment, so preview it here. -->
-                <template v-if="openPanel.data.status === 'Unpaid' && walletApplyPreview > 0">
-                  <div class="flex justify-between"><dt class="text-ink-green-6">Wallet credit (applied on payment)</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(walletApplyPreview) }}</dd></div>
-                  <div class="flex justify-between font-semibold"><dt class="text-ink-gray-8">You'll pay</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data) - walletApplyPreview) }}</dd></div>
-                </template>
-              </dl>
+                <dl class="space-y-2 border-t border-outline-gray-1 px-4 py-3 text-sm">
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Subtotal</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(subtotal(openPanel.data)) }}</dd></div>
+                  <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openPanel.data)) }}</dd></div>
+                  <div v-if="openPanel.data.credits" class="flex justify-between gap-3"><dt class="text-ink-green-6">Credits applied</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(openPanel.data.credits) }}</dd></div>
+                  <div class="mt-1 flex justify-between gap-3 border-t border-outline-alpha-gray-1 pt-2.5 font-semibold"><dt class="text-ink-gray-8">Total</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data)) }}</dd></div>
+                  <!-- Which card settled it — a quiet receipt line, not a form
+                       row. Recorded on the invoice at payment time, so history
+                       stays true after the method is replaced. -->
+                  <div v-if="openPanel.data.status === 'Paid'" class="flex justify-between gap-3 text-p-sm text-ink-gray-5">
+                    <dt>Paid with</dt>
+                    <dd class="flex min-w-0 items-center gap-1.5">
+                      <span class="size-3.5 shrink-0 text-ink-gray-4" :class="paidWithIcon(openPanel.data)" />
+                      <span class="truncate">{{ paidWith(openPanel.data) }}</span>
+                    </dd>
+                  </div>
+                  <!-- Wallet credit is auto-applied on payment, so preview it here. -->
+                  <template v-if="openPanel.data.status === 'Unpaid' && walletApplyPreview > 0">
+                    <div class="flex justify-between gap-3"><dt class="text-ink-green-6">Wallet credit (applied on payment)</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(walletApplyPreview) }}</dd></div>
+                    <div class="flex justify-between gap-3 font-semibold"><dt class="text-ink-gray-8">You'll pay</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data) - walletApplyPreview) }}</dd></div>
+                  </template>
+                </dl>
+              </section>
 
               <!-- Activity — this invoice's own history (issued → charged /
-                   declined → overdue → reminder). Timeline, newest first, with
-                   only the two latest events shown and the rest folded away. -->
-              <section class="-mx-4 space-y-3 border-t border-outline-gray-2 px-4 pt-4">
-                <h3 class="text-sm font-medium text-ink-gray-8">Activity</h3>
-                <ol class="relative">
+                   declined → overdue → reminder). Timeline, newest first. Folded
+                   away entirely: for a settled invoice the log is reference, not
+                   news, and "Paid with" above already answers the common question.
+                   No border of its own — the receipt's bottom rule separates. -->
+              <section>
+                <button
+                  class="flex w-full items-center gap-1.5 text-left"
+                  :aria-expanded="activityExpanded"
+                  @click="activityExpanded = !activityExpanded"
+                >
+                  <span class="lucide-chevron-right size-3.5 shrink-0 text-ink-gray-5 transition-transform duration-150 ease-out" :class="activityExpanded ? 'rotate-90' : ''" />
+                  <h3 class="text-sm font-medium text-ink-gray-8">Activity</h3>
+                  <span class="text-p-sm text-ink-gray-5">{{ activityEvents.length }}</span>
+                </button>
+                <ol v-if="activityExpanded" class="relative mt-3">
                   <li v-for="(e, i) in visibleActivity" :key="i" class="relative flex gap-3 pb-4 last:pb-0">
                     <!-- Rail: one continuous line running through the column, with
                          the solid dot sitting on top of it (no outline). The line
@@ -381,23 +534,15 @@
                     </div>
                   </li>
                 </ol>
-                <button
-                  v-if="activityEvents.length > 2"
-                  class="flex items-center gap-1 text-p-sm font-medium text-ink-gray-6 transition-colors hover:text-ink-gray-8"
-                  @click="activityExpanded = !activityExpanded"
-                >
-                  <span class="size-3.5" :class="activityExpanded ? 'lucide-chevron-up' : 'lucide-chevron-down'" />
-                  {{ activityExpanded ? 'Show less' : `Show ${activityEvents.length - 2} earlier event${activityEvents.length - 2 === 1 ? '' : 's'}` }}
-                </button>
               </section>
             </div>
 
-            <div class="border-t border-outline-gray-2 p-4">
-              <Button v-if="openPanel.data.status === 'Unpaid'" variant="solid" theme="red" class="mb-2 w-full" :label="`Pay ${inr(total(openPanel.data) - walletApplyPreview)} now`" icon-left="lucide-credit-card" @click="payInvoice(openPanel.data)" />
-              <div class="flex gap-2">
-                <Button variant="subtle" class="flex-1" label="Email invoice" icon-left="lucide-mail" @click="emailInvoice" />
-                <Button variant="subtle" class="flex-1" label="Download PDF" icon-left="lucide-download" @click="download" />
-              </div>
+            <!-- The footer now carries only the one state-dependent action;
+                 email and download moved to the header. -->
+            <div v-if="openPanel.data.status === 'Unpaid'" class="border-t border-outline-gray-2 p-4">
+              <!-- Settling an invoice is the helpful way out of an overdue
+                   state, not a destructive act — the default solid, not red. -->
+              <Button variant="solid" class="w-full" :label="`Pay ${inr(total(openPanel.data) - walletApplyPreview)} now`" icon-left="lucide-credit-card" @click="payInvoice(openPanel.data)" />
             </div>
           </template>
 
@@ -586,9 +731,10 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, Dialog, Dropdown, FormControl, Switch, Tooltip, toast } from 'frappe-ui'
+import { Badge, Button, DateRangePicker, Dialog, Dropdown, FormControl, Switch, Tooltip, dayjs, toast } from 'frappe-ui'
+import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list'
 import Alert from '../../components/Alert.vue'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
@@ -598,7 +744,7 @@ import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
 import { useCloudStore } from '../../stores/cloud'
-import { inr, usd } from '../../utils/format'
+import { inr, qty, rate, usd } from '../../utils/format'
 import { validateEmail, validateTaxId } from '../../utils/validate'
 
 const store = useCloudStore()
@@ -612,6 +758,25 @@ const crumbs = computed(() =>
     ? [{ label: 'Billing', route: '/billing' }, { label: 'Invoices' }]
     : [{ label: 'Billing', route: '/billing' }],
 )
+
+// The bill leads with what's actually being charged; anything still inside its
+// allowance collapses to one line below, so turning on a fourth add-on doesn't
+// add three rows of zeroes to the page you check your spend on.
+const billableGroups = computed(() => store.meteredGroups.filter((g) => g.cost > 0))
+
+// A one-line cost split for services metered on more than one thing, so "why
+// ₹1,046?" is answerable without leaving the page. With a single meter it would
+// only restate the total, so it's left off.
+function breakdownOf(group) {
+  const billable = group.rows.filter((r) => r.cost > 0)
+  if (billable.length < 2) return ''
+  return billable.map((r) => `${r.label} ${inr(Math.round(r.cost))}`).join(' · ')
+}
+const freeGroups = computed(() => store.meteredGroups.filter((g) => g.cost <= 0))
+// Reuses the word the zero-cost rows already use ("Included"), so the summary
+// line and the rows it stands in for say the same thing — and it reads the same
+// whether one service is listed or three.
+const freeGroupNames = computed(() => freeGroups.value.map((g) => g.source).join(', '))
 
 // — Problem states (mostly surfaced by Edge mode, but real once the API is live)
 const overdueInvoice = computed(() => store.invoices.find((i) => i.overdue || i.status === 'Unpaid') || null)
@@ -705,23 +870,48 @@ const billingBanner = computed(() => {
 const taxRequired = computed(() => store.billingProfile.taxRegion !== 'US')
 const taxMissing = computed(() => taxRequired.value && !store.billingProfile.taxValue)
 
+// Paid is the normal state, so it stays gray — color is reserved for the
+// states that need attention. A red Unpaid pops harder against a calm list
+// than against a wall of green.
 function statusTheme(status) {
   if (['Unpaid', 'Overdue', 'Failed'].includes(status)) return 'red'
-  if (status === 'Paid') return 'green'
   return 'gray'
 }
 
-// — Invoice search + status filter (issue #12)
+// — Invoice search + date range + status filter (issue #12)
 const invoiceQuery = ref('')
 const invoiceStatusFilter = ref('all')
+const invoiceRange = ref([]) // [fromISO, toISO], empty = any date
+const today = dayjs().format('YYYY-MM-DD')
+// The ranges people actually reach for when hunting an invoice. Each returns a
+// [from, to] dayjs pair for the picker's `setRange`.
+const datePresets = [
+  { label: 'Last week', range: () => [dayjs().subtract(1, 'week'), dayjs()] },
+  { label: 'Last month', range: () => [dayjs().subtract(1, 'month'), dayjs()] },
+  { label: 'Last 6 months', range: () => [dayjs().subtract(6, 'month'), dayjs()] },
+  { label: 'Last year', range: () => [dayjs().subtract(1, 'year'), dayjs()] },
+]
 const invoiceStatusOptions = computed(() => {
   const statuses = [...new Set(store.invoices.map((inv) => inv.status))]
   return [{ label: 'All statuses', value: 'all' }, ...statuses.map((s) => ({ label: s, value: s }))]
 })
+// Invoices carry `issuedISO` for exactly this — comparing display strings like
+// "1 Jun 2026" would mean re-parsing them on every keystroke.
+function inRange(inv) {
+  const [from, to] = invoiceRange.value || []
+  if (!from || !to || !inv.issuedISO) return true
+  return inv.issuedISO >= from && inv.issuedISO <= to
+}
+function clearInvoiceFilters() {
+  invoiceQuery.value = ''
+  invoiceStatusFilter.value = 'all'
+  invoiceRange.value = []
+}
 const filteredInvoices = computed(() => {
   const q = invoiceQuery.value.trim().toLowerCase()
   return store.invoices.filter((inv) => {
     if (invoiceStatusFilter.value !== 'all' && inv.status !== invoiceStatusFilter.value) return false
+    if (!inRange(inv)) return false
     if (!q) return true
     return `${inv.period} ${inv.number}`.toLowerCase().includes(q)
   })
@@ -762,6 +952,27 @@ function langLabel(v) {
 
 // — The one docked panel: either an invoice or the wallet history.
 const openPanel = ref(null)
+// Escape closes it — but never steals the key from something that owns it:
+// an open dialog/popover/dropdown (reka-ui marks every open layer with
+// data-dismissable-layer and closes itself), or a field being typed in.
+// Registered on capture and only while a panel is open — tied to the state,
+// not the component lifecycle, so nothing else's Escape handling (or a stray
+// second mounted instance) can leave it pointing at the wrong panel.
+function onGlobalKeydown(e) {
+  if (e.key !== 'Escape' || !openPanel.value || e.defaultPrevented) return
+  if (document.querySelector('[data-dismissable-layer]')) return
+  const t = e.target
+  if (t instanceof HTMLElement && t.closest('input, textarea, select, [contenteditable="true"]')) {
+    t.blur() // first Escape leaves the field, a second closes the panel
+    return
+  }
+  openPanel.value = null
+}
+watch(openPanel, (open) => {
+  if (open) window.addEventListener('keydown', onGlobalKeydown, true)
+  else window.removeEventListener('keydown', onGlobalKeydown, true)
+})
+onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))
 // Switching between the Billing and Invoices tabs closes the docked panel —
 // an invoice opened on one tab shouldn't linger over the other. (#31)
 watch(view, () => {
@@ -810,6 +1021,11 @@ const primaryMethod = computed(
 const primaryMethodLabel = computed(() =>
   primaryMethod.value ? `${primaryMethod.value.label} ${primaryMethod.value.detail}` : 'your payment method',
 )
+// `n` days after the invoice was issued, in the same display format.
+function sinceIssue(inv, n) {
+  if (!inv.issuedISO) return inv.issued
+  return dayjs(inv.issuedISO).add(n, 'day').format('D MMM YYYY')
+}
 function buildActivity(inv) {
   const recipient = store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email
   const card = primaryMethodLabel.value
@@ -818,24 +1034,36 @@ function buildActivity(inv) {
     { label: 'Invoice issued', detail: `Generated for ${inv.period} usage`, at: inv.issued, tone: 'neutral' },
   ]
   if (inv.status === 'Paid') {
-    events.push({ label: 'Payment received', detail: `${inr(total(inv))} charged to ${card}`, at: inv.issued, tone: 'success' })
+    events.push({ label: 'Payment received', detail: `${inr(total(inv))} charged to ${inv.paidWith || card}`, at: inv.issued, tone: 'success' })
   } else if (inv.status === 'Unpaid' || inv.overdue) {
-    events.push({ label: 'Payment failed', detail: `${card} was declined`, at: '2 Jun 2026', tone: 'failed' })
+    // Dated off the invoice itself so the log stays coherent whenever the demo
+    // is opened — the charge is attempted the day after issue, the reminder a
+    // week later.
+    events.push({ label: 'Payment failed', detail: `${card} was declined`, at: sinceIssue(inv, 1), tone: 'failed' })
     if (inv.overdue)
       events.push({ label: 'Marked overdue', detail: `Payment due ${inv.dueDate} wasn't received`, at: inv.dueDate, tone: 'failed' })
-    events.push({ label: 'Reminder sent', detail: `Payment reminder emailed to ${recipient}`, at: '9 Jun 2026', tone: 'neutral' })
+    events.push({ label: 'Reminder sent', detail: `Payment reminder emailed to ${recipient}`, at: sinceIssue(inv, 8), tone: 'neutral' })
   }
   return events.reverse()
 }
 const activityEvents = computed(() =>
   openPanel.value?.type === 'invoice' ? buildActivity(openPanel.value.data) : [],
 )
+// The whole section is folded by default now, so once it's open there's no
+// second fold — show the full log.
 const activityExpanded = ref(false)
-const visibleActivity = computed(() =>
-  activityExpanded.value ? activityEvents.value : activityEvents.value.slice(0, 2),
-)
+const visibleActivity = computed(() => activityEvents.value)
 // Reset the fold whenever a different invoice (or the wallet) opens.
 watch(() => openPanel.value?.data?.number, () => { activityExpanded.value = false })
+
+// — Which method settled the invoice. Prefer what the invoice recorded at
+// payment time; fall back to today's primary for older seeded data.
+function paidWith(inv) {
+  return inv.paidWith || primaryMethodLabel.value
+}
+function paidWithIcon(inv) {
+  return /upi/i.test(paidWith(inv)) ? 'lucide-smartphone' : 'lucide-credit-card'
+}
 function dotClass(tone) {
   if (tone === 'success') return 'bg-[var(--ink-green-7)]'
   if (tone === 'failed') return 'bg-[var(--ink-red-7)]'
@@ -1059,10 +1287,20 @@ function emailInvoice() {
 <style scoped>
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* iOS drawer curve — decelerates hard at the end, so the panel feels like
+     it settles rather than stops. The margin animates alongside the slide:
+     without it the panel's 24rem of layout width appears/disappears in a
+     single frame (worst on close, where the content snapped wide only after
+     the slide finished). Margin animation costs layout per frame — the
+     accepted tradeoff for a docked (not overlaid) panel. */
+  transition:
+    transform 300ms cubic-bezier(0.32, 0.72, 0, 1),
+    margin-inline-end 300ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 .slide-enter-from,
 .slide-leave-to {
+  /* -24rem mirrors the panel's w-[24rem]: net layout width 0 while hidden. */
   transform: translateX(100%);
+  margin-inline-end: -24rem;
 }
 </style>

@@ -2,6 +2,19 @@ export function inr(n) {
   return '₹' + n.toLocaleString('en-IN')
 }
 
+// A per-unit rate, which for metered add-ons is often sub-rupee: "₹0.08" reads
+// as a price, "₹0.08" via inr() would come back "₹0.08" but ₹0.2 would come back
+// "₹0.2" and read as a typo. Whole rupees stay clean — ₹40, not ₹40.00.
+export function rate(n) {
+  return n < 1 ? '₹' + n.toFixed(2) : inr(n)
+}
+
+// A metered quantity: keep one decimal for fractional units (2.4 M tokens) and
+// group whole ones (12,400 emails).
+export function qty(n) {
+  return Number.isInteger(n) ? n.toLocaleString('en-IN') : n.toLocaleString('en-IN', { maximumFractionDigits: 1 })
+}
+
 export function usd(n) {
   const v = Number.isInteger(n) ? n : n.toFixed(2)
   return '$' + v

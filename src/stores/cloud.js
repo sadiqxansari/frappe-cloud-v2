@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { toast } from 'frappe-ui'
 import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planById, priceFor, regionById, versionById } from '../data/catalog'
+import { ADDONS, SERVER_METERS, addonByKey, meterCost, rateUnitOf } from '../data/addons'
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
@@ -170,6 +171,64 @@ function makeEvent(agoMs, title, { tag = 'server', status = 'success', detail = 
   return { id: uid('act'), at: Date.now() - agoMs, title, tag, status, detail }
 }
 
+// — Invoice history, generated relative to today rather than pinned to a fixed
+// calendar. A frozen history goes stale the moment the demo is opened a month
+// later: the date-range filter's "Last month" preset would match nothing and
+// read as broken. Monthly cycles bill on the 1st of the following month.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+function fmtDate(d) {
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+// The nth-most-recent completed billing month. n=0 is the month that just
+// closed, so its invoice was issued on the 1st of the current month.
+function billingMonth(n) {
+  const now = new Date()
+  const period = new Date(now.getFullYear(), now.getMonth() - 1 - n, 1)
+  const issued = new Date(now.getFullYear(), now.getMonth() - n, 1)
+  return {
+    period: `${MONTHS[period.getMonth()]} ${period.getFullYear()}`,
+    issued: fmtDate(issued),
+    issuedISO: isoDate(issued),
+    // Days actually billed in that period.
+    days: new Date(period.getFullYear(), period.getMonth() + 1, 0).getDate(),
+    // Invoice numbers run backwards from the newest (0006 → 0001).
+    number: `INV-${issued.getFullYear()}-${String(6 - n).padStart(4, '0')}`,
+  }
+}
+function line(label, plan, days, perDay) {
+  return { label, plan, days, perDay, amount: days * perDay }
+}
+
+// A metered invoice line — quantity times rate, rather than plan times days.
+// `kind` is what the invoice panel switches on to render the right columns.
+function meteredLine(label, qty, unit, rate) {
+  return { kind: 'metered', label, qty, unit, rate, amount: Math.round(qty * rate) }
+}
+
+// A four-hex-character tail, the way key suffixes read in a real console.
+function keyTail() {
+  return Math.random().toString(16).slice(2, 6)
+}
+
+// What you get the moment an add-on is switched on. The rule: hand over the one
+// credential you can't use the service without, and leave everything you have to
+// name (buckets, domains) for the user — an empty list you understand beats a
+// pre-made one you don't.
+function defaultAddonConfig(key) {
+  if (key === 'ai') {
+    return {
+      tokens: [{ id: uid('tok'), label: 'Default token', tail: keyTail(), created: fmtDate(new Date()), lastUsed: null }],
+    }
+  }
+  if (key === 'storage') return { buckets: [], accessKeys: [{ id: uid('ak'), label: 'Default key', tail: keyTail(), created: fmtDate(new Date()) }] }
+  if (key === 'email') return { domains: [], webhook: '' }
+  if (key === 'pdf') return { keys: [{ id: uid('pk'), label: 'Default key', tail: keyTail(), created: fmtDate(new Date()) }] }
+  return {}
+}
+
 function baseState() {
   return {
     scenario: 'fresh', // 'fresh' | 'grown'
@@ -215,6 +274,15 @@ function baseState() {
     // automatic fallbacks. No user-facing gateway choice (auto by currency).
     paymentMethods: [],
     invoices: [], // { number, period, issued, status, items:[{label,plan,days,perDay,amount}] }
+    // Add-ons (src/data/addons.js) — consumption services, keyed by add-on key:
+    // { on, since, usage: { [meterKey]: number }, …service config }. Absent key
+    // means never switched on. Usage is account-wide; we don't attribute it to a
+    // site, so there's one number per meter per cycle.
+    addons: {},
+    // Server overages — bandwidth and backup storage past the plans' allowance.
+    // Metered like add-ons, so they share the billing table, but they belong to
+    // the server subscription and have no page of their own.
+    overages: { bandwidth: 0, backups: 0 },
     marketplaceDeveloper: false, // enrolled as a marketplace app publisher (issue #19)
     payoutBalance: 0, // marketplace earnings available to withdraw (USD)
     payoutAccount: false, // a bank/recipient must be set up before a payout
@@ -384,38 +452,102 @@ function grownState() {
     { id: uid('pm'), kind: 'card', label: 'Visa', detail: '•••• 4242', expiry: '07/26', primary: true },
     { id: uid('pm'), kind: 'upi', label: 'UPI', detail: 'rahul@okhdfc', primary: false },
   ]
-  // Past invoices with per-day line items (30-day cycle).
+  // Past invoices with per-day line items, dated relative to today (see
+  // billingMonth) so the date-range filter always has recent invoices to match.
+  // The newest one is deliberately long — a fleet since consolidated — so the
+  // invoice panel's line-item list is exercised at length.
   s.invoices = [
     {
-      number: 'INV-2026-0005', period: 'May 2026', issued: '1 Jun 2026', status: 'Paid', credits: 1000,
+      ...billingMonth(0), status: 'Paid', credits: 1000, paidWith: 'Visa •••• 4242',
       items: [
-        { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
-        { label: 'atlas-eu-01', plan: 'Starter', days: 30, perDay: 55, amount: 1650 },
+        line('atlas-web-01', 'Business', 30, 137),
+        line('atlas-web-02', 'Business', 30, 137),
+        line('atlas-eu-01', 'Starter', 30, 55),
+        line('atlas-eu-02', 'Starter', 30, 55),
+        line('atlas-api-01', 'Business', 30, 137),
+        line('atlas-api-02', 'Business', 18, 137),
+        line('atlas-jobs-01', 'Standard', 30, 96),
+        line('atlas-jobs-02', 'Standard', 30, 96),
+        line('atlas-db-01', 'Business', 30, 137),
+        line('atlas-db-02', 'Business', 30, 137),
+        line('atlas-staging-01', 'Starter', 30, 55),
+        line('atlas-staging-02', 'Starter', 12, 55),
+        line('atlas-sg-01', 'Standard', 30, 96),
+        line('atlas-us-01', 'Standard', 30, 96),
+        line('atlas-backup-01', 'Starter', 30, 55),
+        // Metered lines close the invoice, after the subscriptions — only the
+        // part past the allowance is charged, so these quantities are smaller
+        // than what the usage page showed for the same period.
+        meteredLine('AI inference · input tokens', 14.2, 'M tokens', 40),
+        meteredLine('AI inference · output tokens', 4.8, 'M tokens', 60),
+        meteredLine('Email sending', 7100, 'emails', 0.08),
+        meteredLine('Bandwidth', 0.9, 'TB', 800),
       ],
     },
     {
-      number: 'INV-2026-0004', period: 'April 2026', issued: '1 May 2026', status: 'Paid', credits: 500,
-      items: [{ label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 }],
+      ...billingMonth(1), status: 'Paid', credits: 500, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Business', billingMonth(1).days, 137)],
     },
     {
-      number: 'INV-2026-0003', period: 'March 2026', issued: '1 Apr 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 30, perDay: 68, amount: 2040 }],
+      ...billingMonth(2), status: 'Paid', credits: 0, paidWith: 'UPI rahul@okhdfc',
+      items: [line('atlas-web-01', 'Starter', billingMonth(2).days, 68)],
     },
     {
-      number: 'INV-2026-0002', period: 'February 2026', issued: '1 Mar 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 28, perDay: 68, amount: 1904 }],
+      ...billingMonth(3), status: 'Paid', credits: 0, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Starter', billingMonth(3).days, 68)],
     },
     {
-      number: 'INV-2026-0001', period: 'January 2026', issued: '1 Feb 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 31, perDay: 68, amount: 2108 }],
+      ...billingMonth(4), status: 'Paid', credits: 0, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Starter', billingMonth(4).days, 68)],
     },
     {
-      number: 'INV-2025-0012', period: 'December 2025', issued: '1 Jan 2026', status: 'Paid', credits: 0,
-      items: [{ label: 'atlas-web-01', plan: 'Starter', days: 31, perDay: 40, amount: 1240 }],
+      ...billingMonth(5), status: 'Paid', credits: 0, paidWith: 'Visa •••• 4242',
+      items: [line('atlas-web-01', 'Starter', billingMonth(5).days, 40)],
     },
   ]
   s.payoutBalance = 0
-  s.lastCycleTotal = 14100 // makes this cycle's estimate read ~+15%
+  // Last cycle is roughly this cycle's subscriptions with no metered usage, so
+  // the "+15% vs last month" on the estimate has a visible cause one card down:
+  // the add-ons, not the servers, are what moved the bill.
+  s.lastCycleTotal = 21400
+  // Two add-ons switched on, both past their allowance — so the Metered card has
+  // something to explain and the bill's rise over last cycle has a visible cause.
+  // Storage and PDF stay off, so the catalogue still shows both states.
+  s.addons = {
+    ai: {
+      on: true,
+      since: '12 May 2026, 4:20 PM',
+      usage: { tokensIn: 18.6, tokensOut: 6.2 },
+      tokens: [
+        { id: uid('tok'), label: 'Production', tail: '4a2f', created: '12 May 2026', lastUsed: '2 hours ago' },
+        { id: uid('tok'), label: 'Staging', tail: 'b7c1', created: '3 Jun 2026', lastUsed: '6 days ago' },
+      ],
+    },
+    email: {
+      on: true,
+      since: '2 Apr 2026, 11:05 AM',
+      usage: { sent: 12400 },
+      // Per-record status, not one status per domain: acme-portal.in is the
+      // half-done case every provider has a name for, and it's the state a
+      // rolled-up "pending" badge would hide the cause of.
+      domains: [
+        { id: uid('dom'), name: 'mycompany.in', added: '2 Apr 2026', records: { spf: true, dkim: true, returnPath: true } },
+        { id: uid('dom'), name: 'acme-portal.in', added: '18 Jun 2026', records: { spf: true, dkim: false, returnPath: false } },
+      ],
+      webhook: 'https://mycompany.in/api/method/mail.webhook',
+      // Comfortably inside the thresholds — the healthy case, so the alarming
+      // states have to be reached through Edge mode rather than being the default.
+      bounceRate: 1.4,
+      complaintRate: 0.04,
+      suppressions: [
+        { id: uid('sup'), email: 'old-accounts@vendor.example', reason: 'Bounce', at: '14 Jul 2026' },
+        { id: uid('sup'), email: 'no-longer-here@client.example', reason: 'Bounce', at: '2 Jul 2026' },
+        { id: uid('sup'), email: 'someone@personal.example', reason: 'Complaint', at: '21 Jun 2026' },
+      ],
+    },
+  }
+  // Past the fleet's included allowance (1 TB and 50 GB per active server).
+  s.overages = { bandwidth: 7.2, backups: 420 }
   s.members = [
     { id: uid('mem'), name: 'Rahul Mehta',  email: 'rahul@mycompany.in', roles: [{ roleId: 'role-owner', resourceId: null }] },
     { id: uid('mem'), name: 'Sara Khan',    email: 'sara@mycompany.in',  roles: [{ roleId: 'role-admin', resourceId: null }] },
@@ -442,6 +574,86 @@ function grownState() {
   s.structureRevealed = true
   s.centralUnlocked = true // a fleet operator — Central has long been home
   s.currentSiteId = server.sites[0].id
+  return s
+}
+
+// — Partner: a reseller hosting other people's businesses. Two servers per
+// client (prod + staging), which is why the names pair up and why a client's
+// pair always shares a region.
+//
+// Mumbai deliberately carries 22 of the 50. A partner's book really does bunch
+// like this, and it's the case worth designing against: fifty pins spread
+// evenly would never test whether the map clusters or just stacks dots on one
+// spot, and the list has to stay usable when a third of it lives in one place.
+const PARTNER_REGIONS = [
+  ['aws-mumbai', 22],
+  ['do-blr', 5],
+  ['aws-singapore', 4],
+  ['aws-frankfurt', 4],
+  ['aws-virginia', 4],
+  ['hetzner-falkenstein', 3],
+  ['do-nyc', 3],
+  ['aws-london', 3],
+  ['oracle-jeddah', 2],
+]
+
+// 25 clients × prod/staging = the 50 servers.
+const PARTNER_CLIENTS = [
+  'acme', 'northwind', 'vertex', 'lumen', 'kestrel',
+  'anvil', 'brightline', 'cobalt', 'dovetail', 'ember',
+  'foxglove', 'granite', 'harbour', 'ironwood', 'juniper',
+  'kiln', 'lantern', 'meridian', 'nimbus', 'orchard',
+  'pinnacle', 'quarry', 'ridgeline', 'summit', 'tessera',
+]
+
+function partnerState() {
+  // Built on the grown baseline so team, billing profile and history stay
+  // realistic — only the fleet is replaced.
+  const s = grownState()
+  s.scenario = 'partner'
+  s.teams = [{ id: 'team-1', name: 'Atlas Partners', avatar: null }]
+  s.currentTeamId = 'team-1'
+
+  const servers = []
+  let i = 0
+  for (const [regionId, count] of PARTNER_REGIONS) {
+    for (let n = 0; n < count; n += 1, i += 1) {
+      const client = PARTNER_CLIENTS[Math.floor(i / 2)]
+      const isProd = i % 2 === 0
+      const name = `${client}-${isProd ? 'prod' : 'staging'}`
+      // Staging boxes sit on the cheapest plan; every sixth production one is a
+      // big client. A couple of unhealthy servers keep the status filter honest
+      // at this size.
+      const planId = isProd ? (i % 6 === 0 ? 'enterprise' : 'business') : 'starter'
+      const status = i === 7 ? 'suspended' : i === 26 ? 'broken' : 'active'
+      servers.push(
+        makeServer({
+          name,
+          regionId,
+          planId,
+          status,
+          createdAt: Date.now() - (40 + i * 3) * DAY,
+          sites: [makeSite(name, isProd ? ['erpnext', 'hr'] : ['erpnext'])],
+          health:
+            status === 'broken'
+              ? { cpuPct: 0, memUsedGb: 0, memTotalGb: 4, diskFrac: 0.5 }
+              : { cpuPct: 12 + ((i * 7) % 46), memUsedGb: 1.4 + ((i * 3) % 7), memTotalGb: 8, diskFrac: 0.2 + ((i % 6) * 0.1) },
+        }),
+      )
+    }
+  }
+  s.servers = servers
+
+  // Fifty subscriptions dwarf the grown baseline's numbers, so rebase anything
+  // quoted in rupees — otherwise the estimate reads as a 600% jump on a
+  // last-cycle figure that belonged to a six-server account.
+  const monthly = servers.reduce(
+    (sum, srv) => (srv.status === 'suspended' ? sum : sum + planById(srv.planId).priceMonthly),
+    0,
+  )
+  s.lastCycleTotal = Math.round(monthly * 0.94)
+  s.budgetAlert = Math.round((monthly * 1.15) / 1000) * 1000
+  s.walletBalance = 42000
   return s
 }
 
@@ -606,12 +818,108 @@ export const useCloudStore = defineStore('cloud', {
       return (server) => Math.round(this.monthlyPriceOf(server) / CYCLE_DAYS)
     },
 
-    // This cycle's estimated charge — every active (non-suspended) server.
-    estimatedThisCycle() {
+    // The recurring half of the bill — every active (non-suspended) server.
+    subscriptionsThisCycle() {
       return this.servers.reduce(
         (sum, srv) => (srv.status === 'suspended' ? sum : sum + this.monthlyPriceOf(srv)),
         0,
       )
+    },
+
+    // — Metered
+    // Add-ons that are switched on, in catalogue order (drives the sidebar).
+    enabledAddons() {
+      return ADDONS.filter((a) => this.addons[a.key]?.on)
+    },
+
+    // One add-on's stored record, with the gaps filled in — so callers can read
+    // `.usage.sent` without guarding every level.
+    addonState() {
+      return (key) => ({ on: false, since: null, usage: {}, ...(this.addons[key] || {}) })
+    },
+
+    // Every metered line this cycle, in the order they read on the bill:
+    // enabled add-ons first (you chose those), then server overages (you didn't).
+    // `used`/`included`/`cost` are all in the meter's own unit; only usage past
+    // the allowance costs anything.
+    meteredRows() {
+      const rows = []
+      for (const addon of this.enabledAddons) {
+        const usage = this.addonState(addon.key).usage
+        for (const meter of addon.meters) {
+          const used = usage[meter.key] || 0
+          rows.push({
+            id: `${addon.key}.${meter.key}`,
+            source: addon.name,
+            addonKey: addon.key,
+            icon: addon.icon,
+            to: addon.to,
+            label: meter.label,
+            unit: meter.unit,
+            rateUnit: rateUnitOf(meter),
+            used,
+            included: meter.included,
+            rate: meter.rate,
+            cost: meterCost(meter, used),
+          })
+        }
+      }
+      // Overage allowances scale with the fleet: each active server brings its own.
+      const active = this.servers.filter((s) => s.status !== 'suspended').length
+      for (const meter of SERVER_METERS) {
+        const used = this.overages[meter.key] || 0
+        const included = meter.includedPerServer * active
+        if (!used && !included) continue
+        rows.push({
+          id: `server.${meter.key}`,
+          // "Server usage", not "Servers": beside AI inference and Email
+          // sending, a bare noun reads as a fifth add-on rather than as the
+          // servers you already pay for. Links out for the same reason.
+          source: 'Server usage',
+          addonKey: null,
+          icon: 'lucide-server',
+          to: '/servers',
+          label: meter.label,
+          unit: meter.unit,
+          rateUnit: rateUnitOf(meter),
+          used,
+          included,
+          rate: meter.rate,
+          cost: Math.max(0, used - included) * meter.rate,
+        })
+      }
+      return rows
+    },
+
+    // What consumption adds to this cycle, once allowances are used up.
+    meteredThisCycle() {
+      return Math.round(this.meteredRows.reduce((sum, r) => sum + r.cost, 0))
+    },
+
+    // Metered rows that have started costing money — the ones worth showing first.
+    billableMeteredRows() {
+      return this.meteredRows.filter((r) => r.cost > 0)
+    },
+
+    // The same rows folded by service, so a six-meter bill reads as three blocks
+    // instead of repeating "AI inference" on every line.
+    meteredGroups() {
+      const groups = []
+      for (const row of this.meteredRows) {
+        let group = groups.find((g) => g.source === row.source)
+        if (!group) {
+          group = { source: row.source, icon: row.icon, to: row.to, rows: [], cost: 0 }
+          groups.push(group)
+        }
+        group.rows.push(row)
+        group.cost += row.cost
+      }
+      return groups
+    },
+
+    // This cycle's estimated charge — subscriptions plus what's been consumed.
+    estimatedThisCycle() {
+      return this.subscriptionsThisCycle + this.meteredThisCycle
     },
 
     // How this cycle's estimate compares to last cycle, as a signed %.
@@ -663,6 +971,7 @@ export const useCloudStore = defineStore('cloud', {
         fresh: freshState,
         grown: grownState,
         solo: soloState,
+        partner: partnerState,
       }
       this.$state = (states[name] || freshState)()
     },
@@ -1594,6 +1903,42 @@ export const useCloudStore = defineStore('cloud', {
       if (this.creditExpired && srv.creditBalance > 0) this.setCreditExpired(false)
       this.logActivity(`Added $${amt} credit`, { tag: 'billing' })
     },
+    // — Add-ons
+    // Switching one on costs nothing on its own; the allowance covers a real
+    // trial's worth of use, so the first bill only appears once it's earning.
+    enableAddon(key) {
+      const addon = addonByKey(key)
+      if (!addon) return Promise.reject(new Error('Unknown add-on'))
+      return this._work(() => {
+        this.addons[key] = {
+          ...this.addonState(key),
+          ...defaultAddonConfig(key),
+          on: true,
+          since: fmtDateTime(new Date()),
+        }
+        this.logActivity(`Turned on ${addon.name}`, { tag: 'billing' })
+        return this.addons[key]
+      })
+    },
+    // Off keeps the config and the cycle's usage — you're billed for what you
+    // already used, and turning it back on doesn't mean setting it up again.
+    disableAddon(key) {
+      const addon = addonByKey(key)
+      if (!addon) return Promise.reject(new Error('Unknown add-on'))
+      return this._work(() => {
+        this.addons[key] = { ...this.addonState(key), on: false }
+        this.logActivity(`Turned off ${addon.name}`, { tag: 'billing' })
+      })
+    },
+    // Consumption booked against this cycle. The AI playground calls it so a
+    // prompt visibly moves the meter — usage you can watch is usage you trust.
+    addAddonUsage(key, meterKey, amount) {
+      const current = this.addonState(key)
+      this.addons[key] = {
+        ...current,
+        usage: { ...current.usage, [meterKey]: (current.usage[meterKey] || 0) + amount },
+      }
+    },
     setBudget(amount) {
       const amt = Number(amount)
       this.budgetAlert = amt > 0 ? amt : null
@@ -1660,6 +2005,11 @@ export const useCloudStore = defineStore('cloud', {
         }
         inv.status = 'Paid'
         inv.overdue = false
+        // Record the method that actually settled it — the invoice keeps its own
+        // record, so a card swapped out later doesn't rewrite paid history.
+        const charged = this.paymentMethods.find((p) => p.primary && p.status !== 'declined')
+          || this.paymentMethods.find((p) => p.status !== 'declined')
+        if (charged) inv.paidWith = `${charged.label} ${charged.detail}`
         this.logActivity(`Paid invoice ${number}`, { tag: 'billing' })
       }, 1200)
     },
@@ -1786,15 +2136,18 @@ export const useCloudStore = defineStore('cloud', {
       // — Wallet won't cover the next invoice.
       this.walletBalance = 1240
 
-      // — An overdue, unpaid invoice at the top of the list.
-      this.invoices.unshift({
-        number: 'INV-2026-0006', period: 'June 2026', issued: '1 Jun 2026',
-        status: 'Unpaid', overdue: true, dueDate: '8 Jun 2026', credits: 0,
+      // — The most recent invoice went unpaid and is now overdue. It replaces
+      // the paid one for that period rather than sitting alongside it, so the
+      // history stays coherent: one invoice per billing month.
+      this.invoices[0] = {
+        ...billingMonth(0),
+        status: 'Unpaid', overdue: true, credits: 0,
+        dueDate: fmtDate(new Date(Date.now() - 7 * DAY)),
         items: [
-          { label: 'atlas-web-01', plan: 'Business', days: 30, perDay: 137, amount: 4110 },
-          { label: 'atlas-eu-01', plan: 'Starter', days: 30, perDay: 55, amount: 1650 },
+          line('atlas-web-01', 'Business', 30, 137),
+          line('atlas-eu-01', 'Starter', 30, 55),
         ],
-      })
+      }
 
       // — Marketplace earnings, but no payout account to send them to.
       this.marketplaceDeveloper = true
