@@ -199,7 +199,22 @@ function billingMonth(n) {
   }
 }
 function line(label, plan, days, perDay) {
-  return { label, plan, days, perDay, amount: days * perDay }
+  return { kind: 'server', label, plan, days, perDay, amount: days * perDay }
+}
+
+// A server whose plan changed mid-cycle bills as consecutive day-segments —
+// e.g. 10 days on Starter, a 3-day Business spike, then 17 days back on
+// Starter. Each segment is its own plan × days × rate; the invoice panel shows
+// them as a tree under the server. A single-segment server is just `line()`.
+function serverLine(label, segments) {
+  const segs = segments.map((s) => ({ ...s, amount: s.days * s.perDay }))
+  return {
+    kind: 'server',
+    label,
+    segments: segs,
+    days: segs.reduce((t, s) => t + s.days, 0),
+    amount: segs.reduce((t, s) => t + s.amount, 0),
+  }
 }
 
 // A metered invoice line — quantity times rate, rather than plan times days.
@@ -460,7 +475,13 @@ function grownState() {
     {
       ...billingMonth(0), status: 'Paid', credits: 1000, paidWith: 'Visa •••• 4242',
       items: [
-        line('atlas-web-01', 'Business', 30, 137),
+        // Upgraded to Business for a 3-day traffic spike mid-cycle, then back
+        // to Starter — the invoice bills it as three segments.
+        serverLine('atlas-web-01', [
+          { plan: 'Starter', days: 10, perDay: 55 },
+          { plan: 'Business', days: 3, perDay: 137 },
+          { plan: 'Starter', days: 17, perDay: 55 },
+        ]),
         line('atlas-web-02', 'Business', 30, 137),
         line('atlas-eu-01', 'Starter', 30, 55),
         line('atlas-eu-02', 'Starter', 30, 55),

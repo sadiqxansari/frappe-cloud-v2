@@ -29,53 +29,53 @@
             </div>
           </div>
 
-          <!-- Tiers — same list family as the invoice panel: hairline header
-               and row rules on the bare surface, no outer box, no header fill,
-               no hover (rows aren't clickable). -->
-          <List :columns="['7rem', 'minmax(0,1fr)', 'auto']" divider="full">
-            <ListHeader>
-              <ListHeaderCell>Tier</ListHeaderCell>
-              <ListHeaderCell>Requirements</ListHeaderCell>
-              <ListHeaderCell class="justify-end">Spending limit</ListHeaderCell>
-            </ListHeader>
-            <ListRows :items="TIERS" row-key="name" v-slot="{ item: tier, index: idx }">
-              <ListRow class="py-3.5">
-                <ListCell class="self-start pt-0.5">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-sm font-semibold text-ink-gray-9">{{ tier.tier }}</span>
-                    <Badge v-if="isCurrentTier(tier)" theme="blue" label="Current" />
-                  </div>
-                </ListCell>
-                <ListCell>
-                  <ul class="flex min-w-0 flex-col gap-1.5">
-                    <li
-                      v-for="(req, i) in requirementsFor(tier, idx)"
-                      :key="i"
-                      class="flex items-center gap-2"
-                    >
-                      <span
-                        class="size-3.5 shrink-0"
-                        :class="req.met ? 'lucide-check-circle-2 text-ink-green-6' : 'lucide-circle-dashed text-ink-gray-4'"
-                      />
-                      <span class="text-sm" :class="req.met ? 'text-ink-gray-9' : 'text-ink-gray-6'">
-                        {{ req.text }}
-                      </span>
-                      <RouterLink
-                        v-if="req.nudge"
-                        :to="req.nudge"
-                        class="text-sm text-ink-blue-8 transition-opacity hover:opacity-80"
-                      >
-                        Go to Billing →
-                      </RouterLink>
-                    </li>
-                  </ul>
-                </ListCell>
-                <ListCell class="justify-end self-start pt-0.5">
-                  <span class="text-sm font-semibold tabular-nums text-ink-gray-9">{{ formatAmount(tier.amount) }}</span>
-                </ListCell>
-              </ListRow>
-            </ListRows>
-          </List>
+          <!-- Tiers — a plain three-column grid on the bare surface: hairline
+               header and row rules, no outer box, no header fill, no hover
+               (rows aren't clickable). Built from CSS grid utilities rather than
+               the shared List so the layout is self-contained and never depends
+               on an external stylesheet being present. -->
+          <div class="text-sm">
+            <div class="grid grid-cols-[7rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-outline-gray-2 pb-2 text-p-sm text-ink-gray-5">
+              <div>Tier</div>
+              <div>Requirements</div>
+              <div class="text-right">Spending limit</div>
+            </div>
+            <div
+              v-for="(tier, idx) in TIERS"
+              :key="tier.name"
+              class="grid grid-cols-[7rem_minmax(0,1fr)_auto] items-start gap-3 border-b border-outline-gray-1 py-3.5 last:border-b-0"
+            >
+              <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                <span class="text-sm font-semibold text-ink-gray-9">{{ tier.tier }}</span>
+                <Badge v-if="isCurrentTier(tier)" theme="blue" label="Current" />
+              </div>
+              <ul class="flex min-w-0 flex-col gap-1.5">
+                <li
+                  v-for="(req, i) in requirementsFor(tier, idx)"
+                  :key="i"
+                  class="flex items-center gap-2"
+                >
+                  <span
+                    class="size-3.5 shrink-0"
+                    :class="req.met ? 'lucide-check-circle-2 text-ink-green-6' : 'lucide-circle-dashed text-ink-gray-4'"
+                  />
+                  <span class="text-sm" :class="req.met ? 'text-ink-gray-9' : 'text-ink-gray-6'">
+                    {{ req.text }}
+                  </span>
+                  <RouterLink
+                    v-if="req.nudge"
+                    :to="req.nudge"
+                    class="text-sm text-ink-blue-8 transition-opacity hover:opacity-80"
+                  >
+                    Go to Billing →
+                  </RouterLink>
+                </li>
+              </ul>
+              <div class="pt-0.5 text-right">
+                <span class="text-sm font-semibold tabular-nums text-ink-gray-9">{{ formatAmount(tier.amount) }}</span>
+              </div>
+            </div>
+          </div>
 
           <!-- How tiers work — plain prose under a single rule, not a card.
                The icon was decoration; the heading carries it. -->
@@ -113,7 +113,6 @@
 <script setup>
 import { computed } from 'vue'
 import { Badge } from 'frappe-ui'
-import { List, ListCell, ListHeader, ListHeaderCell, ListRow, ListRows } from 'frappe-ui/list'
 import CentralShell from '../../components/CentralShell.vue'
 import { useCloudStore } from '../../stores/cloud'
 

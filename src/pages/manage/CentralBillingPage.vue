@@ -417,7 +417,7 @@
                   <span class="truncate text-base font-semibold text-ink-gray-9">{{ openPanel.data.number }}</span>
                   <Badge :theme="statusTheme(openPanel.data.status)" variant="subtle" :label="openPanel.data.status" />
                 </div>
-                <div class="text-sm text-ink-gray-5">{{ openPanel.data.period }} · Issued {{ openPanel.data.issued }}</div>
+                <div class="text-p-sm text-ink-gray-5">{{ openPanel.data.period }} · Issued {{ openPanel.data.issued }}</div>
               </div>
               <div class="flex shrink-0 items-center gap-0.5">
                 <Tooltip text="Email invoice">
@@ -437,48 +437,60 @@
               </div>
             </div>
 
-            <div class="flex-1 space-y-4 overflow-y-auto p-4">
+            <!-- Body: a fixed-height receipt list that scrolls on its own, then
+                 the cost breakdown and Activity below it. The list height is
+                 constant regardless of how many servers or how many breakdowns
+                 are expanded, so the totals never shift; Activity opens below and
+                 the body scrolls to it. -->
+            <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
               <!-- The one pre-items line, and only in the problem state — the
                    panel's single use of color above the fold. -->
-              <p v-if="openPanel.data.overdue" class="flex items-center gap-1.5 text-p-sm text-ink-red-8">
+              <p v-if="openPanel.data.overdue" class="flex items-center gap-1.5 px-4 pt-4 text-p-sm text-ink-red-8">
                 <span class="lucide-triangle-alert size-3.5 shrink-0" />
                 Due {{ openPanel.data.dueDate }} — overdue
               </p>
 
-              <!-- The receipt: rows scroll inside a fixed height so a 15-server
-                   fleet never pushes the total off-screen; totals stay pinned
-                   below. No column header — item/amount is self-evident — and
-                   every rule inside is the lightest token so the only strong
-                   lines in the panel are its header and footer. -->
-              <section class="-mx-4 border-b border-outline-gray-1">
-                <List
-                  :columns="['minmax(0,1fr)', 'auto']"
-                  divider="full"
-                  class="px-4"
-                >
-                  <div class="max-h-72 overflow-y-auto">
-                    <ListRows :items="openPanel.data.items" row-key="label" v-slot="{ item: it }">
-                      <ListRow class="py-2">
-                        <ListCell>
-                          <div class="min-w-0">
-                            <div class="truncate text-sm text-ink-gray-7">{{ it.label }}</div>
-                            <!-- Two line-item shapes share this list: a subscription
-                                 is plan × days, a metered one is quantity × rate.
-                                 Only the billable quantity appears — what the
-                                 allowance covered was never charged. -->
-                            <div v-if="it.kind === 'metered'" class="text-p-sm text-ink-gray-5">{{ qty(it.qty) }} {{ it.unit }} × {{ rate(it.rate) }}</div>
-                            <div v-else class="text-p-sm text-ink-gray-5">{{ it.plan }} · {{ it.days }} × {{ inr(it.perDay) }}/day</div>
-                          </div>
-                        </ListCell>
-                        <ListCell class="justify-end">
-                          <span class="text-sm tabular-nums text-ink-gray-8">{{ inr(it.amount) }}</span>
-                        </ListCell>
-                      </ListRow>
-                    </ListRows>
+              <div class="h-80 shrink-0 space-y-4 overflow-y-auto px-4 pt-4">
+                <!-- Servers — the eyebrow is a plain section label with its
+                     subtotal, not a collapsible node. Each server below expands
+                     to its plan breakdown. -->
+                <section v-if="invoiceReceipt.servers.length">
+                  <div class="mb-1 flex items-center justify-between gap-3 px-1.5">
+                    <span class="text-p-xs font-medium uppercase tracking-wide text-ink-gray-5">Servers</span>
+                    <span class="text-p-sm tabular-nums text-ink-gray-5">{{ inr(invoiceReceipt.serversTotal) }}</span>
                   </div>
-                </List>
+                  <Tree :nodes="invoiceReceipt.servers" node-key="key" guides="none" class="invoice-tree">
+                    <template #item-label="{ node }">
+                      <span class="truncate" :class="node.segment ? 'text-p-sm text-ink-gray-5' : 'text-sm text-ink-gray-8'">{{ node.label }}</span>
+                    </template>
+                    <template #item-suffix="{ node }">
+                      <span class="shrink-0 pl-3 tabular-nums" :class="node.segment ? 'text-p-sm text-ink-gray-5' : 'text-sm text-ink-gray-8'">{{ inr(node.amount) }}</span>
+                    </template>
+                  </Tree>
+                </section>
 
-                <dl class="space-y-2 border-t border-outline-gray-1 px-4 py-3 text-sm">
+                <!-- Add-ons — same shape; each expands to its quantity × rate. -->
+                <section v-if="invoiceReceipt.addons.length">
+                  <div class="mb-1 flex items-center justify-between gap-3 px-1.5">
+                    <span class="text-p-xs font-medium uppercase tracking-wide text-ink-gray-5">Add-ons</span>
+                    <span class="text-p-sm tabular-nums text-ink-gray-5">{{ inr(invoiceReceipt.addonsTotal) }}</span>
+                  </div>
+                  <Tree :nodes="invoiceReceipt.addons" node-key="key" guides="none" class="invoice-tree">
+                    <template #item-label="{ node }">
+                      <span class="truncate" :class="node.segment ? 'text-p-sm text-ink-gray-5' : 'text-sm text-ink-gray-8'">{{ node.label }}</span>
+                    </template>
+                    <template #item-suffix="{ node }">
+                      <span class="shrink-0 pl-3 tabular-nums" :class="node.segment ? 'text-p-sm text-ink-gray-5' : 'text-sm text-ink-gray-8'">{{ inr(node.amount) }}</span>
+                    </template>
+                  </Tree>
+                </section>
+              </div>
+
+              <!-- Cost breakdown + Activity — sit directly below the fixed-height
+                   list. Activity opens below and is revealed by scrolling, so the
+                   totals above never jump. -->
+              <div class="border-t border-outline-gray-2 px-4">
+                <dl class="space-y-2 py-3 text-sm">
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">Subtotal</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(subtotal(openPanel.data)) }}</dd></div>
                   <div class="flex justify-between gap-3"><dt class="text-ink-gray-5">GST (18%)</dt><dd class="tabular-nums text-ink-gray-8">{{ inr(tax(openPanel.data)) }}</dd></div>
                   <div v-if="openPanel.data.credits" class="flex justify-between gap-3"><dt class="text-ink-green-6">Credits applied</dt><dd class="tabular-nums text-ink-green-6">−{{ inr(openPanel.data.credits) }}</dd></div>
@@ -499,42 +511,42 @@
                     <div class="flex justify-between gap-3 font-semibold"><dt class="text-ink-gray-8">You'll pay</dt><dd class="tabular-nums text-ink-gray-9">{{ inr(total(openPanel.data) - walletApplyPreview) }}</dd></div>
                   </template>
                 </dl>
-              </section>
 
-              <!-- Activity — this invoice's own history (issued → charged /
-                   declined → overdue → reminder). Timeline, newest first. Folded
-                   away entirely: for a settled invoice the log is reference, not
-                   news, and "Paid with" above already answers the common question.
-                   No border of its own — the receipt's bottom rule separates. -->
-              <section>
-                <button
-                  class="flex w-full items-center gap-1.5 text-left"
-                  :aria-expanded="activityExpanded"
-                  @click="activityExpanded = !activityExpanded"
-                >
-                  <span class="lucide-chevron-right size-3.5 shrink-0 text-ink-gray-5 transition-transform duration-150 ease-out" :class="activityExpanded ? 'rotate-90' : ''" />
-                  <h3 class="text-sm font-medium text-ink-gray-8">Activity</h3>
-                  <span class="text-p-sm text-ink-gray-5">{{ activityEvents.length }}</span>
-                </button>
-                <ol v-if="activityExpanded" class="relative mt-3">
-                  <li v-for="(e, i) in visibleActivity" :key="i" class="relative flex gap-3 pb-4 last:pb-0">
-                    <!-- Rail: one continuous line running through the column, with
-                         the solid dot sitting on top of it (no outline). The line
-                         is dropped on the last row so it doesn't dangle. -->
-                    <div class="relative flex w-2.5 shrink-0 justify-center">
-                      <span v-if="i < visibleActivity.length - 1" class="absolute left-1/2 top-2 h-[calc(100%+1rem)] w-px -translate-x-1/2 bg-[var(--outline-gray-2)]" />
-                      <span class="relative z-10 mt-1 size-2 shrink-0 rounded-full" :class="dotClass(e.tone)" />
-                    </div>
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-baseline justify-between gap-2">
-                        <span class="text-sm font-medium text-ink-gray-8">{{ e.label }}</span>
-                        <span class="shrink-0 tabular-nums text-p-xs text-ink-gray-5">{{ e.at }}</span>
+                <!-- Activity — this invoice's own history (issued → charged /
+                     declined → overdue → reminder). Timeline, newest first.
+                     Folded away entirely: for a settled invoice the log is
+                     reference, not news, and "Paid with" above already answers
+                     the common question. -->
+                <section class="border-t border-outline-gray-1 py-3">
+                  <button
+                    class="flex w-full items-center gap-1.5 text-left"
+                    :aria-expanded="activityExpanded"
+                    @click="activityExpanded = !activityExpanded"
+                  >
+                    <span class="lucide-chevron-right size-3.5 shrink-0 text-ink-gray-5 transition-transform duration-150 ease-out" :class="activityExpanded ? 'rotate-90' : ''" />
+                    <h3 class="text-sm font-medium text-ink-gray-8">Activity</h3>
+                    <span class="text-p-sm text-ink-gray-5">{{ activityEvents.length }}</span>
+                  </button>
+                  <ol v-if="activityExpanded" class="relative mt-3">
+                    <li v-for="(e, i) in visibleActivity" :key="i" class="relative flex gap-3 pb-4 last:pb-0">
+                      <!-- Rail: one continuous line running through the column, with
+                           the solid dot sitting on top of it (no outline). The line
+                           is dropped on the last row so it doesn't dangle. -->
+                      <div class="relative flex w-2.5 shrink-0 justify-center">
+                        <span v-if="i < visibleActivity.length - 1" class="absolute left-1/2 top-2 h-[calc(100%+1rem)] w-px -translate-x-1/2 bg-[var(--outline-gray-2)]" />
+                        <span class="relative z-10 mt-1 size-2 shrink-0 rounded-full" :class="dotClass(e.tone)" />
                       </div>
-                      <p v-if="e.detail" class="mt-0.5 text-p-sm text-ink-gray-5">{{ e.detail }}</p>
-                    </div>
-                  </li>
-                </ol>
-              </section>
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-baseline justify-between gap-2">
+                          <span class="text-sm font-medium text-ink-gray-8">{{ e.label }}</span>
+                          <span class="shrink-0 tabular-nums text-p-xs text-ink-gray-5">{{ e.at }}</span>
+                        </div>
+                        <p v-if="e.detail" class="mt-0.5 text-p-sm text-ink-gray-5">{{ e.detail }}</p>
+                      </div>
+                    </li>
+                  </ol>
+                </section>
+              </div>
             </div>
 
             <!-- The footer now carries only the one state-dependent action;
@@ -733,8 +745,7 @@
 <script setup>
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Badge, Button, DateRangePicker, Dialog, Dropdown, FormControl, Switch, Tooltip, dayjs, toast } from 'frappe-ui'
-import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list'
+import { Badge, Button, DateRangePicker, Dialog, Dropdown, FormControl, Switch, Tooltip, Tree, dayjs, toast } from 'frappe-ui'
 import Alert from '../../components/Alert.vue'
 import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
@@ -1004,6 +1015,75 @@ function tax(inv) {
 function total(inv) {
   return subtotal(inv) + tax(inv) - (inv.credits || 0)
 }
+// The receipt, split into two eyebrow'd sections — Servers and Add-ons — so the
+// recurring and metered halves of the bill read apart. Each line (server or
+// add-on) is a single-line row that expands to reveal how its amount was built:
+// one plan · days × rate for a steady server, several for a mid-cycle plan
+// change, or the quantity × rate behind a metered add-on. Every row expands, so
+// the affordance is uniform down the whole list.
+//
+// Held in a ref (rebuilt when the open invoice changes) rather than a computed:
+// the Tree tracks expansion by mutating `node.expanded` in place, so the nodes
+// must be reactive for a toggle to re-render — a ref deep-reactivates them, a
+// computed's fresh plain objects would swallow the mutation.
+const invoiceReceipt = ref({ servers: [], addons: [], serversTotal: 0, addonsTotal: 0 })
+function buildInvoiceTree() {
+  const inv = openPanel.value?.type === 'invoice' ? openPanel.value.data : null
+  if (!inv) {
+    invoiceReceipt.value = { servers: [], addons: [], serversTotal: 0, addonsTotal: 0 }
+    return
+  }
+  const items = inv.items || []
+
+  const servers = items
+    .filter((it) => it.kind !== 'metered')
+    .map((it) => {
+      // A steady server has no segments — synthesise its single plan · days ×
+      // rate line so it expands to the same shape as one that changed plans.
+      const segments =
+        it.segments && it.segments.length
+          ? it.segments
+          : [{ plan: it.plan, days: it.days, perDay: it.perDay, amount: it.amount }]
+      return {
+        key: it.label,
+        label: it.label,
+        amount: it.amount,
+        expanded: false,
+        children: segments.map((s, i) => ({
+          key: `${it.label}-${i}`,
+          label: `${s.plan} · ${s.days} × ${inr(s.perDay)}/day`,
+          amount: s.amount,
+          segment: true,
+        })),
+      }
+    })
+
+  const addons = items
+    .filter((it) => it.kind === 'metered')
+    .map((it) => ({
+      key: it.label,
+      label: it.label,
+      amount: it.amount,
+      expanded: false,
+      children: [
+        {
+          key: `${it.label}-m`,
+          label: `${qty(it.qty)} ${it.unit} × ${rate(it.rate)}`,
+          amount: it.amount,
+          segment: true,
+        },
+      ],
+    }))
+
+  const sum = (nodes) => nodes.reduce((t, n) => t + n.amount, 0)
+  invoiceReceipt.value = {
+    servers,
+    addons,
+    serversTotal: sum(servers),
+    addonsTotal: sum(addons),
+  }
+}
+
 // Wallet credit auto-applies on payment — preview how much for the open invoice.
 const walletApplyPreview = computed(() => {
   const inv = openPanel.value?.type === 'invoice' ? openPanel.value.data : null
@@ -1053,8 +1133,16 @@ const activityEvents = computed(() =>
 // second fold — show the full log.
 const activityExpanded = ref(false)
 const visibleActivity = computed(() => activityEvents.value)
-// Reset the fold whenever a different invoice (or the wallet) opens.
-watch(() => openPanel.value?.data?.number, () => { activityExpanded.value = false })
+// Reset the fold and rebuild the receipt tree whenever a different invoice (or
+// the wallet) opens — a fresh tree starts with its segments collapsed.
+watch(
+  () => openPanel.value?.data?.number,
+  () => {
+    activityExpanded.value = false
+    buildInvoiceTree()
+  },
+  { immediate: true },
+)
 
 // — Which method settled the invoice. Prefer what the invoice recorded at
 // payment time; fall back to today's primary for older seeded data.
@@ -1283,6 +1371,38 @@ function emailInvoice() {
   toast.success(`Invoice emailed to ${store.billingProfile.invoiceRecipient || store.billingProfile.billingEmail || store.user.email}`)
 }
 </script>
+
+<!-- The invoice tree's structural overrides can't be scoped: frappe-ui's Tree
+     sets inheritAttrs:false, so its root never carries this component's scope id
+     and scoped selectors (even :deep) can't reach it. A plain block keyed on the
+     .invoice-tree class is reliable and specific enough. -->
+<style>
+.invoice-tree {
+  /* Zero indent so a breakdown line's text starts at the same x as its server
+     name (the child's own chevron-width spacer lines it up with the parent's
+     chevron). The relationship is shown by a vertical rule instead. Row height
+     is fixed since every row is a single line. */
+  --tree-indent: 0px;
+  --tree-row-height: 30px;
+}
+/* Lighter chevron than the frappe default. */
+.invoice-tree [data-slot='toggle'] {
+  color: var(--ink-gray-4);
+}
+/* Vertical rule down an expanded breakdown, sitting under the parent's chevron. */
+.invoice-tree [role='group'] {
+  position: relative;
+}
+.invoice-tree [role='group']::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 0;
+  bottom: 6px;
+  width: 1px;
+  background: var(--outline-gray-2);
+}
+</style>
 
 <style scoped>
 .slide-enter-active,
