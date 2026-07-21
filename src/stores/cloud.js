@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { toast } from 'frappe-ui'
 import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planById, priceFor, regionById, versionById } from '../data/catalog'
+import { ADDONS, SERVER_METERS, addonByKey, meterCost, rateUnitOf } from '../data/addons'
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
@@ -201,6 +202,33 @@ function line(label, plan, days, perDay) {
   return { label, plan, days, perDay, amount: days * perDay }
 }
 
+// A metered invoice line — quantity times rate, rather than plan times days.
+// `kind` is what the invoice panel switches on to render the right columns.
+function meteredLine(label, qty, unit, rate) {
+  return { kind: 'metered', label, qty, unit, rate, amount: Math.round(qty * rate) }
+}
+
+// A four-hex-character tail, the way key suffixes read in a real console.
+function keyTail() {
+  return Math.random().toString(16).slice(2, 6)
+}
+
+// What you get the moment an add-on is switched on. The rule: hand over the one
+// credential you can't use the service without, and leave everything you have to
+// name (buckets, domains) for the user — an empty list you understand beats a
+// pre-made one you don't.
+function defaultAddonConfig(key) {
+  if (key === 'ai') {
+    return {
+      tokens: [{ id: uid('tok'), label: 'Default token', tail: keyTail(), created: fmtDate(new Date()), lastUsed: null }],
+    }
+  }
+  if (key === 'storage') return { buckets: [], accessKeys: [{ id: uid('ak'), label: 'Default key', tail: keyTail(), created: fmtDate(new Date()) }] }
+  if (key === 'email') return { domains: [], webhook: '' }
+  if (key === 'pdf') return { keys: [{ id: uid('pk'), label: 'Default key', tail: keyTail(), created: fmtDate(new Date()) }] }
+  return {}
+}
+
 function baseState() {
   return {
     scenario: 'fresh', // 'fresh' | 'grown'
@@ -246,6 +274,15 @@ function baseState() {
     // automatic fallbacks. No user-facing gateway choice (auto by currency).
     paymentMethods: [],
     invoices: [], // { number, period, issued, status, items:[{label,plan,days,perDay,amount}] }
+    // Add-ons (src/data/addons.js) — consumption services, keyed by add-on key:
+    // { on, since, usage: { [meterKey]: number }, …service config }. Absent key
+    // means never switched on. Usage is account-wide; we don't attribute it to a
+    // site, so there's one number per meter per cycle.
+    addons: {},
+    // Server overages — bandwidth and backup storage past the plans' allowance.
+    // Metered like add-ons, so they share the billing table, but they belong to
+    // the server subscription and have no page of their own.
+    overages: { bandwidth: 0, backups: 0 },
     marketplaceDeveloper: false, // enrolled as a marketplace app publisher (issue #19)
     payoutBalance: 0, // marketplace earnings available to withdraw (USD)
     payoutAccount: false, // a bank/recipient must be set up before a payout
@@ -438,6 +475,13 @@ function grownState() {
         line('atlas-sg-01', 'Standard', 30, 96),
         line('atlas-us-01', 'Standard', 30, 96),
         line('atlas-backup-01', 'Starter', 30, 55),
+        // Metered lines close the invoice, after the subscriptions — only the
+        // part past the allowance is charged, so these quantities are smaller
+        // than what the usage page showed for the same period.
+        meteredLine('AI inference · input tokens', 14.2, 'M tokens', 40),
+        meteredLine('AI inference · output tokens', 4.8, 'M tokens', 60),
+        meteredLine('Email sending', 7100, 'emails', 0.08),
+        meteredLine('Bandwidth', 0.9, 'TB', 800),
       ],
     },
     {
@@ -462,7 +506,48 @@ function grownState() {
     },
   ]
   s.payoutBalance = 0
-  s.lastCycleTotal = 14100 // makes this cycle's estimate read ~+15%
+  // Last cycle is roughly this cycle's subscriptions with no metered usage, so
+  // the "+15% vs last month" on the estimate has a visible cause one card down:
+  // the add-ons, not the servers, are what moved the bill.
+  s.lastCycleTotal = 21400
+  // Two add-ons switched on, both past their allowance — so the Metered card has
+  // something to explain and the bill's rise over last cycle has a visible cause.
+  // Storage and PDF stay off, so the catalogue still shows both states.
+  s.addons = {
+    ai: {
+      on: true,
+      since: '12 May 2026, 4:20 PM',
+      usage: { tokensIn: 18.6, tokensOut: 6.2 },
+      tokens: [
+        { id: uid('tok'), label: 'Production', tail: '4a2f', created: '12 May 2026', lastUsed: '2 hours ago' },
+        { id: uid('tok'), label: 'Staging', tail: 'b7c1', created: '3 Jun 2026', lastUsed: '6 days ago' },
+      ],
+    },
+    email: {
+      on: true,
+      since: '2 Apr 2026, 11:05 AM',
+      usage: { sent: 12400 },
+      // Per-record status, not one status per domain: acme-portal.in is the
+      // half-done case every provider has a name for, and it's the state a
+      // rolled-up "pending" badge would hide the cause of.
+      domains: [
+        { id: uid('dom'), name: 'mycompany.in', added: '2 Apr 2026', records: { spf: true, dkim: true, returnPath: true } },
+        { id: uid('dom'), name: 'acme-portal.in', added: '18 Jun 2026', records: { spf: true, dkim: false, returnPath: false } },
+      ],
+      webhook: 'https://mycompany.in/api/method/mail.webhook',
+      // Comfortably inside the thresholds — the healthy case, so the alarming
+      // states have to be reached through Edge mode rather than being the default.
+      bounceRate: 1.4,
+      complaintRate: 0.04,
+      suppressions: [
+        { id: uid('sup'), email: 'old-accounts@vendor.example', reason: 'Bounce', at: '14 Jul 2026' },
+        { id: uid('sup'), email: 'no-longer-here@client.example', reason: 'Bounce', at: '2 Jul 2026' },
+        { id: uid('sup'), email: 'someone@personal.example', reason: 'Complaint', at: '21 Jun 2026' },
+      ],
+    },
+  }
+  // Past the fleet's included allowance (1 TB and 50 GB per active server).
+  s.overages = { bandwidth: 7.2, backups: 420 }
   s.members = [
     { id: uid('mem'), name: 'Rahul Mehta',  email: 'rahul@mycompany.in', roles: [{ roleId: 'role-owner', resourceId: null }] },
     { id: uid('mem'), name: 'Sara Khan',    email: 'sara@mycompany.in',  roles: [{ roleId: 'role-admin', resourceId: null }] },
@@ -653,12 +738,108 @@ export const useCloudStore = defineStore('cloud', {
       return (server) => Math.round(this.monthlyPriceOf(server) / CYCLE_DAYS)
     },
 
-    // This cycle's estimated charge — every active (non-suspended) server.
-    estimatedThisCycle() {
+    // The recurring half of the bill — every active (non-suspended) server.
+    subscriptionsThisCycle() {
       return this.servers.reduce(
         (sum, srv) => (srv.status === 'suspended' ? sum : sum + this.monthlyPriceOf(srv)),
         0,
       )
+    },
+
+    // — Metered
+    // Add-ons that are switched on, in catalogue order (drives the sidebar).
+    enabledAddons() {
+      return ADDONS.filter((a) => this.addons[a.key]?.on)
+    },
+
+    // One add-on's stored record, with the gaps filled in — so callers can read
+    // `.usage.sent` without guarding every level.
+    addonState() {
+      return (key) => ({ on: false, since: null, usage: {}, ...(this.addons[key] || {}) })
+    },
+
+    // Every metered line this cycle, in the order they read on the bill:
+    // enabled add-ons first (you chose those), then server overages (you didn't).
+    // `used`/`included`/`cost` are all in the meter's own unit; only usage past
+    // the allowance costs anything.
+    meteredRows() {
+      const rows = []
+      for (const addon of this.enabledAddons) {
+        const usage = this.addonState(addon.key).usage
+        for (const meter of addon.meters) {
+          const used = usage[meter.key] || 0
+          rows.push({
+            id: `${addon.key}.${meter.key}`,
+            source: addon.name,
+            addonKey: addon.key,
+            icon: addon.icon,
+            to: addon.to,
+            label: meter.label,
+            unit: meter.unit,
+            rateUnit: rateUnitOf(meter),
+            used,
+            included: meter.included,
+            rate: meter.rate,
+            cost: meterCost(meter, used),
+          })
+        }
+      }
+      // Overage allowances scale with the fleet: each active server brings its own.
+      const active = this.servers.filter((s) => s.status !== 'suspended').length
+      for (const meter of SERVER_METERS) {
+        const used = this.overages[meter.key] || 0
+        const included = meter.includedPerServer * active
+        if (!used && !included) continue
+        rows.push({
+          id: `server.${meter.key}`,
+          // "Server usage", not "Servers": beside AI inference and Email
+          // sending, a bare noun reads as a fifth add-on rather than as the
+          // servers you already pay for. Links out for the same reason.
+          source: 'Server usage',
+          addonKey: null,
+          icon: 'lucide-server',
+          to: '/servers',
+          label: meter.label,
+          unit: meter.unit,
+          rateUnit: rateUnitOf(meter),
+          used,
+          included,
+          rate: meter.rate,
+          cost: Math.max(0, used - included) * meter.rate,
+        })
+      }
+      return rows
+    },
+
+    // What consumption adds to this cycle, once allowances are used up.
+    meteredThisCycle() {
+      return Math.round(this.meteredRows.reduce((sum, r) => sum + r.cost, 0))
+    },
+
+    // Metered rows that have started costing money — the ones worth showing first.
+    billableMeteredRows() {
+      return this.meteredRows.filter((r) => r.cost > 0)
+    },
+
+    // The same rows folded by service, so a six-meter bill reads as three blocks
+    // instead of repeating "AI inference" on every line.
+    meteredGroups() {
+      const groups = []
+      for (const row of this.meteredRows) {
+        let group = groups.find((g) => g.source === row.source)
+        if (!group) {
+          group = { source: row.source, icon: row.icon, to: row.to, rows: [], cost: 0 }
+          groups.push(group)
+        }
+        group.rows.push(row)
+        group.cost += row.cost
+      }
+      return groups
+    },
+
+    // This cycle's estimated charge — subscriptions plus what's been consumed.
+    estimatedThisCycle() {
+      return this.subscriptionsThisCycle + this.meteredThisCycle
     },
 
     // How this cycle's estimate compares to last cycle, as a signed %.
@@ -1640,6 +1821,42 @@ export const useCloudStore = defineStore('cloud', {
       srv.creditTotal += amt
       if (this.creditExpired && srv.creditBalance > 0) this.setCreditExpired(false)
       this.logActivity(`Added $${amt} credit`, { tag: 'billing' })
+    },
+    // — Add-ons
+    // Switching one on costs nothing on its own; the allowance covers a real
+    // trial's worth of use, so the first bill only appears once it's earning.
+    enableAddon(key) {
+      const addon = addonByKey(key)
+      if (!addon) return Promise.reject(new Error('Unknown add-on'))
+      return this._work(() => {
+        this.addons[key] = {
+          ...this.addonState(key),
+          ...defaultAddonConfig(key),
+          on: true,
+          since: fmtDateTime(new Date()),
+        }
+        this.logActivity(`Turned on ${addon.name}`, { tag: 'billing' })
+        return this.addons[key]
+      })
+    },
+    // Off keeps the config and the cycle's usage — you're billed for what you
+    // already used, and turning it back on doesn't mean setting it up again.
+    disableAddon(key) {
+      const addon = addonByKey(key)
+      if (!addon) return Promise.reject(new Error('Unknown add-on'))
+      return this._work(() => {
+        this.addons[key] = { ...this.addonState(key), on: false }
+        this.logActivity(`Turned off ${addon.name}`, { tag: 'billing' })
+      })
+    },
+    // Consumption booked against this cycle. The AI playground calls it so a
+    // prompt visibly moves the meter — usage you can watch is usage you trust.
+    addAddonUsage(key, meterKey, amount) {
+      const current = this.addonState(key)
+      this.addons[key] = {
+        ...current,
+        usage: { ...current.usage, [meterKey]: (current.usage[meterKey] || 0) + amount },
+      }
     },
     setBudget(amount) {
       const amt = Number(amount)
