@@ -31,6 +31,7 @@
           </div>
         </div>
         <div class="flex shrink-0 items-center gap-2">
+          <Button variant="subtle" size="sm" label="View performance metrics" icon-left="lucide-chart-line" icon-right="lucide-arrow-right" @click="viewAnalytics" />
           <Button variant="subtle" size="sm" label="Install app" icon-left="lucide-plus" @click="installApp" />
         </div>
       </div>
@@ -385,6 +386,10 @@ function openSite() {
 // Install app → the server Marketplace, with this site preselected.
 function installApp() {
   router.push(`/manage/${server.value.id}/marketplace?site=${site.value.id}`)
+}
+// View analytics → the Analytics page scoped to this site (site-specific view).
+function viewAnalytics() {
+  router.push(`/manage/${server.value.id}/analytics?site=${site.value.id}`)
 }
 function loginAsAdmin() {
   toast.success(`Opening ${site.value.name} as Administrator…`)
