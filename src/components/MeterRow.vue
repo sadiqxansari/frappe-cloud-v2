@@ -5,16 +5,17 @@
   <div>
     <div class="flex items-baseline justify-between gap-3">
       <span class="min-w-0 truncate text-sm text-ink-gray-8">{{ row.label }}</span>
-      <span class="shrink-0 text-sm tabular-nums" :class="row.cost > 0 ? 'text-ink-gray-9' : 'text-ink-gray-4'">
-        {{ row.cost > 0 ? inr(Math.round(row.cost)) : 'Included' }}
-      </span>
+      <!-- Only a meter that costs something gets a number; "Included" already
+           lives in the caption below, so repeating it on the right is noise. -->
+      <span v-if="row.cost > 0" class="shrink-0 text-sm tabular-nums text-ink-gray-9">{{ inr(Math.round(row.cost)) }}</span>
     </div>
 
-    <!-- Fills with the share of the allowance used, and pins at full once
-         you're past it — how far past is the caption's job, not the bar's. Stays
-         neutral even when exceeded: going over isn't an error, it's the service
-         working, and a page of amber bars reads as alarm where none is meant. -->
-    <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-surface-gray-3">
+    <!-- The bar only appears once there's usage to show. An empty bar at zero is
+         a flat line that says nothing — the caption already carries the allowance.
+         Once there's usage it fills with the share used and pins at full past it;
+         how far past is the caption's job. Stays neutral even when exceeded —
+         going over isn't an error, and a page of amber bars reads as alarm. -->
+    <div v-if="row.used > 0" class="mt-1.5 h-1 overflow-hidden rounded-full bg-surface-gray-3">
       <div
         class="h-full rounded-full bg-[var(--ink-gray-6)] transition-[width] duration-500 ease-[var(--ease-out)]"
         :style="{ width }"

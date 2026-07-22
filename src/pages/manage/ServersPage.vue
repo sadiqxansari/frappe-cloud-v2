@@ -73,7 +73,7 @@
             <Button variant="ghost" icon="lucide-minimize-2" aria-label="Collapse list" @click="panelOpen = false" />
           </div>
           <div class="shrink-0 px-4 pb-3">
-            <FormControl v-model="q" type="text" placeholder="Search" autocomplete="off" class="[&_input]:w-full">
+            <FormControl v-model="q" type="text" placeholder="Search servers or sites" autocomplete="off" class="[&_input]:w-full">
               <template #prefix><span class="lucide-search size-4 text-ink-gray-5" /></template>
             </FormControl>
           </div>
@@ -94,34 +94,41 @@
 
           <div class="min-h-0 flex-1 divide-y divide-outline-alpha-gray-1 overflow-y-auto border-t border-outline-alpha-gray-1 px-2 pb-2">
             <div
-              v-for="(srv, i) in panelRows"
-              :key="srv.id"
+              v-for="(row, i) in panelRows"
+              :key="row.srv.id"
               class="sp-row group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-surface-gray-2"
               :style="{ animationDelay: `${Math.min(i * 25, 200)}ms` }"
-              @click="openRow(srv)"
-              @mouseenter="hoverId = srv.id"
+              @click="openRow(row.srv)"
+              @mouseenter="hoverId = row.srv.id"
               @mouseleave="hoverId = null"
             >
               <span class="relative shrink-0">
-                <ProviderAvatar :provider="provOf(srv)" :size="32" />
-                <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: dotColor(srv) }" />
+                <ProviderAvatar :provider="provOf(row.srv)" :size="32" />
+                <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: dotColor(row.srv) }" />
               </span>
               <span class="min-w-0 flex-1">
                 <span class="flex items-center gap-1.5">
-                  <span class="truncate text-sm font-medium text-ink-gray-9">{{ srv.name }}</span>
-                  <Badge v-if="srv.status === 'migrating'" theme="blue" variant="subtle" size="sm">
+                  <span class="truncate text-sm font-medium text-ink-gray-9">{{ row.srv.name }}</span>
+                  <Badge v-if="row.srv.status === 'migrating'" theme="blue" variant="subtle" size="sm">
                     <template #prefix><Spinner class="size-3 shrink-0" /></template>
                     Migrating…
                   </Badge>
-                  <button v-else-if="srv.status === 'migration-scheduled'" type="button" class="cursor-pointer" @click.stop="scheduledServer = srv; scheduledModalOpen = true">
+                  <button v-else-if="row.srv.status === 'migration-scheduled'" type="button" class="cursor-pointer" @click.stop="scheduledServer = row.srv; scheduledModalOpen = true">
                     <Badge label="Scheduled" theme="blue" variant="subtle" size="sm" />
                   </button>
-                  <Badge v-else-if="srv.status === 'broken'" label="Broken" theme="red" variant="subtle" size="sm" />
+                  <Badge v-else-if="row.srv.status === 'broken'" label="Broken" theme="red" variant="subtle" size="sm" />
                 </span>
-                <span class="block truncate text-sm text-ink-gray-5">{{ specLineOf(srv) }}</span>
+                <!-- When the row was found by a site name, name that site — that's
+                     the answer to "which server is my site on". Otherwise the
+                     site count, matching the map's hover card. -->
+                <span v-if="row.matchedSite" class="flex items-center gap-1 truncate text-sm text-ink-blue-6">
+                  <span class="lucide-corner-down-right size-3.5 shrink-0" />
+                  <span class="truncate">{{ row.matchedSite.name }}</span>
+                </span>
+                <span v-else class="block truncate text-sm text-ink-gray-5">{{ siteCountLabel(row.srv) }}</span>
               </span>
               <span @click.stop>
-                <ServerActions :server="srv" central />
+                <ServerActions :server="row.srv" central />
               </span>
             </div>
 
@@ -250,15 +257,25 @@ const filtered = computed(() =>
 // Clicking a map cluster narrows the panel to that spot ({ ids, label }).
 const locationFilter = ref(null)
 
+// Rows are { srv, matchedSite }. A search matches a server directly (name /
+// region / provider) or by one of its sites — and a site match resolves to the
+// server that hosts it, since from Central you know the site's name, not which
+// server it lives on. matchedSite is set only when the row was found that way,
+// so the row can name the site instead of the site count.
 const panelRows = computed(() => {
   let rows = filtered.value
   if (locationFilter.value) rows = rows.filter((srv) => locationFilter.value.ids.includes(srv.id))
   const term = q.value.trim().toLowerCase()
-  if (!term) return rows
-  return rows.filter((srv) => {
+  if (!term) return rows.map((srv) => ({ srv, matchedSite: null }))
+  const out = []
+  for (const srv of rows) {
     const region = store.regionOf(srv)
-    return `${srv.name} ${region.name} ${region.provider}`.toLowerCase().includes(term)
-  })
+    const serverHit = `${srv.name} ${region.name} ${region.provider}`.toLowerCase().includes(term)
+    const matchedSite = srv.sites.find((st) => `${st.subdomain} ${st.name}`.toLowerCase().includes(term))
+    if (serverHit) out.push({ srv, matchedSite: null })
+    else if (matchedSite) out.push({ srv, matchedSite })
+  }
+  return out
 })
 
 // Unfiltered, the pill names the whole fleet and matches the panel's own title.
@@ -287,9 +304,13 @@ function fmtGb(g) {
 function provOf(srv) {
   return providerById(store.regionOf(srv).providerId)
 }
-function specLineOf(srv) {
-  const specs = store.specsOf(srv)
-  return `${specs.vcpu} vCPU, ${specs.memory} GB RAM, ${store.healthOf(srv).diskTotal} GB Disk`
+// On Central, "how many sites is this server carrying" is the useful read — the
+// vCPU/RAM/disk numbers still live in the hover card's usage bars. Empty servers
+// say so plainly rather than "0 sites".
+function siteCountLabel(srv) {
+  const n = srv.sites?.length || 0
+  if (!n) return 'No sites yet'
+  return n === 1 ? '1 site' : `${n} sites`
 }
 function dotColor(srv) {
   if (srv.status === 'broken') return 'var(--ink-red-7)'
@@ -313,7 +334,7 @@ const pins = computed(() =>
       region,
       card: {
         badge: BADGES[srv.status] || BADGES.active,
-        specs: specLineOf(srv),
+        sub: siteCountLabel(srv),
         price: inr(store.monthlyPriceOf(srv)),
         metrics: [
           { label: 'vCPU', value: `${health.cpuPct}% of ${specs.vcpu} vCPUs`, pct: health.cpuPct },

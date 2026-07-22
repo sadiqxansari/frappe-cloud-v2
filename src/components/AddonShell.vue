@@ -9,7 +9,7 @@
         </span>
         <div class="min-w-0">
           <h1 class="text-xl font-semibold text-ink-gray-9">{{ addon.name }}</h1>
-          <p class="mt-0.5 text-p-base text-ink-gray-5">{{ addon.tagline }}</p>
+          <p class="mt-0.5 text-p-sm text-ink-gray-5">{{ addon.tagline }}</p>
         </div>
       </div>
       <Dropdown v-if="state.on" :options="menu" placement="bottom-end">
@@ -44,24 +44,34 @@
       </div>
     </template>
 
-    <!-- On: usage first (it's what you came to check), then the service's own
-         controls. The link out to Billing is how the number here reconciles
-         with the bill — same rows, wider context. -->
+    <!-- On: a light usage read (not a boxed card — it's secondary to the
+         service's own controls below), then the slot. Collapses to one line when
+         nothing's been used, so an empty meter never outweighs the real work. -->
     <template v-else>
-      <section class="mt-6 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+      <section class="mt-8 border-b border-outline-gray-2 pb-8">
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-base font-semibold text-ink-gray-8">This cycle</h2>
-          <span class="text-base font-medium tabular-nums text-ink-gray-9">{{ inr(cost) }}</span>
+          <div class="flex items-center gap-1.5">
+            <h2 class="text-base font-semibold text-ink-gray-8">This cycle</h2>
+            <!-- The "usage lags a little / this is what the invoice uses"
+                 reassurance lives here now, not as a line under every meter. -->
+            <Tooltip text="Updated every few minutes. Your invoice is built from these numbers.">
+              <span class="lucide-info size-3.5 text-ink-gray-4" />
+            </Tooltip>
+          </div>
+          <span class="text-base font-medium tabular-nums" :class="cost > 0 ? 'text-ink-gray-9' : 'text-ink-gray-5'">{{ inr(cost) }}</span>
         </div>
-        <p v-if="addon.meterNote" class="mt-0.5 text-p-sm text-ink-gray-5">{{ addon.meterNote }}</p>
-        <div class="mt-3 space-y-3">
-          <MeterRow v-for="row in rows" :key="row.id" :row="row" />
-        </div>
-        <!-- Two sentences that stop most billing tickets: usage lags a little,
-             and these are the same numbers the invoice is built from. A meter
-             nobody trusts is worse than no meter. -->
-        <p class="mt-3 text-p-xs text-ink-gray-4">Updated every few minutes. Your invoice uses these numbers.</p>
-        <Button class="mt-2 -ml-2" variant="ghost" size="sm" label="See on billing" icon-left="lucide-receipt" @click="router.push('/billing')" />
+
+        <template v-if="cost > 0">
+          <p v-if="addon.meterNote" class="mt-0.5 text-p-sm text-ink-gray-5">{{ addon.meterNote }}</p>
+          <div class="mt-3 space-y-3">
+            <MeterRow v-for="row in rows" :key="row.id" :row="row" />
+          </div>
+          <button class="mt-3 inline-flex items-center gap-1 text-p-sm text-ink-gray-5 transition-colors hover:text-ink-gray-8" @click="router.push('/billing')">
+            See on billing
+            <span class="lucide-arrow-up-right size-3.5" />
+          </button>
+        </template>
+        <p v-else class="mt-1 text-p-sm text-ink-gray-5">Nothing used yet this cycle.</p>
       </section>
 
       <slot />
@@ -80,7 +90,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Dropdown, toast } from 'frappe-ui'
+import { Button, Dropdown, Tooltip, toast } from 'frappe-ui'
 import CentralShell from './CentralShell.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import MeterRow from './MeterRow.vue'

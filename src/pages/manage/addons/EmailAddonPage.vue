@@ -8,13 +8,13 @@
            status, because "pending" on a domain tells you nothing about which
            of the three lines you typed wrong. -->
       <template v-if="tab === 'domains'">
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
-          <div class="flex items-center justify-between gap-3">
-            <h2 class="text-base font-semibold text-ink-gray-8">Sending domains</h2>
-            <Button variant="ghost" size="sm" icon="lucide-plus" aria-label="Add domain" @click="addOpen = true" />
+        <section class="mt-6">
+          <!-- No "Sending domains" heading — the active tab already names this. -->
+          <div class="flex justify-end">
+            <Button variant="subtle" size="sm" label="Add domain" icon-left="lucide-plus" @click="addOpen = true" />
           </div>
 
-          <div v-if="domains.length" class="mt-2 divide-y divide-outline-alpha-gray-1">
+          <div v-if="domains.length" class="mt-3 divide-y divide-outline-alpha-gray-1 border-t border-outline-alpha-gray-1">
             <div v-for="d in domains" :key="d.id" class="py-3">
               <div class="flex items-center gap-3">
                 <div class="min-w-0 flex-1">
@@ -99,7 +99,7 @@
            own surface with the thresholds spelled out rather than a number the
            reader has to judge alone. -->
       <template v-else-if="tab === 'reputation'">
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5">
+        <section class="mt-6">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 class="text-base font-semibold text-ink-gray-8">Sending status</h2>
@@ -124,7 +124,7 @@
           </div>
         </section>
 
-        <section class="mt-4 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+        <section class="mt-8 border-t border-outline-gray-2 pt-8">
           <div class="flex items-center gap-1.5">
             <h2 class="text-base font-semibold text-ink-gray-8">Suppressed addresses</h2>
             <Tooltip text="Addresses that bounced or complained. We stop sending to them so your rates stay healthy.">
@@ -147,7 +147,7 @@
 
       <!-- ── Settings ───────────────────────────────────────────────── -->
       <template v-else>
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5">
+        <section class="mt-6">
           <h2 class="text-base font-semibold text-ink-gray-8">Webhook</h2>
           <p class="mt-0.5 text-p-sm text-ink-gray-5">
             We POST delivery, bounce and complaint events here. Retried for a few hours if it fails.

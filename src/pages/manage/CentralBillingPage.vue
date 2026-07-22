@@ -213,20 +213,6 @@
                   <span class="shrink-0 text-base font-medium tabular-nums text-ink-gray-9">{{ inr(group.cost) }}</span>
                 </div>
               </div>
-
-              <!-- Add-ons that haven't cost anything yet get a name-check rather
-                   than rows of zeroes. They're never hidden — every meter is
-                   always visible on the add-on's own page, so nobody meets a
-                   meter for the first time as a charge. -->
-              <p v-if="freeGroups.length" class="pt-3 text-p-sm text-ink-gray-5">
-                Included this cycle: {{ freeGroupNames }}
-              </p>
-
-              <!-- Says the two things that stop most billing questions: usage
-                   lags a little, and this is the same data the invoice is built
-                   from. A meter nobody trusts is worse than no meter. -->
-              <p class="mt-3 text-p-xs text-ink-gray-4">Updated every few minutes. Your invoice is built from these numbers.</p>
-              <Button class="mt-2 -ml-2" variant="ghost" size="sm" label="Manage add-on services" icon-left="lucide-blocks" @click="router.push('/addons')" />
             </section>
 
             <!-- Marketplace payouts — always shown for discoverability (issue
@@ -743,7 +729,7 @@
 </template>
 
 <script setup>
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button, DateRangePicker, Dialog, Dropdown, FormControl, Switch, Tooltip, Tree, dayjs, toast } from 'frappe-ui'
 import Alert from '../../components/Alert.vue'
@@ -783,11 +769,6 @@ function breakdownOf(group) {
   if (billable.length < 2) return ''
   return billable.map((r) => `${r.label} ${inr(Math.round(r.cost))}`).join(' · ')
 }
-const freeGroups = computed(() => store.meteredGroups.filter((g) => g.cost <= 0))
-// Reuses the word the zero-cost rows already use ("Included"), so the summary
-// line and the rows it stands in for say the same thing — and it reads the same
-// whether one service is listed or three.
-const freeGroupNames = computed(() => freeGroups.value.map((g) => g.source).join(', '))
 
 // — Problem states (mostly surfaced by Edge mode, but real once the API is live)
 const overdueInvoice = computed(() => store.invoices.find((i) => i.overdue || i.status === 'Unpaid') || null)
@@ -989,6 +970,19 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))
 watch(view, () => {
   openPanel.value = null
 })
+// A global-search invoice result deep-links here as ?invoice=INV-… — open that
+// invoice's panel on arrival (and on later selections, since one component
+// instance serves both billing routes). Registered after the view watcher so it
+// wins the same-tick race when the route switches overview → invoices.
+watch(
+  () => route.query.invoice,
+  (number) => {
+    if (!number) return
+    const inv = store.invoices.find((i) => i.number === number)
+    if (inv) openPanel.value = { type: 'invoice', data: inv }
+  },
+  { immediate: true },
+)
 
 // — Cycle figures: where we are in the 30-day cycle and when it bills.
 // Time until the next bill — accurate whatever day the account joined the cycle.
@@ -1259,6 +1253,22 @@ function addCredit() {
   toast.success(`Added ${inr(Number(creditAmount.value))} to your wallet`)
   creditOpen.value = false
 }
+
+// Global-search actions deep-link here as ?action=add-card|add-credit and open
+// the matching dialog. The param is cleared once handled so the same action can
+// be triggered again later (a repeated ?action=… value wouldn't re-fire).
+watch(
+  () => route.query.action,
+  (a) => {
+    if (a === 'add-card') openPm()
+    else if (a === 'add-credit') creditOpen.value = true
+    else return
+    const q = { ...route.query }
+    delete q.action
+    nextTick(() => router.replace({ query: q }))
+  },
+  { immediate: true },
+)
 
 // — Auto-recharge threshold & amount
 const rechargeOpen = ref(false)

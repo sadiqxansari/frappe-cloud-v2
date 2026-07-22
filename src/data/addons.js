@@ -109,11 +109,16 @@ export function dnsRecordsFor(domain) {
 // running them on Frappe hardware rather than proxying someone else's API. Rates
 // are ₹ per million tokens; embedding and guard models have no output charge, so
 // their `out` is null and the UI shows a single rate.
+//
+// `tier` is what a plan grants: the provider publishes models at a tier, and the
+// team's plan includes a set of tiers (see AI_PLAN.tiers). It's the plan-gating
+// axis — `kind` is only what the model is for.
 export const AI_MODELS = [
   {
     id: 'llama-3-3-70b',
     name: 'llama-3.3-70b-instruct',
     kind: 'Text generation',
+    tier: 'Premium',
     blurb: 'The default. Best quality for drafting, summarising and reasoning.',
     context: '128K',
     in: 40,
@@ -123,6 +128,7 @@ export const AI_MODELS = [
     id: 'llama-3-2-3b',
     name: 'llama-3.2-3b-instruct',
     kind: 'Text generation',
+    tier: 'Standard',
     blurb: 'Small and fast. Good for classification and short replies at volume.',
     context: '128K',
     in: 6,
@@ -132,6 +138,7 @@ export const AI_MODELS = [
     id: 'e5-mistral-7b',
     name: 'e5-mistral-7b-instruct',
     kind: 'Embedding',
+    tier: 'Standard',
     blurb: 'Turns documents into vectors for search and similarity.',
     context: '32K',
     in: 5,
@@ -141,12 +148,42 @@ export const AI_MODELS = [
     id: 'llama-guard-3-8b',
     name: 'llama-guard-3-8b',
     kind: 'Guard',
+    tier: 'Standard',
     blurb: 'Screens prompts and replies for unsafe content before they reach users.',
     context: '8K',
     in: 5,
     out: null,
   },
 ]
+
+// The team's AI entitlement — what "activated" grants. In production this is a
+// Plan in the AI-Tokens category plus a per-plan tier policy; here it's one static
+// object because the mockup has one team on one plan.
+//
+// `settlement` is how usage is billed, the operator's catalogue choice:
+//   · 'overage'  — metered and billed, no cap (the included allowance is free,
+//                  the rest bills at the meter rate). This is what our meters model.
+//   · 'prepaid'  — a bundled token pack that is also a hard cap; calls stop when
+//                  it's spent. `prepaidTokens` is the pack size in millions.
+export const AI_PLAN = {
+  title: 'AI Tokens — Growth',
+  settlement: 'overage',
+  prepaidTokens: null,
+  // Model tiers this plan grants. A model shows up as "included" only if its tier
+  // is here — the plan-gating the provider's tiers exist for.
+  tiers: ['Standard', 'Premium'],
+}
+
+// The gateway every AI caller hits directly — Central issues the key and meters
+// usage, but is never in the request path (privacy + latency). One host in the
+// mockup; in production it's resolved per credential from the provider (Grove).
+export const AI_GATEWAY_URL = 'https://ai.frappe.cloud'
+
+// The models the current plan includes — AI_MODELS gated by the plan's tiers.
+// This is the "Included models" list the console shows.
+export function includedAiModels(plan = AI_PLAN) {
+  return AI_MODELS.filter((m) => plan.tiers.includes(m.tier))
+}
 
 // The two things a server plan includes an allowance of. They meter exactly like
 // add-ons — and land in the same billing table — but they belong to the server
