@@ -158,6 +158,33 @@
         </div>
       </div>
 
+      <!-- AI inference — the per-site enable, the "bench" side of the Central/bench
+           split. On delivers a key to the site so Builder/Studio/HD work out of the
+           box; Connect reveals it for manual use. Off confirms first, then revokes.
+           Central shows what's enabled here read-only and links back. -->
+      <div>
+        <h2 class="text-base font-semibold text-ink-gray-8">AI inference</h2>
+        <div class="mt-1">
+          <div v-if="store.aiActivated" class="flex flex-wrap items-center justify-between gap-4 border-b border-outline-alpha-gray-1 py-4 last:border-b-0">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-gray-8">Enable AI on this site</div>
+              <div class="mt-0.5 text-sm text-ink-gray-5">Delivers a key to the site so its apps can use our models. Usage bills to your team.</div>
+            </div>
+            <div class="flex items-center gap-3">
+              <Button v-if="aiOn" variant="subtle" size="sm" label="Connect" icon-left="lucide-plug" @click="aiConnectOpen = true" />
+              <Switch :modelValue="aiOn" @update:modelValue="toggleSiteAi" />
+            </div>
+          </div>
+          <div v-else class="flex flex-wrap items-center justify-between gap-4 border-b border-outline-alpha-gray-1 py-4 last:border-b-0">
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-ink-gray-8">AI inference isn't set up</div>
+              <div class="mt-0.5 text-sm text-ink-gray-5">Enable it for your team once, then switch it on per site.</div>
+            </div>
+            <Button variant="subtle" size="sm" label="Set up AI inference" icon-right="lucide-arrow-up-right" @click="router.push('/addons/ai')" />
+          </div>
+        </div>
+      </div>
+
       <!-- Domains -->
       <div>
         <h2 class="text-base font-semibold text-ink-gray-8">Domains</h2>
@@ -317,6 +344,25 @@
       @confirm="resetSite"
     />
 
+    <!-- Connect: the site's delivered gateway URL + key + curl, for manual use. -->
+    <Dialog v-model:open="aiConnectOpen" :title="`AI on ${site?.name || 'this site'}`" size="2xl">
+      <AiConnectionDetails
+        v-if="aiRecord"
+        :gateway-url="aiRecord.gatewayUrl"
+        :api-key="aiRecord.secret"
+        :models="aiModels"
+      />
+    </Dialog>
+
+    <ConfirmDialog
+      v-model:open="aiOffOpen"
+      title="Disable AI on this site?"
+      message="The site's key is revoked and its apps stop using our models right away. You can turn it back on anytime."
+      confirm-label="Disable"
+      theme="red"
+      @confirm="disableSiteAi"
+    />
+
   </ServerShell>
 </template>
 
@@ -332,7 +378,9 @@ import ServerShell from '../../components/ServerShell.vue'
 import SiteIcon from '../../components/SiteIcon.vue'
 import DropSiteDialog from '../../components/DropSiteDialog.vue'
 import MoveSiteDialog from '../../components/MoveSiteDialog.vue'
+import AiConnectionDetails from '../../components/AiConnectionDetails.vue'
 import { versionById } from '../../data/catalog'
+import { includedAiModels } from '../../data/addons'
 import { backupCustomLabel, useCloudStore } from '../../stores/cloud'
 import { fmtDateTime } from '../../utils/format'
 
@@ -375,6 +423,32 @@ function copyValue(text) {
 const dropOpen = ref(false)
 const deactivateOpen = ref(false)
 const resetOpen = ref(false)
+
+// — Per-site AI inference. The record (or null) is the site's delivered
+// credential; its presence is the on/off state. Turning off confirms first.
+const aiRecord = computed(() => store.aiSiteRecord(site.value?.id))
+const aiOn = computed(() => !!aiRecord.value)
+const aiModels = computed(() => includedAiModels())
+const aiConnectOpen = ref(false)
+const aiOffOpen = ref(false)
+function toggleSiteAi(next) {
+  if (next) {
+    toast.promise(store.enableSiteAi(site.value.id), {
+      loading: 'Enabling AI on this site…',
+      success: () => 'AI is on for this site',
+      error: (e) => e.message,
+    })
+  } else {
+    aiOffOpen.value = true
+  }
+}
+function disableSiteAi() {
+  toast.promise(store.disableSiteAi(site.value.id), {
+    loading: 'Disabling AI…',
+    success: () => 'AI is off for this site',
+    error: (e) => e.message,
+  })
+}
 
 // — Header identity + actions
 // In the mockup, "Open site" routes to the in-app view rather than the real

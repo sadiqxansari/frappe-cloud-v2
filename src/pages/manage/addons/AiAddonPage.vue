@@ -1,293 +1,341 @@
 <template>
-  <AddonShell addon-key="ai">
-    <div class="mt-8">
-      <TabButtons v-model="tab" :options="tabs" />
-
-      <!-- ── Models ─────────────────────────────────────────────────────
-           Everything you need to make the first call is on this tab: which
-           models exist, what they cost, and the exact command to try one. -->
-      <template v-if="tab === 'models'">
-        <div class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
-          <div class="flex items-center justify-between gap-3">
-            <h2 class="text-base font-semibold text-ink-gray-8">Base URL</h2>
-            <button class="flex items-center gap-1.5 text-p-sm text-ink-gray-6 transition-colors hover:text-ink-gray-9" @click="copy(BASE_URL, 'Base URL copied')">
-              <span class="lucide-copy size-3.5" />
-              Copy
-            </button>
-          </div>
-          <p class="mt-1 font-mono text-p-sm text-ink-gray-7">{{ BASE_URL }}</p>
-          <p class="mt-2 text-p-sm text-ink-gray-5">
-            Point any OpenAI client at this URL with one of your tokens.
-          </p>
+  <CentralShell :crumbs="crumbs">
+    <!-- Identity — same header whether or not it's activated, so turning it on
+         doesn't feel like landing on a different page. -->
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex min-w-0 items-start gap-3">
+        <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-surface-gray-2 text-ink-gray-7">
+          <span class="size-5" :class="addon.icon" />
+        </span>
+        <div class="min-w-0">
+          <h1 class="text-xl font-semibold text-ink-gray-9">{{ addon.name }}</h1>
+          <p class="mt-0.5 text-p-base text-ink-gray-5">{{ addon.tagline }}</p>
         </div>
-
-        <div class="mt-4 space-y-4">
-          <section v-for="model in AI_MODELS" :key="model.id" class="rounded-lg border border-outline-gray-2 bg-surface-base p-5">
-            <!-- Stacks rather than wraps. With `flex-wrap` the price block kept
-                 its right-alignment after dropping to its own line, so it landed
-                 mid-card aligned to nothing — a column layout below `sm` puts it
-                 cleanly under the description, left-aligned like everything else. -->
-            <div class="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h3 class="break-all font-mono text-sm font-medium text-ink-gray-9">{{ model.name }}</h3>
-                  <Badge theme="gray" variant="subtle" :label="model.kind" />
-                </div>
-                <p class="mt-1 text-p-sm text-ink-gray-5">{{ model.blurb }}</p>
-              </div>
-              <div class="shrink-0 text-left sm:text-right">
-                <div class="text-p-sm tabular-nums text-ink-gray-8">
-                  {{ rate(model.in) }}<span class="text-ink-gray-5">{{ model.out ? ' in' : '' }}</span>
-                  <template v-if="model.out">
-                    · {{ rate(model.out) }}<span class="text-ink-gray-5"> out</span>
-                  </template>
-                </div>
-                <div class="text-p-xs text-ink-gray-5">per million tokens · {{ model.context }} context</div>
-              </div>
-            </div>
-
-            <!-- Folded by default: four cards each showing eight lines of curl
-                 buries the models, which is what the page is actually for.
-                 Rendered on a light surface like every other mono block in the
-                 app — a dark terminal panel would be the only one in the product. -->
-            <button
-              class="mt-3 flex items-center gap-1.5 text-p-sm text-ink-gray-6 transition-colors hover:text-ink-gray-9"
-              :aria-expanded="isOpen(model.id)"
-              @click="toggleExample(model.id)"
-            >
-              <span class="lucide-chevron-right size-3.5 transition-transform" :class="isOpen(model.id) && 'rotate-90'" />
-              Example request
-            </button>
-            <div v-if="isOpen(model.id)" class="relative mt-2">
-              <pre class="overflow-x-auto rounded-lg bg-surface-gray-2 p-3 pr-10 font-mono text-p-xs leading-relaxed text-ink-gray-8">{{ curlFor(model) }}</pre>
-              <button
-                class="absolute right-2 top-2 rounded bg-surface-gray-2 p-1.5 text-ink-gray-5 transition-colors hover:bg-surface-gray-3 hover:text-ink-gray-8"
-                :aria-label="`Copy example for ${model.name}`"
-                @click="copy(curlFor(model), 'Example copied')"
-              >
-                <span class="lucide-copy size-3.5" />
-              </button>
-            </div>
-          </section>
-        </div>
-      </template>
-
-      <!-- ── Tokens ───────────────────────────────────────────────────── -->
-      <template v-else-if="tab === 'tokens'">
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-1.5">
-              <h2 class="text-base font-semibold text-ink-gray-8">Tokens</h2>
-              <Tooltip text="Shown once when created. Revoke and make a new one if you lose it.">
-                <span class="lucide-info size-3.5 text-ink-gray-4" />
-              </Tooltip>
-            </div>
-            <Button variant="ghost" size="sm" icon="lucide-plus" aria-label="New token" @click="newOpen = true" />
-          </div>
-
-          <div v-if="tokens.length" class="mt-2 divide-y divide-outline-alpha-gray-1">
-            <div v-for="t in tokens" :key="t.id" class="flex items-center gap-3 py-2.5">
-              <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-gray-2 text-ink-gray-6">
-                <span class="lucide-key-round size-4" />
-              </span>
-              <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-medium text-ink-gray-9">{{ t.label }}</div>
-                <div class="truncate font-mono text-p-sm text-ink-gray-5">sk-fc-••••{{ t.tail }}</div>
-              </div>
-              <span class="shrink-0 text-p-sm text-ink-gray-5">{{ t.lastUsed ? `Used ${t.lastUsed}` : 'Never used' }}</span>
-              <Dropdown :options="tokenMenu(t)" placement="bottom-end">
-                <button class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Actions for ${t.label}`"><span class="lucide-ellipsis size-4" /></button>
-              </Dropdown>
-            </div>
-          </div>
-          <EmptyState
-            v-else
-            class="mt-3"
-            icon="lucide-key-round"
-            title="No tokens"
-            description="You need a token to call the API."
-          >
-            <Button variant="subtle" size="sm" label="New token" icon-left="lucide-plus" @click="newOpen = true" />
-          </EmptyState>
-        </section>
-      </template>
-
-      <!-- ── Playground ─────────────────────────────────────────────────
-           A real call's worth of feedback without leaving the page: pick a
-           model, send a prompt, and watch the meter move by what it cost. -->
-      <template v-else>
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
-          <div class="flex flex-wrap items-end justify-between gap-3">
-            <FormControl
-              v-model="playModel"
-              class="w-64"
-              type="select"
-              label="Model"
-              :options="modelOptions"
-            />
-            <Button variant="solid" label="Run" :loading="running" :disabled="!prompt.trim()" @click="run" />
-          </div>
-
-          <FormControl
-            v-model="prompt"
-            class="mt-4"
-            type="textarea"
-            label="Prompt"
-            :rows="3"
-            placeholder="Summarise this week's sales orders in three bullets."
-          />
-
-          <div v-if="reply" class="mt-4">
-            <div class="text-p-sm font-medium text-ink-gray-7">Reply</div>
-            <p class="mt-1.5 whitespace-pre-wrap rounded-lg bg-surface-gray-1 p-3 text-p-sm text-ink-gray-8">{{ reply }}</p>
-            <p class="mt-2 text-p-xs text-ink-gray-5">
-              {{ lastTokens.toLocaleString('en-IN') }} tokens · added to this cycle's usage
-            </p>
-          </div>
-        </section>
-      </template>
+      </div>
+      <Dropdown v-if="activated" :options="menu" placement="bottom-end">
+        <button class="mt-1 shrink-0 rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" aria-label="AI inference actions">
+          <span class="lucide-ellipsis size-4" />
+        </button>
+      </Dropdown>
     </div>
 
-    <!-- New token — the value is shown once, so the dialog says so up front. -->
-    <Dialog v-model:open="newOpen" title="New token" size="sm">
-      <FormControl v-model="newLabel" type="text" label="Name" placeholder="e.g. Production" />
-      <p class="mt-2 text-p-sm text-ink-gray-5">The token is shown once, right after you create it.</p>
+    <!-- ── Not activated: the pitch, the two ways to consume, and the price ──
+         Activation is a team-level, billing-gated step (mirrors "Enable for the
+         team"): after it, sites and keys can draw on the plan. -->
+    <template v-if="!activated">
+      <p class="mt-6 max-w-prose text-p-base text-ink-gray-7">{{ addon.blurb }}</p>
+
+      <!-- Two paths, one meter — the shape of the whole feature. -->
+      <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-4">
+          <span class="lucide-globe size-4.5 text-ink-gray-6" />
+          <h3 class="mt-2 text-sm font-semibold text-ink-gray-8">On your sites</h3>
+          <p class="mt-1 text-p-sm text-ink-gray-5">Enable AI on a site and its apps — Builder, Studio, HD — work out of the box.</p>
+        </div>
+        <div class="rounded-lg border border-outline-gray-2 bg-surface-base p-4">
+          <span class="lucide-key-round size-4.5 text-ink-gray-6" />
+          <h3 class="mt-2 text-sm font-semibold text-ink-gray-8">In your own apps</h3>
+          <p class="mt-1 text-p-sm text-ink-gray-5">Generate a key and call the same models from anywhere, over an OpenAI-compatible API.</p>
+        </div>
+      </div>
+
+      <section class="mt-4 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+        <h2 class="text-base font-semibold text-ink-gray-8">What you pay</h2>
+        <div class="mt-2 divide-y divide-outline-alpha-gray-1">
+          <div v-for="meter in addon.meters" :key="meter.key" class="flex items-baseline justify-between gap-3 py-2.5">
+            <span class="min-w-0 truncate text-sm text-ink-gray-8">{{ meter.label }}</span>
+            <span class="shrink-0 text-p-sm text-ink-gray-5">
+              <span class="tabular-nums text-ink-gray-7">{{ qty(meter.included) }} {{ meter.unit }}</span> free, then
+              <span class="tabular-nums text-ink-gray-7">{{ rate(meter.rate) }}</span> per {{ rateUnitOf(meter) }}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Managers activate; everyone else is told who can. When billing isn't set
+           up yet, the second button is the way forward rather than a dead end. -->
+      <div v-if="store.canManageServices" class="mt-5 flex flex-wrap items-center gap-3">
+        <Button variant="solid" label="Enable for team" icon-left="lucide-zap" :loading="activating" @click="activate" />
+        <Button v-if="!store.billingReady" variant="ghost" label="Set up billing" icon-left="lucide-credit-card" @click="router.push('/billing')" />
+        <span v-else class="text-p-sm text-ink-gray-5">Nothing to pay until you go over.</span>
+      </div>
+      <p v-else class="mt-5 text-p-sm text-ink-gray-5">Ask an account admin to enable AI inference for your team.</p>
+    </template>
+
+    <!-- ── Activated: Overview + API keys ── -->
+    <template v-else>
+      <div class="mt-6">
+        <TabButtons v-model="tab" :options="tabs" />
+
+        <!-- Overview: plan + status, which sites have AI on (read-only — the site
+             page owns the toggle), and the models the plan grants. -->
+        <template v-if="tab === 'overview'">
+          <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5">
+            <div class="flex h-6 items-center justify-between gap-3">
+              <span class="text-p-sm text-ink-gray-5">Plan</span>
+              <Badge :label="statusLabel" :theme="statusLabel === 'Active' ? 'green' : 'orange'" variant="subtle" />
+            </div>
+            <p class="mt-1.5 truncate text-2xl font-semibold text-ink-gray-9">{{ planTitle }}</p>
+            <p class="mt-1.5 text-p-sm text-ink-gray-5">{{ settlementLine }}</p>
+            <!-- One headline number — tokens. The site count isn't repeated here;
+                 the section below already lists them. -->
+            <div class="mt-4">
+              <div class="text-lg font-semibold tabular-nums text-ink-gray-9">{{ tokensLabel(tokensThisCycle) }}</div>
+              <div class="text-p-xs text-ink-gray-5">tokens this cycle</div>
+            </div>
+            <Button class="mt-4 -ml-2" variant="ghost" size="sm" label="View token usage in Billing" icon-left="lucide-receipt" @click="router.push('/billing')" />
+            <!-- The privacy line that justifies running it here at all. -->
+            <p class="mt-3 text-p-xs text-ink-gray-4">Central issues keys and meters usage. It never sees your prompts — your apps call the gateway directly.</p>
+          </section>
+
+          <section class="mt-8">
+            <h2 class="text-base font-semibold text-ink-gray-8">
+              Sites with AI enabled<span v-if="enabledSites.length" class="font-normal text-ink-gray-5"> · {{ enabledSites.length }}</span>
+            </h2>
+            <ul v-if="enabledSites.length" class="mt-3 divide-y divide-outline-alpha-gray-1 border-t border-outline-alpha-gray-1">
+              <li v-for="s in enabledSites" :key="s.siteId" class="flex items-center gap-2.5 py-2.5">
+                <span class="size-2 shrink-0 rounded-full bg-surface-green-3" />
+                <span class="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{{ s.name }}</span>
+                <span v-if="s.server" class="shrink-0 text-p-xs text-ink-gray-5">{{ s.server.name }}</span>
+              </li>
+            </ul>
+            <p v-else class="mt-1 text-p-sm text-ink-gray-5">No sites have AI enabled yet. Turn it on from a site's own page.</p>
+            <Button class="mt-3 -ml-2" variant="ghost" size="sm" label="Manage on your servers" icon-right="lucide-arrow-up-right" @click="router.push('/servers')" />
+          </section>
+
+          <section class="mt-8 border-t border-outline-gray-2 pt-8">
+            <h2 class="text-base font-semibold text-ink-gray-8">Included models</h2>
+            <p class="mt-0.5 text-p-sm text-ink-gray-5">Granted by your plan's tiers. Rates are ₹ per million tokens.</p>
+            <div class="mt-3 divide-y divide-outline-alpha-gray-1 border-t border-outline-alpha-gray-1">
+              <div v-for="model in models" :key="model.id" class="flex items-start justify-between gap-3 py-3">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="break-all font-mono text-sm font-medium text-ink-gray-9">{{ model.name }}</span>
+                    <Badge theme="gray" variant="subtle" :label="model.kind" />
+                  </div>
+                  <p class="mt-0.5 text-p-xs text-ink-gray-5">{{ model.tier }} tier · {{ model.context }} context</p>
+                </div>
+                <div class="shrink-0 text-right text-p-sm tabular-nums text-ink-gray-7">
+                  {{ rate(model.in) }}<span class="text-ink-gray-5">{{ model.out ? ' in' : '' }}</span>
+                  <template v-if="model.out"> · {{ rate(model.out) }}<span class="text-ink-gray-5"> out</span></template>
+                </div>
+              </div>
+            </div>
+          </section>
+        </template>
+
+        <!-- API keys: keys Central issues for the team's own apps. Generate shows
+             the key once; Reveal re-opens it (we store it); Revoke kills it. -->
+        <template v-else>
+          <section class="mt-6">
+            <!-- No "API keys" heading — the tab names it. The context the tooltip
+                 used to hold now reads plainly beside the action. -->
+            <div class="flex items-start justify-between gap-4">
+              <p class="max-w-prose text-p-sm text-ink-gray-5">Central-issued keys for use in your own apps. Usage bills to your team, same as on-site AI.</p>
+              <Button v-if="store.canManageServices" variant="subtle" size="sm" label="Generate key" icon-left="lucide-plus" class="shrink-0" @click="openGenerate" />
+            </div>
+
+            <div v-if="apiKeys.length" class="mt-3 divide-y divide-outline-alpha-gray-1 border-t border-outline-alpha-gray-1">
+              <div
+                v-for="k in apiKeys"
+                :key="k.id"
+                class="flex items-center gap-3 py-2.5"
+                :class="k.status === 'Active' && store.canManageServices && 'cursor-pointer'"
+                @click="k.status === 'Active' && store.canManageServices ? reveal(k) : null"
+              >
+                <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-gray-2 text-ink-gray-6">
+                  <span class="lucide-key-round size-4" />
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="truncate text-sm font-medium text-ink-gray-9">{{ k.label }}</span>
+                    <Badge :theme="k.status === 'Active' ? 'green' : 'gray'" variant="subtle" size="sm" :label="k.status" />
+                  </div>
+                  <div class="truncate font-mono text-p-sm text-ink-gray-5">sk-fc-••••{{ k.tail }}</div>
+                </div>
+                <div class="shrink-0 text-right">
+                  <div class="text-p-sm tabular-nums text-ink-gray-8">{{ tokensLabel(k.usageTokens) }}</div>
+                  <div class="text-p-xs text-ink-gray-5">tokens</div>
+                </div>
+                <Dropdown v-if="store.canManageServices && k.status === 'Active'" :options="keyMenu(k)" placement="bottom-end" @click.stop>
+                  <button class="rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2" :aria-label="`Actions for ${k.label}`"><span class="lucide-ellipsis size-4" /></button>
+                </Dropdown>
+                <span v-else class="w-6 shrink-0"></span>
+              </div>
+            </div>
+            <EmptyState
+              v-else
+              class="mt-3"
+              icon="lucide-key-round"
+              title="No API keys yet"
+              description="Generate a key to call our models from your own apps."
+            >
+              <Button v-if="store.canManageServices" variant="subtle" size="sm" label="Generate key" icon-left="lucide-plus" @click="openGenerate" />
+            </EmptyState>
+          </section>
+        </template>
+      </div>
+    </template>
+
+    <!-- Generate: name the key. -->
+    <Dialog v-model:open="generateOpen" title="Generate API key" size="sm">
+      <FormControl v-model="newLabel" type="text" label="Label" placeholder="e.g. n8n prod" @keyup.enter="generate" />
+      <p class="mt-2 text-p-sm text-ink-gray-5">A name to recognise this key by. You can revoke it on its own.</p>
       <template #actions>
         <div class="flex justify-end gap-2">
-          <Button label="Cancel" @click="newOpen = false" />
-          <Button variant="solid" label="Create" :disabled="!newLabel.trim()" @click="createToken" />
+          <Button label="Cancel" @click="generateOpen = false" />
+          <Button variant="solid" label="Generate" :loading="generating" :disabled="!newLabel.trim()" @click="generate" />
         </div>
       </template>
     </Dialog>
 
-    <SecretDialog v-model:open="secretOpen" title="Your new token" :fields="secretFields" />
+    <!-- Details: the key + curl, on generate and on reveal. -->
+    <Dialog :open="!!details" :title="details ? `API key · ${details.label}` : ''" size="2xl" @update:open="(v) => { if (!v) details = null }">
+      <AiConnectionDetails v-if="details" :gateway-url="details.gatewayUrl" :api-key="details.apiKey" :models="models" />
+    </Dialog>
 
     <ConfirmDialog
       v-model:open="revokeOpen"
-      title="Revoke this token?"
-      message="Anything still using it stops working immediately. Other tokens are unaffected."
+      title="Revoke this key?"
+      :message="`${pendingRevoke?.label} stops working immediately for anything still using it. Other keys are unaffected.`"
       confirm-label="Revoke"
       theme="red"
-      @confirm="revoke"
+      @confirm="confirmRevoke"
     />
-  </AddonShell>
+
+    <ConfirmDialog
+      v-model:open="offOpen"
+      :title="`Turn off ${addon.name}?`"
+      message="Site keys and API keys stop working right away. Your keys and settings are kept — turn it back on anytime."
+      confirm-label="Turn off"
+      theme="red"
+      @confirm="deactivate"
+    />
+  </CentralShell>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Badge, Button, Dialog, Dropdown, FormControl, TabButtons, Tooltip, toast } from 'frappe-ui'
-import AddonShell from '../../../components/AddonShell.vue'
+import { useRouter } from 'vue-router'
+import { Badge, Button, Dialog, Dropdown, FormControl, TabButtons, toast } from 'frappe-ui'
+import CentralShell from '../../../components/CentralShell.vue'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import EmptyState from '../../../components/EmptyState.vue'
-import SecretDialog from '../../../components/SecretDialog.vue'
-import { AI_MODELS } from '../../../data/addons'
+import AiConnectionDetails from '../../../components/AiConnectionDetails.vue'
+import { AI_PLAN, addonByKey, includedAiModels, rateUnitOf } from '../../../data/addons'
 import { useCloudStore } from '../../../stores/cloud'
-import { rate } from '../../../utils/format'
+import { qty, rate } from '../../../utils/format'
 
 const store = useCloudStore()
+const router = useRouter()
 
-const BASE_URL = 'https://ai.frappe.cloud/v1'
+const addon = computed(() => addonByKey('ai'))
+const activated = computed(() => store.aiActivated)
+const crumbs = computed(() => [{ label: 'Add-on services', route: '/addons' }, { label: addon.value.name }])
 
-const tab = ref('models')
+// Models the plan grants — shown on Overview and offered in the connection curl.
+const models = computed(() => includedAiModels())
+
+const tab = ref('overview')
 const tabs = [
-  { label: 'Models', value: 'models' },
-  { label: 'Tokens', value: 'tokens' },
-  { label: 'Playground', value: 'playground' },
+  { label: 'Overview', value: 'overview' },
+  { label: 'API keys', value: 'keys' },
 ]
 
-const tokens = computed(() => store.addonState('ai').tokens || [])
-
-// Pre-filled with the model it sits under, so copy-paste is a working call.
-function curlFor(model) {
-  const endpoint = model.kind === 'Embedding' ? 'embeddings' : 'chat/completions'
-  const body =
-    model.kind === 'Embedding'
-      ? `    "model": "${model.name}",\n    "input": "embed me"`
-      : `    "model": "${model.name}",\n    "messages": [{"role": "user", "content": "say something"}]`
-  return `curl ${BASE_URL}/${endpoint} \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer $FRAPPE_AI_TOKEN" \\\n  -d '{\n${body}\n  }'`
-}
-
-// Folded per model rather than one shared toggle — you're comparing models, so
-// opening one shouldn't close the one you were reading.
-const openExamples = ref([])
-function isOpen(id) {
-  return openExamples.value.includes(id)
-}
-function toggleExample(id) {
-  openExamples.value = isOpen(id) ? openExamples.value.filter((x) => x !== id) : [...openExamples.value, id]
-}
-
-function copy(text, message) {
-  navigator.clipboard?.writeText(text)
-  toast.success(message)
-}
-
-// — Tokens
-const newOpen = ref(false)
-const newLabel = ref('')
-const revokeOpen = ref(false)
-const revoking = ref(null)
-
-function tokenMenu(t) {
-  return [{ label: 'Revoke', icon: 'lucide-trash-2', onClick: () => { revoking.value = t; revokeOpen.value = true } }]
-}
-
-const secretOpen = ref(false)
-const secretFields = ref([])
-
-function createToken() {
-  const label = newLabel.value.trim()
-  newOpen.value = false
-  newLabel.value = ''
-  const state = store.addonState('ai')
-  const body = Array.from({ length: 32 }, () => Math.random().toString(36)[2]).join('')
-  const tail = body.slice(-4)
-  store.addons.ai = {
-    ...state,
-    tokens: [...(state.tokens || []), { id: `tok-${tail}`, label, tail, created: 'Just now', lastUsed: null }],
+// — Overview
+const planTitle = computed(() => store.addonState('ai').plan || AI_PLAN.title)
+const statusLabel = computed(() => (activated.value ? 'Active' : 'Inactive'))
+const enabledSites = computed(() => store.aiEnabledSites)
+const tokensThisCycle = computed(() => store.aiTokensThisCycle)
+const settlementLine = computed(() => {
+  const mode = store.addonState('ai').settlement || AI_PLAN.settlement
+  if (mode === 'prepaid') {
+    return AI_PLAN.prepaidTokens
+      ? `Prepaid pack · ${AI_PLAN.prepaidTokens}M tokens included, then capped`
+      : 'Prepaid pack · capped at your bundle'
   }
-  // The full value exists only here — the list only ever knows the last four.
-  secretFields.value = [{ label: 'Token', value: `sk-fc-${body}` }]
-  secretOpen.value = true
+  return 'Postpaid overage · metered, no cap'
+})
+
+// A compact token count: 4.2M, 610K, 0.
+function tokensLabel(n) {
+  if (!n) return '0'
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`
+  return String(n)
 }
 
-function revoke() {
-  const t = revoking.value
-  if (!t) return
-  const state = store.addonState('ai')
-  store.addons.ai = { ...state, tokens: (state.tokens || []).filter((x) => x.id !== t.id) }
-  toast.success(`Revoked ${t.label}`)
-  revoking.value = null
+// — Activation
+const activating = ref(false)
+function activate() {
+  activating.value = true
+  toast.promise(store.activateAiService().finally(() => { activating.value = false }), {
+    loading: 'Enabling AI inference…',
+    success: () => 'AI inference is on for your team',
+    error: (e) => e.message,
+  })
 }
 
-// — Playground
-const playModel = ref(AI_MODELS[0].name)
-const modelOptions = AI_MODELS.map((m) => ({ label: m.name, value: m.name }))
-const prompt = ref('')
-const reply = ref('')
-const lastTokens = ref(0)
-const running = ref(false)
+// — Deactivate (⋯ menu)
+const offOpen = ref(false)
+const menu = [{ label: 'Turn off', icon: 'lucide-power', onClick: () => { offOpen.value = true } }]
+function deactivate() {
+  toast.promise(store.disableAddon('ai'), {
+    loading: `Turning off ${addon.value.name}…`,
+    success: () => `${addon.value.name} is off`,
+    error: (e) => e.message,
+  })
+}
 
-const REPLIES = [
-  'Three things stand out this week:\n\n• Order volume is up 12% on last week, driven almost entirely by the Mumbai region.\n• Two orders are still awaiting payment confirmation past their due date.\n• Average order value slipped slightly, from ₹8,400 to ₹7,950.',
-  'Summary:\n\n• 148 orders totalling ₹11.8L, against 132 orders last week.\n• The top customer by value is Acme Retail at ₹2.1L across 9 orders.\n• Nothing is blocked — every order has stock allocated.',
-]
+// — API keys
+const apiKeys = computed(() => store.aiApiKeys)
 
-function run() {
-  running.value = true
-  // Roughly what a short prompt and a few-sentence reply actually costs.
-  const inTokens = Math.max(40, Math.round(prompt.value.length / 4))
-  const outTokens = 180 + Math.round(Math.random() * 120)
-  store
-    ._work(() => {
-      reply.value = REPLIES[Math.floor(Math.random() * REPLIES.length)]
-      lastTokens.value = inTokens + outTokens
-      // Meters are in millions of tokens — a single call is a sliver, which is
-      // itself the honest picture of what one prompt costs.
-      store.addAddonUsage('ai', 'tokensIn', inTokens / 1_000_000)
-      store.addAddonUsage('ai', 'tokensOut', outTokens / 1_000_000)
-    }, 1200)
-    .catch((e) => toast.error(e.message))
-    .finally(() => { running.value = false })
+const generateOpen = ref(false)
+const newLabel = ref('')
+const generating = ref(false)
+function openGenerate() {
+  newLabel.value = ''
+  generateOpen.value = true
+}
+async function generate() {
+  const label = newLabel.value.trim()
+  if (!label) return
+  generating.value = true
+  try {
+    const key = await store.generateAiKey(label)
+    generateOpen.value = false
+    // The full secret exists here for the first (and re-revealable) time.
+    details.value = { label: key.label, gatewayUrl: key.gatewayUrl, apiKey: key.secret }
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    generating.value = false
+  }
+}
+
+// Reveal re-opens a stored key anytime; the list itself only ever holds the tail.
+const details = ref(null)
+function reveal(key) {
+  if (key.status !== 'Active') return
+  details.value = { label: key.label, gatewayUrl: key.gatewayUrl, apiKey: key.secret }
+}
+
+const revokeOpen = ref(false)
+const pendingRevoke = ref(null)
+function keyMenu(key) {
+  return [
+    { label: 'Reveal key', icon: 'lucide-eye', onClick: () => reveal(key) },
+    { label: 'Revoke', icon: 'lucide-trash-2', onClick: () => { pendingRevoke.value = key; revokeOpen.value = true } },
+  ]
+}
+function confirmRevoke() {
+  const key = pendingRevoke.value
+  if (!key) return
+  toast.promise(store.revokeAiKey(key.id), {
+    loading: 'Revoking…',
+    success: () => `Revoked ${key.label}`,
+    error: (e) => e.message,
+  })
+  pendingRevoke.value = null
 }
 </script>

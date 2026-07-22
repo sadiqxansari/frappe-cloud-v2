@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { toast } from 'frappe-ui'
 import { APP_CATALOG, PLANS, TEAM_SIZE_TO_PLAN, appByKey, latestBuildFor, planById, priceFor, regionById, versionById } from '../data/catalog'
-import { ADDONS, SERVER_METERS, addonByKey, meterCost, rateUnitOf } from '../data/addons'
+import { ADDONS, AI_GATEWAY_URL, AI_PLAN, SERVER_METERS, addonByKey, meterCost, rateUnitOf } from '../data/addons'
 
 // Onboarding leads with the cheapest plan (lowest monthly price).
 const CHEAPEST_PLAN_ID = PLANS.reduce((a, b) => (b.priceMonthly < a.priceMonthly ? b : a), PLANS[0]).id
@@ -228,14 +228,45 @@ function keyTail() {
   return Math.random().toString(16).slice(2, 6)
 }
 
+// A full inference key. The secret is the value shown once on generate and — like
+// the real console — kept so it can be revealed again; the list only ever knows
+// the tail. Central issues it; the caller uses it against the gateway directly.
+function aiKeySecret() {
+  const body = Array.from({ length: 32 }, () => Math.random().toString(36)[2]).join('')
+  return `sk-fc-${body}`
+}
+function aiKey(label, { status = 'Active', created, usageTokens = 0 } = {}) {
+  const secret = aiKeySecret()
+  return {
+    id: uid('key'),
+    label,
+    status, // 'Active' | 'Revoked'
+    tail: secret.slice(-4),
+    secret,
+    gatewayUrl: AI_GATEWAY_URL,
+    created: created || fmtDate(new Date()),
+    usageTokens, // tokens this key has drawn from the team meter (display only)
+  }
+}
+// One site's delivered AI credential — minted on enable, revoked on disable.
+function aiSite(since) {
+  const secret = aiKeySecret()
+  return { gatewayUrl: AI_GATEWAY_URL, tail: secret.slice(-4), secret, since: since || fmtDateTime(new Date()) }
+}
+
 // What you get the moment an add-on is switched on. The rule: hand over the one
 // credential you can't use the service without, and leave everything you have to
 // name (buckets, domains) for the user — an empty list you understand beats a
 // pre-made one you don't.
 function defaultAddonConfig(key) {
   if (key === 'ai') {
+    // Activation grants the plan + one team API key; sites start empty (each is
+    // enabled from its own page — the bench owns its site list).
     return {
-      tokens: [{ id: uid('tok'), label: 'Default token', tail: keyTail(), created: fmtDate(new Date()), lastUsed: null }],
+      plan: AI_PLAN.title,
+      settlement: AI_PLAN.settlement,
+      apiKeys: [aiKey('Default key')],
+      sites: {},
     }
   }
   if (key === 'storage') return { buckets: [], accessKeys: [{ id: uid('ak'), label: 'Default key', tail: keyTail(), created: fmtDate(new Date()) }] }
@@ -539,10 +570,19 @@ function grownState() {
       on: true,
       since: '12 May 2026, 4:20 PM',
       usage: { tokensIn: 18.6, tokensOut: 6.2 },
-      tokens: [
-        { id: uid('tok'), label: 'Production', tail: '4a2f', created: '12 May 2026', lastUsed: '2 hours ago' },
-        { id: uid('tok'), label: 'Staging', tail: 'b7c1', created: '3 Jun 2026', lastUsed: '6 days ago' },
+      plan: AI_PLAN.title,
+      settlement: AI_PLAN.settlement,
+      // Team-level keys for the company's own apps — one revoked, to show the state.
+      apiKeys: [
+        aiKey('Production', { created: '12 May 2026', usageTokens: 4_200_000 }),
+        aiKey('Staging', { created: '3 Jun 2026', usageTokens: 610_000 }),
+        aiKey('Old CI', { status: 'Revoked', created: '20 Feb 2026', usageTokens: 55_000 }),
       ],
+      // Two sites already have AI enabled (both on atlas-web-01).
+      sites: {
+        [company.id]: aiSite('12 May 2026, 4:25 PM'),
+        [shop.id]: aiSite('2 Jun 2026, 10:12 AM'),
+      },
     },
     email: {
       on: true,
@@ -760,6 +800,12 @@ export const useCloudStore = defineStore('cloud', {
     // resolves Desk session → FC member is the main production unknown.)
     canManageBilling: () => true,
 
+    // Access to add-on services is capability-scoped in production
+    // (service:view / service:manage), not Frappe roles. Mocked true like billing
+    // — the demo personas are the account owner — but the UI still branches on it
+    // so the members-can't-manage path is designed, not skipped.
+    canManageServices: () => true,
+
     findServer() {
       return (id) => this.allServers.find((srv) => srv.id === id) || null
     },
@@ -857,6 +903,49 @@ export const useCloudStore = defineStore('cloud', {
     // `.usage.sent` without guarding every level.
     addonState() {
       return (key) => ({ on: false, since: null, usage: {}, ...(this.addons[key] || {}) })
+    },
+
+    // — AI inference (the LLM add-on)
+    // Activated for the team ⇔ the add-on is on. One flag drives the sidebar
+    // entry, the catalogue badge, and the console's activated state.
+    aiActivated() {
+      return this.addonState('ai').on
+    },
+
+    // Whether the team can activate a paid service. Stands in for the PR's "active
+    // AI-Tokens subscription" gate — here, billing simply has to be set up.
+    billingReady() {
+      return this.cardOnFile || this.paymentMethods.length > 0 || this.walletBalance > 0
+    },
+
+    // Sites with AI enabled, resolved to their server for display. Read-only on
+    // Central: the toggle lives on the site's own page (the bench owns its sites).
+    aiEnabledSites() {
+      const sites = this.addonState('ai').sites || {}
+      const out = []
+      for (const [siteId, rec] of Object.entries(sites)) {
+        const site = this.findSite(siteId)
+        if (!site) continue
+        out.push({ siteId, name: site.name, server: this.serverOfSite(siteId), ...rec })
+      }
+      return out
+    },
+
+    // One site's AI credential (or null) — the site page reads this for its toggle.
+    aiSiteRecord() {
+      return (siteId) => this.addonState('ai').sites?.[siteId] || null
+    },
+
+    // The team's issued API keys, newest first.
+    aiApiKeys() {
+      return this.addonState('ai').apiKeys || []
+    },
+
+    // Combined tokens booked this cycle (input + output) as a raw count — the one
+    // "Tokens" figure the console shows, though we meter in/out separately.
+    aiTokensThisCycle() {
+      const usage = this.addonState('ai').usage || {}
+      return Math.round(((usage.tokensIn || 0) + (usage.tokensOut || 0)) * 1_000_000)
     },
 
     // Every metered line this cycle, in the order they read on the bill:
@@ -1951,14 +2040,75 @@ export const useCloudStore = defineStore('cloud', {
         this.logActivity(`Turned off ${addon.name}`, { tag: 'billing' })
       })
     },
-    // Consumption booked against this cycle. The AI playground calls it so a
-    // prompt visibly moves the meter — usage you can watch is usage you trust.
+    // Consumption booked against this cycle. Kept for seeded/simulated metering
+    // now that the playground is gone — site keys and API keys both draw from this
+    // one team meter (as in the PR, where hourly reconciliation folds both in).
     addAddonUsage(key, meterKey, amount) {
       const current = this.addonState(key)
       this.addons[key] = {
         ...current,
         usage: { ...current.usage, [meterKey]: (current.usage[meterKey] || 0) + amount },
       }
+    },
+
+    // — AI inference actions
+    // Activate AI for the team (the console's "Enable for team"). Gated on billing
+    // — a rejected promise the page turns into a "Set up billing" action for
+    // billing managers, or an ask-your-admin message for everyone else. Activation
+    // itself is just the add-on's on-flag, so the sidebar + catalogue keep working.
+    activateAiService() {
+      if (!this.billingReady) {
+        return Promise.reject(new Error('AI inference needs billing set up for your team first.'))
+      }
+      return this.enableAddon('ai')
+    },
+
+    // Per-site enable — the bench side. Mints (mock) a per-site credential and
+    // "delivers" it to the site so Builder/Studio work out of the box. Idempotent.
+    enableSiteAi(siteId) {
+      return this._work(() => {
+        const state = this.addonState('ai')
+        if (!state.on) throw new Error('Activate AI inference for the team first.')
+        if (state.sites?.[siteId]) return state.sites[siteId]
+        const record = aiSite()
+        this.addons.ai = { ...state, sites: { ...(state.sites || {}), [siteId]: record } }
+        this.logActivity(`Enabled AI on ${this.findSite(siteId)?.name || 'a site'}`, { tag: 'server' })
+        return record
+      })
+    },
+    // Disable a site — revokes its delivered credential.
+    disableSiteAi(siteId) {
+      return this._work(() => {
+        const state = this.addonState('ai')
+        const sites = { ...(state.sites || {}) }
+        delete sites[siteId]
+        this.addons.ai = { ...state, sites }
+        this.logActivity(`Disabled AI on ${this.findSite(siteId)?.name || 'a site'}`, { tag: 'server' })
+      })
+    },
+
+    // Mint a team-level API key for the team's own apps. Returns the record incl.
+    // secret so the caller can show it once; it's stored so Reveal shows it again.
+    generateAiKey(label) {
+      return this._work(() => {
+        const state = this.addonState('ai')
+        const key = aiKey((label || '').trim() || 'Untitled key')
+        this.addons.ai = { ...state, apiKeys: [key, ...(state.apiKeys || [])] }
+        this.logActivity(`Generated AI API key "${key.label}"`, { tag: 'billing' })
+        return key
+      })
+    },
+    // Revoke an issued key at the provider — the row stays, marked Revoked, and can
+    // no longer be revealed.
+    revokeAiKey(id) {
+      return this._work(() => {
+        const state = this.addonState('ai')
+        this.addons.ai = {
+          ...state,
+          apiKeys: (state.apiKeys || []).map((k) => (k.id === id ? { ...k, status: 'Revoked' } : k)),
+        }
+        this.logActivity('Revoked an AI API key', { tag: 'billing' })
+      })
     },
     setBudget(amount) {
       const amt = Number(amount)
