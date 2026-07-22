@@ -31,7 +31,7 @@
           </div>
         </div>
         <div class="flex shrink-0 items-center gap-2">
-          <Button variant="subtle" size="sm" label="View performance metrics" icon-left="lucide-chart-line" icon-right="lucide-arrow-right" @click="viewAnalytics" />
+          <Button variant="subtle" size="sm" label="View analytics" icon-left="lucide-chart-line" icon-right="lucide-arrow-right" @click="viewAnalytics" />
           <Button variant="subtle" size="sm" label="Install app" icon-left="lucide-plus" @click="installApp" />
         </div>
       </div>

@@ -149,8 +149,8 @@ function switchContext(val) {
 const crumbs = computed(() => {
   const base = [{ label: 'Insights' }]
   return activeSite.value
-    ? [...base, { label: 'Performance metrics', route: `/manage/${server.value?.id}/analytics` }, { label: activeSite.value.name }]
-    : [...base, { label: 'Performance metrics' }]
+    ? [...base, { label: 'Analytics', route: `/manage/${server.value?.id}/analytics` }, { label: activeSite.value.name }]
+    : [...base, { label: 'Analytics' }]
 })
 const health = computed(() => store.healthOf(server.value))
 const specs = computed(() => store.specsOf(server.value))
