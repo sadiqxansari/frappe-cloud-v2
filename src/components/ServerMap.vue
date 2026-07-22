@@ -156,7 +156,7 @@
                 <span class="truncate text-base font-semibold text-ink-gray-9">{{ card.node.pin.name }}</span>
                 <Badge :theme="card.node.pin.card.badge.theme" variant="subtle" size="sm" :label="card.node.pin.card.badge.label" />
               </div>
-              <div class="mt-0.5 truncate text-sm text-ink-gray-5">{{ card.node.pin.card.specs }}</div>
+              <div class="mt-0.5 truncate text-sm text-ink-gray-5">{{ card.node.pin.card.sub }}</div>
             </div>
             <div class="-mr-1.5 -mt-1" @click.stop>
               <ServerActions :server="card.node.pin.server" central />
@@ -201,7 +201,7 @@
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium text-ink-gray-8">{{ m.name }}</span>
-                <span class="block truncate text-xs text-ink-gray-5">{{ m.card.specs }}</span>
+                <span class="block truncate text-xs text-ink-gray-5">{{ m.card.sub }}</span>
               </span>
               <span class="lucide-arrow-up-right size-3.5 shrink-0 text-ink-gray-5 opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
@@ -273,7 +273,7 @@ import WorldDots from './WorldDots.vue'
 const props = defineProps({
   // Display-ready server pins (built by the page):
   // { id, name, status, lat, lng, server, provider, region,
-  //   card: { badge: {label, theme}, specs, price, metrics: [{label, value, pct}] } }
+  //   card: { badge: {label, theme}, sub, price, metrics: [{label, value, pct}] } }
   pins: { type: Array, default: () => [] },
   // Regions with no servers: { id (regionId), lat, lng, region, provider }
   spots: { type: Array, default: () => [] },

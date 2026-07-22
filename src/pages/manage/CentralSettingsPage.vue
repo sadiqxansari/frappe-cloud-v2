@@ -518,6 +518,7 @@
 
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Badge, Button, Dialog, Dropdown, FormControl, ListView, Switch, TabButtons, toast, Tooltip } from 'frappe-ui'
 import ProviderIcon from '../../components/ProviderIcon.vue'
 import CentralShell from '../../components/CentralShell.vue'
@@ -525,6 +526,8 @@ import { useCloudStore } from '../../stores/cloud'
 import { providerById, regionById } from '../../data/catalog'
 
 const store = useCloudStore()
+const route = useRoute()
+const router = useRouter()
 
 const tabs = [
   { label: 'Team', value: 'team' },
@@ -1029,4 +1032,23 @@ function createRole() {
   roleOpen.value = false
 }
 
+// Global-search actions deep-link here as ?action=invite|new-role and open the
+// matching dialog (switching to the tab it belongs to first). The param is
+// cleared once handled so the same action can be triggered again later.
+watch(
+  () => route.query.action,
+  (a) => {
+    if (a === 'invite') {
+      tab.value = 'team'
+      openInvite()
+    } else if (a === 'new-role') {
+      tab.value = 'roles'
+      openRole()
+    } else return
+    const q = { ...route.query }
+    delete q.action
+    nextTick(() => router.replace({ query: q }))
+  },
+  { immediate: true },
+)
 </script>
