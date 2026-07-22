@@ -5,13 +5,13 @@
 
       <!-- ── Buckets ────────────────────────────────────────────────── -->
       <template v-if="tab === 'buckets'">
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
-          <div class="flex items-center justify-between gap-3">
-            <h2 class="text-base font-semibold text-ink-gray-8">Buckets</h2>
-            <Button variant="ghost" size="sm" icon="lucide-plus" aria-label="Create bucket" @click="newBucketOpen = true" />
+        <section class="mt-6">
+          <!-- No "Buckets" heading — the active tab already names this. -->
+          <div class="flex justify-end">
+            <Button variant="subtle" size="sm" label="New bucket" icon-left="lucide-plus" @click="newBucketOpen = true" />
           </div>
 
-          <div v-if="buckets.length" class="mt-2 divide-y divide-outline-alpha-gray-1">
+          <div v-if="buckets.length" class="mt-3 divide-y divide-outline-alpha-gray-1 border-t border-outline-alpha-gray-1">
             <div v-for="b in buckets" :key="b.id" class="flex items-center gap-3 py-2.5">
               <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-gray-2 text-ink-gray-6">
                 <span class="lucide-box size-4" />
@@ -40,7 +40,7 @@
 
       <!-- ── Access keys ────────────────────────────────────────────── -->
       <template v-else>
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+        <section class="mt-6">
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-base font-semibold text-ink-gray-8">Endpoint</h2>
             <button class="flex items-center gap-1.5 text-p-sm text-ink-gray-6 transition-colors hover:text-ink-gray-9" @click="copy(ENDPOINT)">
@@ -52,7 +52,7 @@
           <p class="mt-2 text-p-sm text-ink-gray-5">Works with the AWS CLI, boto3, rclone — anything that speaks S3.</p>
         </section>
 
-        <section class="mt-4 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+        <section class="mt-8 border-t border-outline-gray-2 pt-8">
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-1.5">
               <h2 class="text-base font-semibold text-ink-gray-8">Access keys</h2>

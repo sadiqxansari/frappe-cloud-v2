@@ -7,15 +7,12 @@
            Your existing Frappe print formats are the objects here — this
            service renders them, it doesn't ask you to author anything new. -->
       <template v-if="tab === 'formats'">
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
-          <div class="flex items-center gap-1.5">
-            <h2 class="text-base font-semibold text-ink-gray-8">Print formats</h2>
-            <Tooltip text="Picked up from your sites. Anything that renders a PDF today renders through this instead.">
-              <span class="lucide-info size-3.5 text-ink-gray-4" />
-            </Tooltip>
-          </div>
+        <section class="mt-6">
+          <!-- No "Print formats" heading — the tab names this; the one thing worth
+               saying (where these come from) stays as a quiet helper line. -->
+          <p class="text-p-sm text-ink-gray-5">Picked up from your sites — anything that renders a PDF today renders through this instead.</p>
 
-          <div class="mt-2 divide-y divide-outline-alpha-gray-1">
+          <div class="mt-3 divide-y divide-outline-alpha-gray-1 border-t border-outline-alpha-gray-1">
             <div v-for="f in formats" :key="f.name" class="flex items-center gap-3 py-2.5">
               <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-gray-2 text-ink-gray-6">
                 <span class="lucide-file-text size-4" />
@@ -39,7 +36,7 @@
            Page geometry and the header/footer template. Anything a format
            doesn't specify falls back to these. -->
       <template v-else-if="tab === 'defaults'">
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5">
+        <section class="mt-6">
           <h2 class="text-base font-semibold text-ink-gray-8">Page</h2>
           <div class="mt-3 grid gap-4 sm:grid-cols-2">
             <FormControl v-model="draft.size" type="select" label="Size" :options="SIZES" />
@@ -59,7 +56,7 @@
         <!-- Test mode is the honest way to let someone try this without a bill,
              and it's the one setting people forget is on — so the state is
              stated plainly rather than left to a toggle's position. -->
-        <section class="mt-4 rounded-lg border border-outline-gray-2 bg-surface-base p-5">
+        <section class="mt-8 border-t border-outline-gray-2 pt-8">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="min-w-0">
               <h2 class="text-base font-semibold text-ink-gray-8">Test mode</h2>
@@ -76,7 +73,7 @@
 
       <!-- ── Keys ───────────────────────────────────────────────────── -->
       <template v-else>
-        <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+        <section class="mt-6">
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-base font-semibold text-ink-gray-8">Endpoint</h2>
             <button class="flex items-center gap-1.5 text-p-sm text-ink-gray-6 transition-colors hover:text-ink-gray-9" @click="copy(ENDPOINT)">
@@ -90,7 +87,7 @@
           </p>
         </section>
 
-        <section class="mt-4 rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
+        <section class="mt-8 border-t border-outline-gray-2 pt-8">
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-base font-semibold text-ink-gray-8">API keys</h2>
             <Button variant="ghost" size="sm" icon="lucide-plus" aria-label="New key" @click="newOpen = true" />
@@ -150,7 +147,7 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { Button, Dialog, Dropdown, FormControl, TabButtons, Tooltip, toast } from 'frappe-ui'
+import { Button, Dialog, Dropdown, FormControl, TabButtons, toast } from 'frappe-ui'
 import AddonShell from '../../../components/AddonShell.vue'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import EmptyState from '../../../components/EmptyState.vue'
