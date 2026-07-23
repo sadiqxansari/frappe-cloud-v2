@@ -166,7 +166,7 @@ export const AI_MODELS = [
 //   · 'prepaid'  — a bundled token pack that is also a hard cap; calls stop when
 //                  it's spent. `prepaidTokens` is the pack size in millions.
 export const AI_PLAN = {
-  title: 'AI Tokens — Growth',
+  title: 'Growth',
   settlement: 'overage',
   prepaidTokens: null,
   // Model tiers this plan grants. A model shows up as "included" only if its tier

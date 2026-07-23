@@ -1,5 +1,5 @@
 <template>
-  <main class="flex min-h-screen flex-col bg-surface-white px-4">
+  <main class="flex min-h-screen flex-col bg-surface-base px-4">
     <section class="enter-rise mx-auto w-full max-w-[391px] pt-[16vh]">
       <slot />
     </section>

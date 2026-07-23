@@ -75,17 +75,18 @@
               <span class="text-p-sm text-ink-gray-5">Plan</span>
               <Badge :label="statusLabel" :theme="statusLabel === 'Active' ? 'green' : 'orange'" variant="subtle" />
             </div>
-            <p class="mt-1.5 truncate text-2xl font-semibold text-ink-gray-9">{{ planTitle }}</p>
-            <p class="mt-1.5 text-p-sm text-ink-gray-5">{{ settlementLine }}</p>
-            <!-- One headline number — tokens. The site count isn't repeated here;
-                 the section below already lists them. -->
-            <div class="mt-4">
-              <div class="text-lg font-semibold tabular-nums text-ink-gray-9">{{ tokensLabel(tokensThisCycle) }}</div>
-              <div class="text-p-xs text-ink-gray-5">tokens this cycle</div>
+            <!-- Plan identity on the left, the one headline number (tokens) pushed
+                 to the far right so the card reads as a single clean line. -->
+            <div class="mt-1.5 flex items-end justify-between gap-4">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-ink-gray-9">{{ planTitle }}</p>
+                <p class="mt-1 text-p-sm text-ink-gray-5">{{ settlementLine }}</p>
+              </div>
+              <div class="shrink-0 text-right">
+                <div class="text-lg font-semibold tabular-nums text-ink-gray-9">{{ tokensLabel(tokensThisCycle) }}</div>
+                <div class="text-p-xs text-ink-gray-5">tokens this cycle</div>
+              </div>
             </div>
-            <Button class="mt-4 -ml-2" variant="ghost" size="sm" label="View token usage in Billing" icon-left="lucide-receipt" @click="router.push('/billing')" />
-            <!-- The privacy line that justifies running it here at all. -->
-            <p class="mt-3 text-p-xs text-ink-gray-4">Central issues keys and meters usage. It never sees your prompts — your apps call the gateway directly.</p>
           </section>
 
           <section class="mt-8">

@@ -151,18 +151,20 @@
             <!-- Subscriptions (one per server) -->
             <section class="rounded-lg border border-outline-gray-2 bg-surface-base p-5 pt-4">
               <h2 class="text-base font-semibold text-ink-gray-8">Subscriptions</h2>
-              <div class="mt-2 divide-y divide-outline-alpha-gray-1">
+              <!-- Caps at ~6 rows and scrolls inside the card, so a long fleet
+                   doesn't stretch the billing page. -->
+              <div class="fc-scroll mt-2 max-h-[23rem] divide-y divide-outline-alpha-gray-1 overflow-y-auto">
                 <div v-for="srv in store.allServers" :key="srv.id" class="flex items-center justify-between gap-3 py-3">
-                  <button class="group flex min-w-0 items-start gap-2.5 text-left" @click="goServer(srv.id)">
+                  <div class="flex min-w-0 items-start gap-2.5 text-left">
                     <span class="lucide-server mt-1 size-4 shrink-0 text-ink-gray-5" />
                     <div class="min-w-0">
                       <div class="flex items-center gap-2">
-                        <span class="truncate text-base font-medium text-ink-gray-9 transition-colors group-hover:text-ink-gray-7">{{ srv.name }}</span>
+                        <span class="truncate text-base font-medium text-ink-gray-9">{{ srv.name }}</span>
                         <span v-if="srv.status === 'suspended'" class="shrink-0 text-p-xs text-ink-amber-8">Suspended</span>
                       </div>
                       <div class="truncate text-p-sm text-ink-gray-5">{{ store.planOf(srv).name }} · {{ store.regionOf(srv).name }} ({{ store.regionOf(srv).provider }})</div>
                     </div>
-                  </button>
+                  </div>
                   <div class="flex shrink-0 items-center gap-3">
                     <span class="text-base font-medium tabular-nums" :class="srv.status === 'suspended' ? 'text-ink-gray-4 line-through' : 'text-ink-gray-9'">{{ inr(store.monthlyPriceOf(srv)) }}/mo</span>
                     <Dropdown :options="subMenu(srv)" placement="bottom-end">
@@ -198,16 +200,13 @@
                 <div v-for="group in billableGroups" :key="group.source" class="flex items-center justify-between gap-3 py-3">
                   <component
                     :is="group.to ? 'button' : 'div'"
-                    class="group/src flex min-w-0 items-start gap-2.5 text-left"
+                    class="group/src flex min-w-0 items-center gap-2.5 text-left"
                     @click="group.to && router.push(group.to)"
                   >
-                    <span class="mt-1 size-4 shrink-0 text-ink-gray-5" :class="group.icon" />
-                    <div class="min-w-0">
-                      <div class="flex items-center gap-1.5">
-                        <span class="truncate text-base font-medium text-ink-gray-9" :class="group.to && 'transition-colors group-hover/src:text-ink-gray-7'">{{ group.source }}</span>
-                        <span v-if="group.to" class="lucide-arrow-up-right size-3 shrink-0 text-ink-gray-4 opacity-0 transition-opacity group-hover/src:opacity-100" />
-                      </div>
-                      <div v-if="breakdownOf(group)" class="truncate text-p-sm text-ink-gray-5">{{ breakdownOf(group) }}</div>
+                    <span class="size-4 shrink-0 text-ink-gray-5" :class="group.icon" />
+                    <div class="flex min-w-0 items-center gap-1.5">
+                      <span class="truncate text-base font-medium text-ink-gray-9" :class="group.to && 'transition-colors group-hover/src:text-ink-gray-7'">{{ group.source }}</span>
+                      <span v-if="group.to" class="lucide-arrow-up-right size-3 shrink-0 text-ink-gray-4 opacity-0 transition-opacity group-hover/src:opacity-100" />
                     </div>
                   </component>
                   <span class="shrink-0 text-base font-medium tabular-nums text-ink-gray-9">{{ inr(group.cost) }}</span>
@@ -760,15 +759,6 @@ const crumbs = computed(() =>
 // allowance collapses to one line below, so turning on a fourth add-on doesn't
 // add three rows of zeroes to the page you check your spend on.
 const billableGroups = computed(() => store.meteredGroups.filter((g) => g.cost > 0))
-
-// A one-line cost split for services metered on more than one thing, so "why
-// ₹1,046?" is answerable without leaving the page. With a single meter it would
-// only restate the total, so it's left off.
-function breakdownOf(group) {
-  const billable = group.rows.filter((r) => r.cost > 0)
-  if (billable.length < 2) return ''
-  return billable.map((r) => `${r.label} ${inr(Math.round(r.cost))}`).join(' · ')
-}
 
 // — Problem states (mostly surfaced by Edge mode, but real once the API is live)
 const overdueInvoice = computed(() => store.invoices.find((i) => i.overdue || i.status === 'Unpaid') || null)

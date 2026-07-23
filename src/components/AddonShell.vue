@@ -44,11 +44,11 @@
       </div>
     </template>
 
-    <!-- On: a light usage read (not a boxed card — it's secondary to the
-         service's own controls below), then the slot. Collapses to one line when
-         nothing's been used, so an empty meter never outweighs the real work. -->
+    <!-- On: a usage read in its own card (mirroring the AI add-on's plan card),
+         then the slot. Collapses to one line when nothing's been used, so an
+         empty meter never outweighs the real work. -->
     <template v-else>
-      <section class="mt-8 border-b border-outline-gray-2 pb-8">
+      <section class="mt-8 rounded-lg border border-outline-gray-2 bg-surface-base p-5">
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-1.5">
             <h2 class="text-base font-semibold text-ink-gray-8">This cycle</h2>
