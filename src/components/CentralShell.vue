@@ -25,15 +25,21 @@
 
       <nav class="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
         <!-- Search + notifications sit together as a tight utility group.
-             Placeholders for now — not wired up yet. -->
+             Search is live (opens the account-wide palette, also on ⌘K);
+             notifications is still a placeholder. -->
         <div class="flex flex-col gap-0.5">
           <Tooltip v-for="u in utilityItems" :key="u.label" :text="collapsed ? u.label : ''" placement="right" :hover-delay="0">
             <button
               class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
               :class="collapsed && 'justify-center'"
+              @click="u.onClick?.()"
             >
               <span class="size-4 shrink-0 text-ink-gray-6" :class="u.icon" />
               <span v-if="!collapsed" class="truncate">{{ u.label }}</span>
+              <kbd
+                v-if="!collapsed && u.kbd"
+                class="ml-auto rounded border border-outline-gray-2 bg-surface-gray-2 px-1.5 py-0.5 font-sans text-xs text-ink-gray-5"
+              >{{ u.kbd }}</kbd>
             </button>
           </Tooltip>
         </div>
@@ -127,6 +133,8 @@
 
     <ProfileDialog v-model:open="profileOpen" />
 
+    <GlobalSearch v-model:open="searchOpen" />
+
     <!-- Change team -->
     <Dialog v-model:open="switchTeamOpen" size="sm">
       <template #title>
@@ -172,11 +180,12 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Avatar, Breadcrumbs, Button, Dialog, Dropdown, FormControl, Tooltip, toast } from 'frappe-ui'
 import cloudLogo from '../assets/frappe-cloud-logo.svg'
 import ProfileDialog from './ProfileDialog.vue'
+import GlobalSearch from './GlobalSearch.vue'
 import { useCloudStore } from '../stores/cloud'
 import { usd } from '../utils/format'
 
@@ -204,16 +213,25 @@ onMounted(() => {
   store.currentServerId = null
 })
 
-// Search + notifications — placeholders, not functional yet.
+// Search opens the account-wide palette (servers + sites); ⌘K opens it too,
+// handled inside GlobalSearch. Notifications is still a placeholder.
+const searchOpen = ref(false)
 const utilityItems = [
-  { label: 'Search', icon: 'lucide-search' },
+  { label: 'Search', icon: 'lucide-search', kbd: '⌘K', onClick: () => (searchOpen.value = true) },
   { label: 'Notifications', icon: 'lucide-bell' },
 ]
 
 const billingActive = computed(() => route.path.startsWith('/billing'))
+
+// ORDER MATTERS: a group renders as a caption plus flat children with nothing
+// closing it, so a plain item placed after one reads as another of its children.
+// Keep every plain item above every group.
 const items = computed(() => [
   { label: 'Servers', icon: 'lucide-server', to: '/servers', active: route.path === '/servers' || route.path.startsWith('/servers/') },
   { label: 'Teams', icon: 'lucide-users', to: '/settings', active: route.path.startsWith('/settings') },
+  // One entry, whatever is switched on. The services are reached from the page
+  // itself, so the rail stays the same length as the account grows.
+  { label: 'Add-on services', icon: 'lucide-blocks', to: '/addons', active: route.path.startsWith('/addons') },
   {
     label: 'Billing',
     icon: 'lucide-wallet',
@@ -302,6 +320,21 @@ function doCreateTeam() {
   toast.success(`Created ${t.name}`)
   router.push('/servers')
 }
+
+// The create-team dialog lives here (the shell), so the shell catches the global
+// search's ?action=create-team — the settings page handles the rest. Cleared
+// once handled so the action can be triggered again later.
+watch(
+  () => route.query.action,
+  (a) => {
+    if (a !== 'create-team') return
+    openCreateTeam()
+    const q = { ...route.query }
+    delete q.action
+    nextTick(() => router.replace({ query: q }))
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>
