@@ -308,7 +308,7 @@ const LEGEND = { legend: { textStyle: { width: 150, overflow: 'truncate' } } }
 // frappe-ui packs the plot right under the title (grid.top ≈ 44). Nudge the
 // plot area down so every card has clear breathing room below its title. Deep-
 // merged over the computed grid, so left/right/bottom/containLabel survive.
-const TITLE_GAP = { grid: { top: 64 } }
+const TITLE_GAP = { grid: { top: 56 } }
 
 function transparent(hex, opacity) {
   const v = parseInt(hex.slice(1), 16)
