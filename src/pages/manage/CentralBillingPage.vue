@@ -196,7 +196,7 @@
                    reading the bill, not auditing it. Deliberately the same row
                    shape as Subscriptions above, so the recurring and consumed
                    halves of the bill scan as one list. -->
-              <div class="mt-2 divide-y divide-outline-alpha-gray-1">
+              <div v-if="billableGroups.length" class="mt-2 divide-y divide-outline-alpha-gray-1">
                 <div v-for="group in billableGroups" :key="group.source" class="flex items-center justify-between gap-3 py-3">
                   <component
                     :is="group.to ? 'button' : 'div'"
@@ -212,6 +212,17 @@
                   <span class="shrink-0 text-base font-medium tabular-nums text-ink-gray-9">{{ inr(group.cost) }}</span>
                 </div>
               </div>
+              <!-- Nothing metered this cycle — point the reader at the add-ons
+                   they can switch on rather than leaving an empty card. -->
+              <EmptyState
+                v-else
+                class="mt-4"
+                icon="lucide-gauge"
+                title="No metered usage"
+                description="Turn on an add-on service — email, storage, AI — and its usage shows up here."
+              >
+                <Button variant="subtle" size="sm" label="Add a service" icon-left="lucide-plus" @click="router.push('/addons')" />
+              </EmptyState>
             </section>
 
             <!-- Marketplace payouts — always shown for discoverability (issue
