@@ -16,7 +16,7 @@ import { useCloudStore } from './stores/cloud'
 // (new fields, new ids) old saved state would silently render broken. Bump
 // SCHEMA_VERSION on any such change to drop stale persisted stores once, forcing
 // a fresh reseed on next load.
-const SCHEMA_VERSION = '5' // AI plan renamed to "Growth"
+const SCHEMA_VERSION = '6' // Billing profile gained structured contact/address fields
 if (localStorage.getItem('fc.schema') !== SCHEMA_VERSION) {
   Object.keys(localStorage)
     .filter((k) => k.startsWith('fc.store.'))

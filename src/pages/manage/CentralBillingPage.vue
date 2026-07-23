@@ -638,24 +638,13 @@
          Desk's Frappe Cloud modal). Two steps when billing details are missing. -->
     <PaymentSetupDialog v-model:open="pmOpen" :editing-pm="editingPm" />
 
-    <!-- Billing contact & tax — email, address and tax details in one place -->
-    <Dialog v-model:open="contactOpen" title="Billing contact &amp; tax" size="md">
-      <div class="space-y-3">
-        <div>
-          <FormControl v-model="details.billingEmail" type="text" label="Billing email" placeholder="billing@company.com" />
-          <p v-if="details.billingEmail && billingEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ billingEmailError }}</p>
-        </div>
-        <FormControl v-model="details.address" type="textarea" label="Billing address" placeholder="Street, City, State, PIN" />
-        <FormControl v-model="details.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
-        <div>
-          <FormControl v-model="details.taxValue" type="text" :label="detailsTaxRegion.idLabel" :placeholder="detailsTaxRegion.placeholder" />
-          <p v-if="details.taxValue && detailsTaxError" class="mt-1 text-p-xs text-ink-red-8">{{ detailsTaxError }}</p>
-        </div>
-      </div>
+    <!-- Billing profile — legal contact, address and (country-driven) tax -->
+    <Dialog v-model:open="contactOpen" title="Billing profile" size="xl">
+      <BillingProfileFields :form="details" v-model:valid="contactValid" />
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="contactOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!!billingEmailError || !!detailsTaxError" @click="saveDetails(() => (contactOpen = false))" />
+          <Button variant="solid" label="Save" :disabled="!contactValid" @click="saveContact(() => (contactOpen = false))" />
         </div>
       </template>
     </Dialog>
@@ -672,7 +661,7 @@
       <template #actions>
         <div class="flex justify-end gap-2">
           <Button label="Cancel" @click="invoiceSettingsOpen = false" />
-          <Button variant="solid" label="Save" :disabled="!!recipientError" @click="saveDetails(() => (invoiceSettingsOpen = false))" />
+          <Button variant="solid" label="Save" :disabled="!!recipientError" @click="saveInvoiceSettings(() => (invoiceSettingsOpen = false))" />
         </div>
       </template>
     </Dialog>
@@ -747,12 +736,13 @@ import AddCardDialog from '../../components/AddCardDialog.vue'
 import CancelSubscriptionDialog from '../../components/CancelSubscriptionDialog.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import PaymentSetupDialog from '../../components/PaymentSetupDialog.vue'
+import BillingProfileFields from '../../components/BillingProfileFields.vue'
 import CentralShell from '../../components/CentralShell.vue'
 import EmptyState from '../../components/EmptyState.vue'
-import { TAX_REGION_OPTIONS, taxRegionByCode } from '../../data/tax'
+import { countryForRegion, regionForCountry, taxRegionByCode } from '../../data/tax'
 import { useCloudStore } from '../../stores/cloud'
 import { inr, qty, rate, usd } from '../../utils/format'
-import { validateEmail, validateTaxId } from '../../utils/validate'
+import { validateEmail } from '../../utils/validate'
 
 const store = useCloudStore()
 const route = useRoute()
@@ -1331,14 +1321,25 @@ const taxRegion = computed(() => taxRegionByCode(store.billingProfile.taxRegion)
 // both edit the same billing profile, so they share one form object.
 const contactOpen = ref(false)
 const invoiceSettingsOpen = ref(false)
-const details = reactive({ address: '', billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en', taxRegion: 'IN', taxValue: '' })
+const contactValid = ref(false)
+const details = reactive({
+  legalName: '', phone: '', billingEmail: '', addressLine1: '', addressLine2: '', city: '', state: '', country: '', pin: '',
+  taxValue: '', invoiceRecipient: '', invoiceLanguage: 'en',
+})
 function loadDetails() {
-  details.address = store.billingProfile.address
-  details.billingEmail = store.billingProfile.billingEmail
-  details.invoiceRecipient = store.billingProfile.invoiceRecipient
-  details.invoiceLanguage = store.billingProfile.invoiceLanguage
-  details.taxRegion = store.billingProfile.taxRegion || 'IN'
-  details.taxValue = store.billingProfile.taxValue || ''
+  const p = store.billingProfile
+  details.legalName = p.legalName || ''
+  details.phone = p.phone || ''
+  details.billingEmail = p.billingEmail || ''
+  details.addressLine1 = p.addressLine1 || ''
+  details.addressLine2 = p.addressLine2 || ''
+  details.city = p.city || ''
+  details.state = p.state || ''
+  details.country = p.country || countryForRegion(p.taxRegion)
+  details.pin = p.pin || ''
+  details.taxValue = p.taxValue || ''
+  details.invoiceRecipient = p.invoiceRecipient
+  details.invoiceLanguage = p.invoiceLanguage
 }
 function openContact() {
   loadDetails()
@@ -1348,14 +1349,41 @@ function openInvoiceSettings() {
   loadDetails()
   invoiceSettingsOpen.value = true
 }
-const billingEmailError = computed(() => validateEmail(details.billingEmail, { required: true }))
 const recipientError = computed(() => validateEmail(details.invoiceRecipient))
-const detailsTaxRegion = computed(() => taxRegionByCode(details.taxRegion))
-const detailsTaxError = computed(() => validateTaxId(details.taxRegion, details.taxValue, { required: details.taxRegion !== 'US' }))
-function saveDetails(done) {
-  if (billingEmailError.value || recipientError.value || detailsTaxError.value) return
-  store.setBillingProfile({ ...details, emailBounced: false })
-  toast.success('Billing details saved')
+// Billing profile — compose the one-line address for display and derive the tax
+// region from the country before saving.
+function saveContact(done) {
+  if (!contactValid.value) return
+  const address = [details.addressLine1, details.addressLine2, details.city, details.state, details.pin]
+    .map((s) => (s || '').trim())
+    .filter(Boolean)
+    .join(', ')
+  store.setBillingProfile({
+    legalName: details.legalName.trim(),
+    phone: details.phone.trim(),
+    billingEmail: details.billingEmail.trim(),
+    addressLine1: details.addressLine1.trim(),
+    addressLine2: details.addressLine2.trim(),
+    city: details.city.trim(),
+    state: details.state.trim(),
+    country: details.country,
+    pin: details.pin.trim(),
+    address,
+    taxRegion: regionForCountry(details.country),
+    taxValue: details.taxValue.trim(),
+    emailBounced: false,
+  })
+  toast.success('Billing profile saved')
+  done?.()
+}
+// Invoice recipient & language — its own small save, unrelated to the profile.
+function saveInvoiceSettings(done) {
+  if (recipientError.value) return
+  store.setBillingProfile({
+    invoiceRecipient: details.invoiceRecipient.trim(),
+    invoiceLanguage: details.invoiceLanguage,
+  })
+  toast.success('Invoice settings saved')
   done?.()
 }
 

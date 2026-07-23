@@ -19,6 +19,7 @@ declare module 'vue' {
     Alert: typeof import('./src/components/Alert.vue')['default']
     AllDatabasesPanel: typeof import('./src/components/db/AllDatabasesPanel.vue')['default']
     AppIcon: typeof import('./src/components/AppIcon.vue')['default']
+    BillingProfileFields: typeof import('./src/components/BillingProfileFields.vue')['default']
     CancelSubscriptionDialog: typeof import('./src/components/CancelSubscriptionDialog.vue')['default']
     CentralShell: typeof import('./src/components/CentralShell.vue')['default']
     ChangePlanDialog: typeof import('./src/components/ChangePlanDialog.vue')['default']

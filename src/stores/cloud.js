@@ -334,6 +334,14 @@ function baseState() {
     payoutAccount: false, // a bank/recipient must be set up before a payout
     lastCycleTotal: 0, // previous cycle's charge, for the "vs last month" stat
     billingProfile: {
+      legalName: '',
+      phone: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      country: '',
+      pin: '',
       taxRegion: 'IN',
       taxValue: '',
       address: '',
@@ -467,6 +475,14 @@ function grownState() {
   s.servers = [server, euServer, sgServer, usServer, prodServer, brokenServer]
   s.cardOnFile = true // a paid user — no trial credit badge
   s.billingProfile = {
+    legalName: 'MyCompany Technologies Pvt. Ltd.',
+    phone: '+91 98450 12345',
+    addressLine1: '4th Floor, Prestige Tech Park',
+    addressLine2: 'Kadubeesanahalli',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    country: 'IN',
+    pin: '560103',
     taxRegion: 'IN',
     taxValue: '29ABCDE1234F1Z5',
     address: '4th Floor, Prestige Tech Park, Bengaluru, KA 560103',
@@ -750,6 +766,7 @@ function soloState() {
   s.walletHistory = []
   s.paymentMethods = []
   s.billingProfile = {
+    legalName: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', country: '', pin: '',
     taxRegion: 'IN', taxValue: '', address: '',
     billingEmail: '', invoiceRecipient: '', invoiceLanguage: 'en',
   }
