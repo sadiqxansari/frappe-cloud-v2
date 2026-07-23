@@ -52,12 +52,12 @@
         </div>
       </section>
 
-      <!-- Managers activate; everyone else is told who can. When billing isn't set
-           up yet, the second button is the way forward rather than a dead end. -->
+      <!-- Managers activate; everyone else is told who can. One button — if
+           billing isn't set up yet, enabling opens the billing details modal
+           first, then turns the service on once it's saved. -->
       <div v-if="store.canManageServices" class="mt-5 flex flex-wrap items-center gap-3">
-        <Button variant="solid" label="Enable for team" icon-left="lucide-zap" :loading="activating" @click="activate" />
-        <Button v-if="!store.billingReady" variant="ghost" label="Set up billing" icon-left="lucide-credit-card" @click="router.push('/billing')" />
-        <span v-else class="text-p-sm text-ink-gray-5">Nothing to pay until you go over.</span>
+        <Button variant="solid" label="Enable for team" icon-left="lucide-zap" :loading="activating" @click="onEnable" />
+        <span class="text-p-sm text-ink-gray-5">Nothing to pay until you go over.</span>
       </div>
       <p v-else class="mt-5 text-p-sm text-ink-gray-5">Ask an account admin to enable AI inference for your team.</p>
     </template>
@@ -212,6 +212,10 @@
       theme="red"
       @confirm="deactivate"
     />
+
+    <!-- Billing details, opened from "Enable for team" when billing isn't set
+         up yet; enabling proceeds once it's saved. -->
+    <PaymentSetupDialog v-model:open="billingSetupOpen" @added="activate" />
   </CentralShell>
 </template>
 
@@ -223,6 +227,7 @@ import CentralShell from '../../../components/CentralShell.vue'
 import ConfirmDialog from '../../../components/ConfirmDialog.vue'
 import EmptyState from '../../../components/EmptyState.vue'
 import AiConnectionDetails from '../../../components/AiConnectionDetails.vue'
+import PaymentSetupDialog from '../../../components/PaymentSetupDialog.vue'
 import { AI_PLAN, addonByKey, includedAiModels, rateUnitOf } from '../../../data/addons'
 import { useCloudStore } from '../../../stores/cloud'
 import { qty, rate } from '../../../utils/format'
@@ -266,7 +271,17 @@ function tokensLabel(n) {
   return String(n)
 }
 
-// — Activation
+// — Activation. Enabling needs billing in place first: no billing yet → open
+// the details modal, and its `added` event calls activate() to finish the job.
+const billingSetupOpen = ref(false)
+function onEnable() {
+  if (!store.billingReady) {
+    billingSetupOpen.value = true
+    return
+  }
+  activate()
+}
+
 const activating = ref(false)
 function activate() {
   activating.value = true
