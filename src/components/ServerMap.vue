@@ -1,4 +1,9 @@
 <template>
+  <!-- `isolate` is load-bearing: it keeps the node/control z-indexes below from
+       escaping to the root stacking context. Dropdown menus teleport to <body>
+       with z-index:auto, so anything in here with a positive z would paint over
+       an open menu. The hover card is the one thing that must sit above the
+       page's own chrome, and it teleports out rather than fighting from inside. -->
   <div
     ref="el"
     class="relative isolate h-full w-full select-none overflow-hidden bg-surface-base"
@@ -23,6 +28,7 @@
       <div
         v-for="n in nodes"
         :key="n.key"
+        data-map-node
         class="sm-pos absolute left-0 top-0"
         :style="posStyle(n)"
       >
@@ -84,6 +90,28 @@
             </span>
           </button>
 
+          <!-- Overflow of a fanned-out stack: the servers this row didn't show.
+               Reads as the last avatar in the stack — same size, same separator
+               ring — so it looks like part of the group rather than a control
+               parked beside it. Opens the list with the whole group filtered in. -->
+          <button
+            v-else-if="n.type === 'more'"
+            class="group relative block rounded-full outline-none"
+            :aria-label="`Show all ${n.members.length} servers in ${n.title}`"
+            @click="clickNode(n)"
+            @mouseenter="enterNode(n)"
+            @mouseleave="leaveNode"
+          >
+            <span
+              class="relative grid size-9 place-items-center rounded-full text-sm font-semibold shadow-md transition-transform duration-150 ease-out group-active:scale-95"
+              :class="isHot(n) && 'scale-110'"
+              style="background: var(--ink-gray-9); color: var(--surface-base)"
+            >
+              +{{ n.count }}
+              <span class="pointer-events-none absolute inset-[2px] rounded-full ring-2 ring-[var(--surface-base)]" />
+            </span>
+          </button>
+
           <!-- Empty region: quiet + affordance -->
           <button
             v-else
@@ -100,13 +128,20 @@
       </div>
     </TransitionGroup>
 
-    <!-- Hover card -->
+    <!-- Hover card. Teleported to the map's own wrapper — the element the page
+         also floats its filters, pill and list over — so it lands after all of
+         them in DOM order and paints on top without needing a z-index at all.
+         Staying inside the isolated map would bury it under that chrome; giving
+         it a positive z instead would bury the <body>-level dropdown menus.
+         The wrapper shares the map's exact box, so the coordinates below (which
+         are relative to the map) still land correctly. -->
+    <Teleport v-if="cardHost" :to="cardHost">
     <Transition name="smc">
       <div
         v-if="card"
         :key="card.node.key"
         data-map-card
-        class="absolute z-40 rounded-lg border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
+        class="absolute rounded-lg border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
         :class="card.node.type === 'cluster' ? 'p-2' : 'p-4'"
         :style="card.style"
         @mouseenter="cancelHide"
@@ -121,7 +156,7 @@
                 <span class="truncate text-base font-semibold text-ink-gray-9">{{ card.node.pin.name }}</span>
                 <Badge :theme="card.node.pin.card.badge.theme" variant="subtle" size="sm" :label="card.node.pin.card.badge.label" />
               </div>
-              <div class="mt-0.5 truncate text-sm text-ink-gray-5">{{ card.node.pin.card.specs }}</div>
+              <div class="mt-0.5 truncate text-sm text-ink-gray-5">{{ card.node.pin.card.sub }}</div>
             </div>
             <div class="-mr-1.5 -mt-1" @click.stop>
               <ServerActions :server="card.node.pin.server" central />
@@ -145,27 +180,32 @@
           </div>
         </template>
 
-        <!-- Cluster: the servers at this spot -->
-        <template v-else-if="card.node.type === 'cluster'">
-          <div class="px-1.5 pb-1 pt-0.5 text-xs font-medium text-ink-gray-5">
+        <!-- Cluster: the servers at this spot. A partner's fleet bunches — 27 in
+             one place is normal — so the list is capped and scrolls rather than
+             growing past the bottom of the window. The count in the header is
+             what tells you how much more is below. -->
+        <template v-else-if="card.node.type === 'cluster' || card.node.type === 'more'">
+          <div class="px-1.5 pb-1.5 pt-0.5 text-xs font-medium text-ink-gray-5">
             {{ card.node.members.length }} servers · {{ card.node.title }}
           </div>
-          <button
-            v-for="m in card.node.members"
-            :key="m.id"
-            class="group flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left transition-colors hover:bg-surface-gray-2"
-            @click="emit('open', m.id)"
-          >
-            <span class="relative shrink-0">
-              <ProviderAvatar :provider="m.provider" :size="28" />
-              <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: statusVar(m.status) }" />
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-medium text-ink-gray-8">{{ m.name }}</span>
-              <span class="block truncate text-xs text-ink-gray-5">{{ m.card.specs }}</span>
-            </span>
-            <span class="lucide-arrow-up-right size-3.5 shrink-0 text-ink-gray-5 opacity-0 transition-opacity group-hover:opacity-100" />
-          </button>
+          <div class="-mr-1 max-h-64 overflow-y-auto pr-1">
+            <button
+              v-for="m in card.node.members"
+              :key="m.id"
+              class="group flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left transition-colors hover:bg-surface-gray-2"
+              @click="emit('open', m.id)"
+            >
+              <span class="relative shrink-0">
+                <ProviderAvatar :provider="m.provider" :size="28" />
+                <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: statusVar(m.status) }" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium text-ink-gray-8">{{ m.name }}</span>
+                <span class="block truncate text-xs text-ink-gray-5">{{ m.card.sub }}</span>
+              </span>
+              <span class="lucide-arrow-up-right size-3.5 shrink-0 text-ink-gray-5 opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
+          </div>
         </template>
 
         <!-- Empty region: providers available here + a direct path to create -->
@@ -195,12 +235,13 @@
         </template>
       </div>
     </Transition>
+    </Teleport>
 
-    <!-- Zoom controls; slide left when the server panel overlays the right edge -->
+    <!-- Zoom controls. They used to dodge the server panel, which overlaid the
+         right edge; the panel now floats at the left, so they hold their spot. -->
     <div
       data-map-controls
       class="sm-controls absolute bottom-14 right-4 z-30 flex flex-col overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-elevation-1 shadow-sm"
-      :style="{ transform: `translateX(${-panelOffset}px)` }"
     >
       <button
         class="grid size-9 place-items-center text-ink-gray-6 transition-colors hover:bg-surface-gray-2 active:bg-surface-gray-3 disabled:pointer-events-none disabled:opacity-40"
@@ -232,14 +273,12 @@ import WorldDots from './WorldDots.vue'
 const props = defineProps({
   // Display-ready server pins (built by the page):
   // { id, name, status, lat, lng, server, provider, region,
-  //   card: { badge: {label, theme}, specs, price, metrics: [{label, value, pct}] } }
+  //   card: { badge: {label, theme}, sub, price, metrics: [{label, value, pct}] } }
   pins: { type: Array, default: () => [] },
   // Regions with no servers: { id (regionId), lat, lng, region, provider }
   spots: { type: Array, default: () => [] },
-  // Server id hovered elsewhere (the side panel) — bumps its node.
+  // Server id hovered elsewhere (the server list) — bumps its node.
   highlightId: { type: [String, null], default: null },
-  // Push the zoom controls left when a panel overlays the right edge (px).
-  panelOffset: { type: Number, default: 0 },
 })
 const emit = defineEmits(['open', 'new-server', 'cluster-open'])
 
@@ -255,6 +294,8 @@ const STEP = 1.7
 // an overlapping avatar stack — whether you clicked the cluster or just
 // zoomed your way in. Two zoom-in clicks (1.7² ≈ 2.89) get you there.
 const STACK_Z = 2.8
+// How many avatars a fanned-out stack shows before the rest become a "+N" chip.
+const STACK_MAX = 4
 
 function project(p) {
   return {
@@ -285,8 +326,15 @@ watch(base, (v) => {
   if (v && !ready.value) requestAnimationFrame(() => requestAnimationFrame(() => (ready.value = true)))
 })
 
+// Where the hover card renders: the map's wrapper, which the page also floats
+// its own map chrome over. Landing there puts the card last in DOM order — above
+// that chrome — while everything else in the map stays isolated. Same box as the
+// map, so the card's coordinates carry over unchanged.
+const cardHost = ref(null)
+
 let ro
 onMounted(() => {
+  cardHost.value = el.value?.parentElement || null
   ro = new ResizeObserver(([entry]) => {
     cw.value = entry.contentRect.width
     ch.value = entry.contentRect.height
@@ -469,17 +517,39 @@ const nodes = computed(() => {
       out.push({ type: 'server', key: `s-${g.members[0].id}`, x: g.x, y: g.y, pin: g.members[0] })
     } else if (zoom.value >= STACK_Z) {
       const gap = 24 / k.value
-      g.members.forEach((m, i) => {
+      // A fanned-out stack reads as a stack up to about four. Past that it's a
+      // row of identical badges running clear across the map — 22 of them says
+      // nothing 4 and a "+18" doesn't. The overflow chip hands the whole group
+      // to the side list, which is built for long lists.
+      const shown = g.members.slice(0, STACK_MAX)
+      const rest = g.members.length - shown.length
+      const slots = shown.length + (rest > 0 ? 1 : 0)
+      const offset = (i) => g.x + (i - (slots - 1) / 2) * gap
+      shown.forEach((m, i) => {
         out.push({
           type: 'server',
           key: `s-${m.id}`,
-          x: g.x + (i - (g.members.length - 1) / 2) * gap,
+          x: offset(i),
           y: g.y,
           pin: m,
           stacked: true,
-          stackZ: g.members.length - i,
+          stackZ: slots - i,
         })
       })
+      if (rest > 0) {
+        out.push({
+          type: 'more',
+          key: `more-${clusterKeyOf(g)}`,
+          x: offset(slots - 1),
+          y: g.y,
+          members: g.members,
+          count: rest,
+          stacked: true,
+          stackZ: 0,
+          provider: dominantProvider(g.members),
+          title: locationLabel(g.members.map((m) => m.region)),
+        })
+      }
     } else {
       out.push({
         type: 'cluster',
@@ -536,7 +606,7 @@ const highlightKey = computed(() => {
   const n = nodes.value.find(
     (n) =>
       (n.type === 'server' && n.pin.id === props.highlightId) ||
-      (n.type === 'cluster' && n.members.some((m) => m.id === props.highlightId)),
+      ((n.type === 'cluster' || n.type === 'more') && n.members.some((m) => m.id === props.highlightId)),
   )
   return n?.key || null
 })
@@ -594,11 +664,15 @@ const card = computed(() => {
   // covering the neighbours to the right.
   if (node.stacked) {
     const left = Math.min(Math.max(sx - width / 2, 12), Math.max(12, cw.value - width - 12))
+    // The overflow chip's card carries a full member list, so it's tall enough
+    // to run off the bottom from a low node — clamp it into view.
+    const stackedH = node.type === 'more' ? 300 : 250
+    const top = Math.min(sy + 28, Math.max(12, ch.value - stackedH - 12))
     return {
       node,
       style: {
         left: `${left}px`,
-        top: `${sy + 28}px`,
+        top: `${top}px`,
         width: `${width}px`,
         transformOrigin: `${sx - left}px top`,
         '--smc-dy': '-6px',
@@ -612,7 +686,16 @@ const card = computed(() => {
     side = 'left'
     left = sx - r - 12 - width
   }
-  const estH = node.type === 'server' ? 250 : node.type === 'cluster' ? 40 + node.members.length * 48 : 160
+  // Capped to match the cluster list's own max height (max-h-64 + header +
+  // padding), so a 27-server cluster is positioned against the box we actually
+  // render rather than the 1,300px one it would be if the list ran free.
+  const CLUSTER_MAX_H = 300
+  const estH =
+    node.type === 'server'
+      ? 250
+      : node.type === 'cluster'
+        ? Math.min(40 + node.members.length * 48, CLUSTER_MAX_H)
+        : 160
   const top = Math.min(Math.max(sy - 36, 12), Math.max(12, ch.value - estH - 12))
   return {
     node,
@@ -632,12 +715,17 @@ function clickNode(n) {
   else if (n.type === 'plus') emit('new-server', { providerId: n.targets[0].provider.id, regionId: n.targets[0].regionId })
   else {
     // A cluster focuses the map on itself, zooming to the stack level. The
-    // page narrows the list to this spot if the panel happens to be open.
-    focusOn(n)
+    // overflow chip doesn't — you're already stacked, and zooming further would
+    // just spread the same row wider. It goes straight to the list instead,
+    // which is the only place all of them fit.
+    if (n.type !== 'more') focusOn(n)
     const sameRegion = n.members.every((m) => m.region.id === n.members[0].region.id)
     emit('cluster-open', {
       ids: n.members.map((m) => m.id),
       label: sameRegion ? n.members[0].region.name : n.title,
+      // The overflow chip's whole job is to get you to the full list, so it
+      // opens the panel. A cluster only narrows a list you already had open.
+      open: n.type === 'more',
     })
   }
 }
@@ -695,10 +783,6 @@ function statusVar(status) {
   opacity: 0;
 }
 
-.sm-controls {
-  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
-}
-
 .sm-pulse {
   animation: sm-pulse 1.8s ease-in-out infinite;
 }
@@ -714,8 +798,7 @@ function statusVar(status) {
 
 @media (prefers-reduced-motion: reduce) {
   .sm-pos,
-  .sm-center,
-  .sm-controls {
+  .sm-center {
     transition: none;
   }
   .sm-pulse {

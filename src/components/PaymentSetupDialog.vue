@@ -3,22 +3,10 @@
        don't have them yet), then choosing how to pay. We never collect the card
        or UPI ourselves — a gateway does. Shared by the Central billing page and
        the Desk's Frappe Cloud modal so there's one FTU, not two. -->
-  <Dialog v-model:open="open" :title="pmStep === 1 ? 'Add billing details' : editingPm ? 'Update payment method' : 'Add payment method'" size="md">
+  <Dialog v-model:open="open" :title="pmStep === 1 ? 'Billing profile' : editingPm ? 'Update payment method' : 'Add payment method'" :size="pmStep === 1 ? 'xl' : 'md'">
     <!-- Step 1: billing details (only when we don't have them yet) -->
-    <div v-if="pmStep === 1" class="space-y-3">
-      <p class="text-p-sm text-ink-gray-6">These go on every invoice — we'll need them before adding a payment method.</p>
-      <div>
-        <FormControl v-model="pmForm.email" type="text" label="Billing email" placeholder="billing@company.com" />
-        <p v-if="pmForm.email && pmContactEmailError" class="mt-1 text-p-xs text-ink-red-8">{{ pmContactEmailError }}</p>
-      </div>
-      <FormControl v-model="pmForm.address" type="textarea" :rows="2" label="Billing address" placeholder="Street, City, State, PIN" />
-      <div class="grid grid-cols-2 gap-3">
-        <FormControl v-model="pmForm.taxRegion" type="select" label="Tax region" :options="TAX_REGION_OPTIONS" />
-        <div>
-          <FormControl v-model="pmForm.taxNumber" type="text" :label="pmTaxRegion.idLabel" :placeholder="pmTaxRegion.placeholder" />
-          <p v-if="pmForm.taxNumber && pmTaxError" class="mt-1 text-p-xs text-ink-red-8">{{ pmTaxError }}</p>
-        </div>
-      </div>
+    <div v-if="pmStep === 1">
+      <BillingProfileFields :form="pmForm" v-model:valid="billingValid" />
     </div>
 
     <!-- Step 2: how to pay, then which gateway collects it -->
@@ -76,7 +64,7 @@
       <div class="flex justify-end gap-2">
         <template v-if="pmStep === 1">
           <Button label="Cancel" @click="open = false" />
-          <Button variant="solid" label="Next" :disabled="!pmContactValid" @click="pmStep = 2" />
+          <Button variant="solid" label="Next" :disabled="!billingValid" @click="pmStep = 2" />
         </template>
         <template v-else>
           <Button :label="pmNeedsContact ? 'Back' : 'Cancel'" @click="pmNeedsContact ? (pmStep = 1) : (open = false)" />
@@ -93,11 +81,11 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Dialog, FormControl, toast } from 'frappe-ui'
+import { Button, Dialog, toast } from 'frappe-ui'
 import RazorpayCheckout from './RazorpayCheckout.vue'
+import BillingProfileFields from './BillingProfileFields.vue'
 import { useCloudStore } from '../stores/cloud'
-import { TAX_REGION_OPTIONS, taxRegionByCode } from '../data/tax'
-import { validateEmail, validateTaxId } from '../utils/validate'
+import { countryForRegion, regionForCountry } from '../data/tax'
 
 const open = defineModel('open', { type: Boolean, default: false })
 const props = defineProps({
@@ -117,14 +105,28 @@ const GATEWAYS = {
   paypal: { id: 'paypal', label: 'PayPal', note: 'Secure redirect', mode: 'redirect', mark: 'P', color: '#003087' },
 }
 
-const pmForm = reactive({ kind: 'card', gateway: 'stripe', email: '', address: '', taxRegion: 'IN', taxNumber: '' })
+const pmForm = reactive({
+  kind: 'card',
+  gateway: 'stripe',
+  legalName: '',
+  billingEmail: '',
+  phone: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  country: '',
+  pin: '',
+  taxValue: '',
+})
+const billingValid = ref(false)
 const pmNeedsContact = ref(false)
 const pmStep = ref(1) // 1 = billing details, 2 = how to pay
 const razorpayOpen = ref(false)
 
-// India drives the payment options — derived from the form so step 2 reflects
-// the tax region picked in step 1, before it's saved to the profile.
-const formIndia = computed(() => pmForm.taxRegion === 'IN')
+// India drives the payment options — derived from the chosen country so step 2
+// reflects the profile taking shape in step 1, before it's saved.
+const formIndia = computed(() => regionForCountry(pmForm.country) === 'IN')
 
 // Card always; UPI only in India.
 const kinds = computed(() => {
@@ -150,10 +152,17 @@ function defaultGateway() {
 }
 function resetForm() {
   pmForm.kind = props.editingPm?.kind || 'card'
-  pmForm.email = store.billingProfile.billingEmail || ''
-  pmForm.address = store.billingProfile.address || ''
-  pmForm.taxRegion = store.billingProfile.taxRegion || 'IN'
-  pmForm.taxNumber = store.billingProfile.taxValue || ''
+  const p = store.billingProfile
+  pmForm.legalName = p.legalName || ''
+  pmForm.billingEmail = p.billingEmail || ''
+  pmForm.phone = p.phone || ''
+  pmForm.addressLine1 = p.addressLine1 || ''
+  pmForm.addressLine2 = p.addressLine2 || ''
+  pmForm.city = p.city || ''
+  pmForm.state = p.state || ''
+  pmForm.country = p.country || countryForRegion(p.taxRegion)
+  pmForm.pin = p.pin || ''
+  pmForm.taxValue = p.taxValue || ''
   pmForm.gateway = defaultGateway()
 }
 
@@ -163,45 +172,52 @@ watch(
   (isOpen) => {
     if (!isOpen) return
     resetForm()
-    // Editing an existing method never blocks on contact details.
-    pmNeedsContact.value = !props.editingPm && (!store.billingProfile.billingEmail || !store.billingProfile.address)
+    // Editing an existing method never blocks on the profile; otherwise we need
+    // it when the required fields aren't on file yet.
+    const p = store.billingProfile
+    pmNeedsContact.value = !props.editingPm && (!p.legalName || !p.addressLine1 || !p.city || !p.country)
     pmStep.value = pmNeedsContact.value ? 1 : 2
   },
   { immediate: true },
 )
 
-// Switching region can remove UPI (non-India) — keep the type valid.
+// Switching country can remove UPI (non-India) — keep the type valid.
 watch(
-  () => pmForm.taxRegion,
+  () => pmForm.country,
   () => {
     if (!kinds.value.some((k) => k.value === pmForm.kind)) pmForm.kind = 'card'
   },
 )
 // Keep the selected gateway valid for the current type + region.
 watch(
-  () => [pmForm.kind, pmForm.taxRegion],
+  () => [pmForm.kind, pmForm.country],
   () => {
     if (!gateways.value.some((g) => g.id === pmForm.gateway)) pmForm.gateway = defaultGateway()
   },
 )
 
-const pmContactEmailError = computed(() => validateEmail(pmForm.email, { required: true }))
-const pmTaxRegion = computed(() => taxRegionByCode(pmForm.taxRegion))
-const pmTaxError = computed(() => validateTaxId(pmForm.taxRegion, pmForm.taxNumber, { required: pmForm.taxRegion !== 'US' }))
-const pmContactValid = computed(
-  () => !pmNeedsContact.value || (!pmContactEmailError.value && !!pmForm.address.trim() && !pmTaxError.value),
-)
-
 function saveContactIfNeeded() {
-  if (pmNeedsContact.value) {
-    store.setBillingProfile({
-      billingEmail: pmForm.email.trim(),
-      address: pmForm.address.trim(),
-      taxRegion: pmForm.taxRegion,
-      taxValue: pmForm.taxNumber.trim(),
-      emailBounced: false,
-    })
-  }
+  if (!pmNeedsContact.value) return
+  const f = pmForm
+  const address = [f.addressLine1, f.addressLine2, f.city, f.state, f.pin]
+    .map((s) => (s || '').trim())
+    .filter(Boolean)
+    .join(', ')
+  store.setBillingProfile({
+    legalName: f.legalName.trim(),
+    billingEmail: f.billingEmail.trim(),
+    phone: f.phone.trim(),
+    addressLine1: f.addressLine1.trim(),
+    addressLine2: f.addressLine2.trim(),
+    city: f.city.trim(),
+    state: f.state.trim(),
+    country: f.country,
+    pin: f.pin.trim(),
+    address,
+    taxRegion: regionForCountry(f.country),
+    taxValue: f.taxValue.trim(),
+    emailBounced: false,
+  })
 }
 
 function launch() {

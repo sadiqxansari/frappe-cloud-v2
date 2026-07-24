@@ -1,170 +1,80 @@
 <template>
-  <ServerShell v-if="server" :server="server" :crumbs="crumbs" roomy>
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-semibold text-ink-gray-9">DB analyzer</h1>
-        <p class="mt-1 text-p-base text-ink-gray-5">Storage, slow queries, indexes and live connections for one site's database.</p>
-      </div>
-      <!-- Per-site: a database belongs to a site, so you pick which one. -->
+  <ServerShell v-if="server" :server="server" :crumbs="crumbs" container-class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-16">
+    <div class="flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-2">
-        <Dropdown :options="siteOptions" placement="bottom-end">
-          <Button variant="outline" size="sm" icon-right="lucide-chevron-down">
-            <span class="inline-flex items-center gap-1.5">
-              <span class="lucide-globe size-4 shrink-0 text-ink-gray-5" />
-              <span class="max-w-40 truncate">{{ activeSite?.name || 'Select site' }}</span>
-            </span>
-          </Button>
-        </Dropdown>
+        <div class="flex items-center gap-2">
+          <Button
+            v-if="activeSite"
+            class="-ml-2"
+            variant="ghost"
+            size="sm"
+            icon="lucide-arrow-left"
+            aria-label="Back to server view"
+            @click="backToServer"
+          />
+          <h1 class="text-2xl font-semibold text-ink-gray-9">{{ activeSite ? activeSite.name : 'Live database activity across every site' }}</h1>
+          <span v-if="activeSiteDb" class="font-mono text-p-sm text-ink-gray-5">{{ activeSiteDb.dbName }}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
         <Button variant="ghost" size="sm" icon="lucide-rotate-cw" aria-label="Refresh" @click="toast.success('Refreshed')" />
+        <!-- Server mode: one site filter scopes every diagnostics accordion. -->
+        <Select
+          v-if="!activeSite && liveSites.length > 1"
+          v-model="siteFilter"
+          variant="subtle"
+          size="sm"
+          class="min-w-56"
+          :options="siteFilterOptions"
+        />
       </div>
     </div>
 
-    <template v-if="activeSite">
-      <!-- Storage breakup. The bar is the database file (data + index + the
-           claimable space deleted/updated rows leave behind); free disk sits
-           below as host context. Claimable is the actionable part. -->
-      <section class="mt-5 rounded-lg border border-outline-gray-2 bg-surface-base p-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-ink-gray-8">Storage</h2>
-          <span class="text-p-xs text-ink-gray-5">{{ mb(fileMb) }} on disk</span>
-        </div>
-
-        <div class="mt-3 flex h-3 w-full overflow-hidden rounded-full bg-surface-gray-2">
-          <div class="h-full" :style="{ width: pct(size.dataMb) + '%', background: 'var(--ink-blue-5)' }" />
-          <div class="h-full" :style="{ width: pct(size.indexMb) + '%', background: 'var(--ink-green-5)' }" />
-          <div class="h-full" :style="{ width: pct(size.claimableMb) + '%', background: 'var(--ink-amber-5)' }" />
-        </div>
-
-        <div class="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
-          <div class="flex items-center justify-between border-b border-outline-alpha-gray-1 py-1.5 text-sm">
-            <span class="flex items-center gap-2 text-ink-gray-7"><span class="size-2 rounded-full" style="background: var(--ink-blue-5)" /> Data</span>
-            <span class="tabular-nums text-ink-gray-8">{{ mb(size.dataMb) }}</span>
-          </div>
-          <div class="flex items-center justify-between border-b border-outline-alpha-gray-1 py-1.5 text-sm">
-            <span class="flex items-center gap-2 text-ink-gray-7"><span class="size-2 rounded-full" style="background: var(--ink-green-5)" /> Indexes</span>
-            <span class="tabular-nums text-ink-gray-8">{{ mb(size.indexMb) }}</span>
-          </div>
-          <div class="flex items-center justify-between border-b border-outline-alpha-gray-1 py-1.5 text-sm">
-            <span class="flex items-center gap-2 text-ink-gray-7"><span class="size-2 rounded-full" style="background: var(--ink-amber-5)" /> Claimable</span>
-            <span class="tabular-nums text-ink-gray-8">{{ mb(size.claimableMb) }}</span>
-          </div>
-          <div class="flex items-center justify-between border-b border-outline-alpha-gray-1 py-1.5 text-sm">
-            <span class="flex items-center gap-2 text-ink-gray-7"><span class="size-2 rounded-full bg-surface-gray-4" /> Free on host</span>
-            <span class="tabular-nums text-ink-gray-5">{{ size.freeGb }} GB</span>
-          </div>
-        </div>
-
-        <!-- Reclaim story: only worth showing while there's space to reclaim. -->
-        <div v-if="size.claimableMb > 0" class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-blue-1 px-3 py-2">
-          <span class="text-p-sm text-ink-blue-8">{{ mb(size.claimableMb) }} can be reclaimed by optimizing tables.</span>
-          <Button size="sm" variant="subtle" label="Optimize tables" :loading="optimizing" @click="optimize" />
-        </div>
-      </section>
-
-      <!-- Diagnostics — the drill-downs a developer reaches for, collapsed by
-           default so the page opens calm. -->
-      <Disclosure title="Largest tables" :subtitle="`${DB.tables.length} tables`" icon="lucide-table-2">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
-            <thead class="text-xs uppercase tracking-wide text-ink-gray-5">
-              <tr>
-                <th class="py-1.5 pr-3 font-medium">Table</th>
-                <th class="py-1.5 pr-3 text-right font-medium">Rows</th>
-                <th class="py-1.5 pr-3 text-right font-medium">Data</th>
-                <th class="py-1.5 pr-3 text-right font-medium">Index</th>
-                <th class="py-1.5 text-right font-medium">Claimable</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-outline-alpha-gray-1">
-              <tr v-for="t in DB.tables" :key="t.name">
-                <td class="py-2 pr-3 font-mono text-xs text-ink-gray-8">{{ t.name }}</td>
-                <td class="py-2 pr-3 text-right tabular-nums text-ink-gray-6">{{ t.rows.toLocaleString() }}</td>
-                <td class="py-2 pr-3 text-right tabular-nums text-ink-gray-7">{{ mb(t.dataMb) }}</td>
-                <td class="py-2 pr-3 text-right tabular-nums text-ink-gray-7">{{ mb(t.indexMb) }}</td>
-                <td class="py-2 text-right tabular-nums" :class="t.claimableMb ? 'text-ink-amber-7' : 'text-ink-gray-4'">{{ mb(t.claimableMb) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </Disclosure>
-
-      <Disclosure title="Slow queries" :subtitle="`${DB.slowQueries.length} slow · last 24h`" icon="lucide-timer">
-        <div class="space-y-3">
-          <div v-for="(q, i) in DB.slowQueries" :key="i" class="rounded-lg border border-outline-gray-2 p-3">
-            <code class="block truncate font-mono text-xs text-ink-gray-8">{{ q.digest }}</code>
-            <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-gray-5">
-              <span><span class="text-ink-gray-7 tabular-nums">{{ q.avgMs }}</span> ms avg</span>
-              <span><span class="text-ink-gray-7 tabular-nums">{{ q.calls.toLocaleString() }}</span> calls</span>
-              <span><span class="text-ink-gray-7 tabular-nums">{{ q.rowsAvg.toLocaleString() }}</span> rows avg</span>
-              <span><span class="text-ink-gray-7 tabular-nums">{{ Math.round(q.totalSec / 60).toLocaleString() }}</span> min total</span>
-            </div>
-          </div>
-        </div>
-      </Disclosure>
-
-      <Disclosure title="Index analysis" :subtitle="`${DB.suggestedIndexes.length} suggested · ${DB.unusedIndexes.length} unused`" icon="lucide-list-tree">
-        <div class="space-y-2">
-          <div v-for="(ix, i) in DB.suggestedIndexes" :key="`s${i}`" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-gray-2 p-3">
-            <div class="min-w-0">
-              <div class="font-mono text-xs text-ink-gray-8">{{ ix.table }} ({{ ix.columns.join(', ') }})</div>
-              <div class="mt-0.5 text-xs text-ink-gray-5">{{ ix.reason }} · ~{{ ix.estGainPct }}% faster</div>
-            </div>
-            <Button size="sm" variant="subtle" label="Create index" @click="toast.success(`Creating index on ${ix.table}…`)" />
-          </div>
-          <div v-for="(ix, i) in DB.unusedIndexes" :key="`u${i}`" class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-gray-2 p-3">
-            <div class="min-w-0">
-              <div class="font-mono text-xs text-ink-gray-8">{{ ix.table }} · {{ ix.name }}</div>
-              <div class="mt-0.5 text-xs text-ink-gray-5">Unused since {{ ix.lastUsed }} · {{ mb(ix.sizeMb) }}</div>
-            </div>
-            <Button size="sm" variant="ghost" label="Drop" @click="toast.success(`Dropping ${ix.name}…`)" />
-          </div>
-        </div>
-      </Disclosure>
-
-      <Disclosure title="Lock waits" :subtitle="DB.locks.length ? `${DB.locks.length} blocked` : 'None'" icon="lucide-lock">
-        <p v-if="!DB.locks.length" class="text-p-sm text-ink-gray-5">No transactions are waiting on a lock.</p>
-        <div v-else class="space-y-2">
-          <div v-for="(l, i) in DB.locks" :key="i" class="rounded-lg border border-outline-amber-1 bg-surface-amber-1 p-3 text-xs text-ink-amber-8">
-            <div>Connection <span class="tabular-nums font-medium">{{ l.waitingId }}</span> waited {{ l.waitedFor }} on <span class="tabular-nums font-medium">{{ l.blockingId }}</span>.</div>
-            <code class="mt-1.5 block truncate font-mono text-ink-amber-7">{{ l.waitingQuery }}</code>
-          </div>
-        </div>
-      </Disclosure>
-
-      <Disclosure title="Running connections" :subtitle="`${processes.length} active`" icon="lucide-activity" defaultOpen>
-        <div class="divide-y divide-outline-alpha-gray-1">
-          <div v-for="p in processes" :key="p.id" class="flex items-center gap-3 py-2 text-sm">
-            <span class="w-12 shrink-0 tabular-nums text-ink-gray-5">{{ p.id }}</span>
-            <span class="w-20 shrink-0 truncate text-xs text-ink-gray-6">{{ p.command }}<span v-if="p.state" class="text-ink-gray-4"> · {{ p.state }}</span></span>
-            <span class="min-w-0 flex-1 truncate font-mono text-xs text-ink-gray-7">{{ p.info || '—' }}</span>
-            <span class="shrink-0 tabular-nums" :class="slow(p.time) ? 'text-ink-amber-7' : 'text-ink-gray-5'">{{ p.time }}</span>
-            <Button size="sm" variant="ghost" label="Kill" @click="askKill(p)" />
-          </div>
-        </div>
-      </Disclosure>
-    </template>
-
-    <ConfirmDialog
-      v-model:open="killOpen"
-      theme="red"
-      :title="`Kill connection ${pendingKill?.id}?`"
-      message="Whatever this connection is running gets rolled back. Killing the wrong one can interrupt a live save or a migration."
-      confirm-label="Kill"
-      @confirm="kill"
+    <!-- The vitals strip is the header's own read-out of server health, so it
+         sits with the title rather than inside the diagnostics below. -->
+    <VitalsStrip
+      v-if="!activeSite"
+      class="mt-6"
+      :connections="filteredProcesses.length"
+      :blocked="filteredLocks.length"
+      :slow="filteredSlow.length"
+      :binlog-gb="binlogTotalGb"
+      :edge-broken="edgeBroken"
+      @focus="focusPanel"
     />
+
+    <!-- Site mode: the size strip is this header's own read-out (like the
+         vitals strip is for server mode), so it sits close underneath rather
+         than behind the same big gap as the accordions. Server mode keeps the
+         full mt-10 gap before its first accordion. -->
+    <div :class="activeSite ? 'mt-3' : 'mt-10'">
+      <DbSiteView v-if="activeSite" :key="activeSite.id" :site="activeSite" />
+      <DbServerView
+        v-else
+        :server="server"
+        :live-sites="liveSites"
+        :site-filter="siteFilter"
+        :open-key="openKey"
+        @update:open-key="openKey = $event"
+        @drill="drill"
+      />
+    </div>
   </ServerShell>
 </template>
 
 <script setup>
-import { computed, reactive, ref, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, Dropdown, toast } from 'frappe-ui'
+import { Button, Select, toast } from 'frappe-ui'
 import ServerShell from '../../components/ServerShell.vue'
-import ConfirmDialog from '../../components/ConfirmDialog.vue'
-import Disclosure from '../../components/Disclosure.vue'
-import { DB_ANALYZER } from '../../data/system'
+import DbServerView from '../../components/db/DbServerView.vue'
+import DbSiteView from '../../components/db/DbSiteView.vue'
+import VitalsStrip from '../../components/db/VitalsStrip.vue'
 import { useCloudStore } from '../../stores/cloud'
+import { getServerDbData, getSiteDbData } from '../../data/dbAnalyzer'
 
+// Two levels: the server-wide storage picture by default; drill into a site
+// (?site=…) for that database's tables, queries and indexes.
 const store = useCloudStore()
 const route = useRoute()
 const router = useRouter()
@@ -173,50 +83,95 @@ const server = computed(() => store.findServer(route.params.serverId) || store.s
 watchEffect(() => {
   if (!server.value) router.replace('/')
 })
-const crumbs = computed(() => [{ label: 'Dev tools', route: `/manage/${server.value.id}/developer/logs` }, { label: 'DB analyzer' }])
 
-const DB = DB_ANALYZER
-
-// Which site's database we're analysing. Defaults to the first live one.
 const liveSites = computed(() => (server.value?.sites || []).filter((s) => s.status === 'live'))
-const activeId = ref(route.query.site || liveSites.value[0]?.id || null)
-const activeSite = computed(() => liveSites.value.find((s) => s.id === activeId.value) || null)
-const siteOptions = computed(() => liveSites.value.map((s) => ({ label: s.name, onClick: () => (activeId.value = s.id) })))
-watchEffect(() => {
-  if (!activeId.value && liveSites.value.length) activeId.value = liveSites.value[0].id
+const activeSite = computed(() => liveSites.value.find((s) => s.id === route.query.site) || null)
+const activeSiteDb = computed(() => (activeSite.value ? getSiteDbData(activeSite.value) : null))
+
+// One site filter, in the header, scopes every diagnostics accordion at once.
+// '' (Select's own "no value" sentinel) means "All sites" — falsy, so every
+// `siteFilter ? … : …` check below still reads it the same way `null` did.
+const siteFilter = ref('')
+
+// Active connection count per site — lets the busiest site float to the top,
+// so picking a site from a long, otherwise-identical domain list means
+// something. Edge mode has no reliable process data, so skip it there.
+const disk = computed(() => store.healthOf(server.value))
+const connectionCountOf = computed(() => {
+  const counts = new Map()
+  if (store.edgeMode || !server.value || !liveSites.value.length) return counts
+  const data = getServerDbData(server.value, liveSites.value, disk.value)
+  for (const p of data.processes) counts.set(p.siteId, (counts.get(p.siteId) || 0) + 1)
+  return counts
+})
+const siteFilterOptions = computed(() => [
+  { label: 'All sites', value: '', icon: 'lucide-globe' },
+  ...[...liveSites.value]
+    .sort((a, b) => (connectionCountOf.value.get(b.id) || 0) - (connectionCountOf.value.get(a.id) || 0))
+    .map((s) => {
+      const count = connectionCountOf.value.get(s.id) || 0
+      return {
+        label: s.name,
+        value: s.id,
+        icon: 'lucide-globe',
+        description: store.edgeMode ? undefined : `${count} connection${count === 1 ? '' : 's'}`,
+      }
+    }),
+])
+
+// Vitals strip lives in the header, but the data and the notion of "which
+// accordion is open" belong to the diagnostics below — computed here from the
+// same cached generators so the two stay in lockstep without duplicating them.
+const edgeBroken = computed(() => store.edgeMode)
+const serverData = computed(() =>
+  liveSites.value.length ? getServerDbData(server.value, liveSites.value, disk.value) : null
+)
+const siteDbs = computed(() => liveSites.value.map(getSiteDbData))
+const isSlowProc = (p) => p.command === 'Query' && /^\d+s$/.test(p.time) && parseInt(p.time) >= 5
+const filteredProcesses = computed(() => {
+  if (!serverData.value) return []
+  return siteFilter.value ? serverData.value.processes.filter((p) => p.siteId === siteFilter.value) : serverData.value.processes
+})
+const filteredLocks = computed(() => {
+  if (!serverData.value) return []
+  return siteFilter.value ? serverData.value.locks.filter((l) => l.siteId === siteFilter.value) : serverData.value.locks
+})
+const filteredSlow = computed(() => {
+  const all = siteDbs.value.flatMap((db) => db.slowQueries.map((q) => ({ siteId: db.siteId })))
+  return siteFilter.value ? all.filter((q) => q.siteId === siteFilter.value) : all
+})
+const binlogTotalGb = computed(() => {
+  if (!serverData.value) return 0
+  return Math.round((serverData.value.binlogs.reduce((a, f) => a + f.sizeMb, 0) / 1024) * 10) / 10
 })
 
-// — Storage: a local copy so "Optimize tables" can reclaim space in the bar.
-const size = reactive({ ...DB.size })
-const fileMb = computed(() => size.dataMb + size.indexMb + size.claimableMb)
-const pct = (v) => (fileMb.value ? (v / fileMb.value) * 100 : 0)
-const mb = (v) => (v >= 1024 ? `${(v / 1024).toFixed(1)} GB` : `${v} MB`)
-
-const optimizing = ref(false)
-function optimize() {
-  optimizing.value = true
-  const reclaimed = size.claimableMb
-  setTimeout(() => {
-    optimizing.value = false
-    size.claimableMb = 0
-    DB.tables.forEach((t) => (t.claimableMb = 0))
-    toast.success(`Reclaimed ${mb(reclaimed)} across ${DB.tables.length} tables`)
-  }, 1200)
+// Exclusive accordion, owned here: on load it opens the most notable panel —
+// an outage or a slow query surfaces the process list, a blocked transaction
+// surfaces the locks. Nothing notable ⇒ everything stays folded.
+function mostNotable() {
+  if (!serverData.value) return null
+  if (edgeBroken.value || serverData.value.processes.some(isSlowProc)) return 'processes'
+  if (serverData.value.locks.length > 0) return 'locks'
+  return null
+}
+const openKey = ref(mostNotable())
+function focusPanel(key) {
+  openKey.value = openKey.value === key ? null : key
 }
 
-// — Running connections: a local list so Kill removes them. Long (>5s) ones are
-// the ones actually worth killing, so we flag them.
-const processes = reactive(DB.processes.map((p) => ({ ...p })))
-const slow = (t) => /^\d+s$/.test(t) && parseInt(t) >= 5
-const killOpen = ref(false)
-const pendingKill = ref(null)
-function askKill(p) {
-  pendingKill.value = p
-  killOpen.value = true
-}
-function kill() {
-  const i = processes.findIndex((p) => p.id === pendingKill.value.id)
-  if (i !== -1) processes.splice(i, 1)
-  toast.success(`Killed connection ${pendingKill.value.id}`)
-}
+// A ?site= that doesn't resolve (dropped site, stale link) falls back cleanly.
+watchEffect(() => {
+  if (route.query.site && !activeSite.value) router.replace({ query: {} })
+})
+
+const serverViewPath = computed(() => `/manage/${server.value.id}/developer/database`)
+const crumbs = computed(() => {
+  const base = [{ label: 'Dev tools', route: `/manage/${server.value.id}/developer/logs` }]
+  return activeSite.value
+    ? [...base, { label: 'DB analyzer', route: serverViewPath.value }, { label: activeSite.value.name }]
+    : [...base, { label: 'DB analyzer' }]
+})
+
+const drill = (siteId) => router.push({ query: { site: siteId } })
+const backToServer = () => router.push(serverViewPath.value)
 </script>

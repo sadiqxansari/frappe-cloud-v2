@@ -28,8 +28,11 @@
         <template #description>This is your home for managing them. Your bill now combines both servers into one — nothing else changed.</template>
       </Alert>
 
-      <!-- Filters (top right) -->
-      <div class="absolute right-4 top-4 z-30 flex items-center gap-2">
+      <!-- Filters (top right). Nothing the page floats over the map carries a
+           z-index: DOM order already stacks it above the (isolated) map, and a
+           positive z here would escape to the root context and paint over the
+           dropdown menus these very buttons open, which teleport to <body>. -->
+      <div class="absolute right-4 top-4 flex items-center gap-2">
         <Dropdown :options="statusMenu" placement="bottom-end">
           <button class="sp-pill">
             <span class="size-2 rounded-full transition-colors" :style="{ background: statusDot }" />
@@ -46,24 +49,31 @@
         </Dropdown>
       </div>
 
-      <!-- All servers — pill (top left) that morphs into the floating list,
-           matching the sites map's "All sites" panel. The empty container is
-           click-through; only the pill/panel catch pointer events. -->
-      <div class="pointer-events-none absolute bottom-4 left-4 top-4 z-30">
-        <Transition name="sp-panel">
-          <aside
-            v-if="panelOpen"
-            class="pointer-events-auto flex h-full w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-outline-gray-1 bg-surface-elevation-1 shadow-xl"
-            :style="{ transformOrigin: 'top left' }"
-          >
-          <div class="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-3.5">
-            <h2 class="text-base font-semibold text-ink-gray-9">Your servers <span class="font-normal text-ink-gray-5">({{ filtered.length }})</span></h2>
-            <button class="grid size-7 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3 hover:text-ink-gray-7" aria-label="Collapse server list" @click="panelOpen = false">
-              <span class="lucide-minimize-2 size-4" />
-            </button>
+      <!-- Servers pill (top left) — the panel grows out of it, so the two
+           share a top-left corner and the pill hands off as it opens. -->
+      <Transition name="sp-pill-t">
+        <button v-if="!panelOpen" class="sp-pill absolute left-4 top-4 !gap-2.5 font-semibold !text-ink-gray-9" @click="panelOpen = true">
+          {{ pillLabel }}
+          <span class="lucide-maximize-2 size-3.5 text-ink-gray-6" />
+        </button>
+      </Transition>
+
+      <!-- Server list — a floating card, inset from every edge so the map still
+           reads as the page underneath it rather than being cut in half. Its
+           top-left corner sits exactly where the pill's was, which is what makes
+           the scale-from-origin read as the pill expanding. -->
+      <Transition name="sp-panel">
+        <aside
+          v-if="panelOpen"
+          data-server-panel
+          class="absolute bottom-4 left-4 top-4 flex w-[24rem] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-outline-gray-2 bg-surface-elevation-1 shadow-xl"
+        >
+          <div class="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-4">
+            <h2 class="text-lg font-semibold text-ink-gray-9">Your servers ({{ filtered.length }})</h2>
+            <Button variant="ghost" icon="lucide-minimize-2" aria-label="Collapse list" @click="panelOpen = false" />
           </div>
           <div class="shrink-0 px-4 pb-3">
-            <FormControl v-model="q" type="text" placeholder="Search" autocomplete="off" class="[&_input]:w-full">
+            <FormControl v-model="q" type="text" placeholder="Search servers or sites" autocomplete="off" class="[&_input]:w-full">
               <template #prefix><span class="lucide-search size-4 text-ink-gray-5" /></template>
             </FormControl>
           </div>
@@ -84,34 +94,41 @@
 
           <div class="min-h-0 flex-1 divide-y divide-outline-alpha-gray-1 overflow-y-auto border-t border-outline-alpha-gray-1 px-2 pb-2">
             <div
-              v-for="(srv, i) in panelRows"
-              :key="srv.id"
-              class="sp-row group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-3 transition-colors hover:bg-surface-gray-2"
+              v-for="(row, i) in panelRows"
+              :key="row.srv.id"
+              class="sp-row group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-surface-gray-2"
               :style="{ animationDelay: `${Math.min(i * 25, 200)}ms` }"
-              @click="openRow(srv)"
-              @mouseenter="hoverId = srv.id"
+              @click="openRow(row.srv)"
+              @mouseenter="hoverId = row.srv.id"
               @mouseleave="hoverId = null"
             >
               <span class="relative shrink-0">
-                <ProviderAvatar :provider="provOf(srv)" :size="32" />
-                <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: dotColor(srv) }" />
+                <ProviderAvatar :provider="provOf(row.srv)" :size="32" />
+                <span class="absolute -bottom-px -right-px size-2.5 rounded-full border-2 border-[var(--surface-elevation-1)]" :style="{ background: dotColor(row.srv) }" />
               </span>
               <span class="min-w-0 flex-1">
                 <span class="flex items-center gap-1.5">
-                  <span class="truncate text-sm font-medium text-ink-gray-9">{{ srv.name }}</span>
-                  <Badge v-if="srv.status === 'migrating'" theme="blue" variant="subtle" size="sm">
+                  <span class="truncate text-sm font-medium text-ink-gray-9">{{ row.srv.name }}</span>
+                  <Badge v-if="row.srv.status === 'migrating'" theme="blue" variant="subtle" size="sm">
                     <template #prefix><Spinner class="size-3 shrink-0" /></template>
                     Migrating…
                   </Badge>
-                  <button v-else-if="srv.status === 'migration-scheduled'" type="button" class="cursor-pointer" @click.stop="scheduledServer = srv; scheduledModalOpen = true">
+                  <button v-else-if="row.srv.status === 'migration-scheduled'" type="button" class="cursor-pointer" @click.stop="scheduledServer = row.srv; scheduledModalOpen = true">
                     <Badge label="Scheduled" theme="blue" variant="subtle" size="sm" />
                   </button>
-                  <Badge v-else-if="srv.status === 'broken'" label="Broken" theme="red" variant="subtle" size="sm" />
+                  <Badge v-else-if="row.srv.status === 'broken'" label="Broken" theme="red" variant="subtle" size="sm" />
                 </span>
-                <span class="mt-1 block truncate text-sm text-ink-gray-5">{{ specLineOf(srv) }}</span>
+                <!-- When the row was found by a site name, name that site — that's
+                     the answer to "which server is my site on". Otherwise the
+                     site count, matching the map's hover card. -->
+                <span v-if="row.matchedSite" class="flex items-center gap-1 truncate text-sm text-ink-blue-6">
+                  <span class="lucide-corner-down-right size-3.5 shrink-0" />
+                  <span class="truncate">{{ row.matchedSite.name }}</span>
+                </span>
+                <span v-else class="block truncate text-sm text-ink-gray-5">{{ siteCountLabel(row.srv) }}</span>
               </span>
               <span @click.stop>
-                <ServerActions :server="srv" central />
+                <ServerActions :server="row.srv" central />
               </span>
             </div>
 
@@ -123,18 +140,8 @@
               :description="store.allServers.length ? 'Try a different search or clear the filters.' : 'Create your first server to host your sites.'"
             />
           </div>
-          </aside>
-          <button
-            v-else
-            class="pointer-events-auto flex h-9 items-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-elevation-1 px-3 shadow-sm transition-shadow hover:shadow-md"
-            @click="panelOpen = true"
-          >
-            <span class="text-sm font-semibold text-ink-gray-9">{{ pillName }}</span>
-            <span class="text-sm text-ink-gray-5">({{ filtered.length }})</span>
-            <span class="lucide-maximize-2 size-3.5 text-ink-gray-5" />
-          </button>
-        </Transition>
-      </div>
+        </aside>
+      </Transition>
 
       <!-- First run: nothing deployed yet, so the map is all + spots -->
       <div v-if="!store.allServers.length" class="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-4">
@@ -155,7 +162,7 @@
 </template>
 
 <script setup>
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Badge, Button, Dropdown, FormControl, Spinner } from 'frappe-ui'
 import Alert from '../../components/Alert.vue'
@@ -250,19 +257,34 @@ const filtered = computed(() =>
 // Clicking a map cluster narrows the panel to that spot ({ ids, label }).
 const locationFilter = ref(null)
 
+// Rows are { srv, matchedSite }. A search matches a server directly (name /
+// region / provider) or by one of its sites — and a site match resolves to the
+// server that hosts it, since from Central you know the site's name, not which
+// server it lives on. matchedSite is set only when the row was found that way,
+// so the row can name the site instead of the site count.
 const panelRows = computed(() => {
   let rows = filtered.value
   if (locationFilter.value) rows = rows.filter((srv) => locationFilter.value.ids.includes(srv.id))
   const term = q.value.trim().toLowerCase()
-  if (!term) return rows
-  return rows.filter((srv) => {
+  if (!term) return rows.map((srv) => ({ srv, matchedSite: null }))
+  const out = []
+  for (const srv of rows) {
     const region = store.regionOf(srv)
-    return `${srv.name} ${region.name} ${region.provider}`.toLowerCase().includes(term)
-  })
+    const serverHit = `${srv.name} ${region.name} ${region.provider}`.toLowerCase().includes(term)
+    const matchedSite = srv.sites.find((st) => `${st.subdomain} ${st.name}`.toLowerCase().includes(term))
+    if (serverHit) out.push({ srv, matchedSite: null })
+    else if (matchedSite) out.push({ srv, matchedSite })
+  }
+  return out
 })
 
-const pillName = computed(() =>
-  statusFilter.value || clusterFilter.value.providerId ? 'Servers' : 'All servers',
+// Unfiltered, the pill names the whole fleet and matches the panel's own title.
+// Filtered, it drops to a plain "Servers" — the count is a subset then, and
+// claiming it's yours-in-full would be a lie about what you're looking at.
+const pillLabel = computed(() =>
+  statusFilter.value || clusterFilter.value.providerId
+    ? `Servers (${filtered.value.length})`
+    : `Your servers (${filtered.value.length})`,
 )
 
 // — Map data. Pins carry everything their hover card shows so ServerMap stays
@@ -282,9 +304,13 @@ function fmtGb(g) {
 function provOf(srv) {
   return providerById(store.regionOf(srv).providerId)
 }
-function specLineOf(srv) {
-  const specs = store.specsOf(srv)
-  return `${specs.vcpu} vCPU, ${specs.memory} GB RAM, ${store.healthOf(srv).diskTotal} GB Disk`
+// On Central, "how many sites is this server carrying" is the useful read — the
+// vCPU/RAM/disk numbers still live in the hover card's usage bars. Empty servers
+// say so plainly rather than "0 sites".
+function siteCountLabel(srv) {
+  const n = srv.sites?.length || 0
+  if (!n) return 'No sites yet'
+  return n === 1 ? '1 site' : `${n} sites`
 }
 function dotColor(srv) {
   if (srv.status === 'broken') return 'var(--ink-red-7)'
@@ -308,7 +334,7 @@ const pins = computed(() =>
       region,
       card: {
         badge: BADGES[srv.status] || BADGES.active,
-        specs: specLineOf(srv),
+        sub: siteCountLabel(srv),
         price: inr(store.monthlyPriceOf(srv)),
         metrics: [
           { label: 'vCPU', value: `${health.cpuPct}% of ${specs.vcpu} vCPUs`, pct: health.cpuPct },
@@ -348,13 +374,47 @@ function openRow(srv) {
 function goNewServer({ providerId, regionId }) {
   router.push({ path: '/servers/new', query: { provider: providerId, region: regionId } })
 }
-// Don't force the list open — only narrow it when it's already showing.
-function onClusterOpen({ ids, label }) {
+// A cluster only narrows a list that's already showing; the map's "+N" overflow
+// chip asks for the list outright, since seeing all of them is the point of it.
+function onClusterOpen({ ids, label, open }) {
+  if (open) panelOpen.value = true
   if (panelOpen.value) locationFilter.value = { ids, label }
 }
 // Closing the panel drops the spot filter with it.
 watch(panelOpen, (open) => {
   if (!open) locationFilter.value = null
+})
+
+// The panel is an overlay, so it dismisses like one: Escape, or a press outside
+// it. Two things are deliberately not "outside" — map nodes and the hover card,
+// because clicking those is how you drive the list, not how you dismiss it. And
+// a press that travels is a map pan, not a click, so it's left alone.
+let pressX = 0
+let pressY = 0
+function onDocPointerDown(e) {
+  pressX = e.clientX
+  pressY = e.clientY
+}
+function onDocPointerUp(e) {
+  if (!panelOpen.value) return
+  if (Math.hypot(e.clientX - pressX, e.clientY - pressY) > 4) return
+  const t = e.target
+  if (!(t instanceof Element)) return
+  if (t.closest('[data-server-panel],[data-map-node],[data-map-card]')) return
+  panelOpen.value = false
+}
+function onKeydown(e) {
+  if (e.key === 'Escape' && panelOpen.value) panelOpen.value = false
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocPointerDown, true)
+  document.addEventListener('pointerup', onDocPointerUp, true)
+  document.addEventListener('keydown', onKeydown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onDocPointerDown, true)
+  document.removeEventListener('pointerup', onDocPointerUp, true)
+  document.removeEventListener('keydown', onKeydown)
 })
 </script>
 
@@ -381,26 +441,45 @@ watch(panelOpen, (open) => {
   transform: scale(0.97);
 }
 
-/* Pill ⇄ panel: origin-aware scale from the top-left corner both share, so the
-   pill appears to grow into the panel (and back). Mirrors the sites map. */
+/* The panel unfolds from the pill. Both are anchored at left-4/top-4, so scaling
+   from that corner grows it out of exactly where the pill was standing. Opacity
+   lands well before the shape does — the panel reads as present almost at once,
+   while the geometry keeps settling, which is what makes a short duration feel
+   quick rather than clipped. */
 .sp-panel-enter-active {
-  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1), transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  transform-origin: top left;
+  transition: opacity 100ms linear, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .sp-panel-leave-active {
-  transition: opacity 120ms ease-in;
-  position: absolute;
-  left: 0;
-  top: 0;
+  transform-origin: top left;
+  transition: opacity 120ms ease-in, transform 150ms cubic-bezier(0.4, 0, 1, 1);
 }
 .sp-panel-enter-from,
 .sp-panel-leave-to {
   opacity: 0;
-  transform: scale(0.97);
+  transform: scale(0.94);
 }
 
-/* Rows cascade in as the panel opens — brief, then out of the way. */
+/* The pill gets out of the way immediately, then comes back only once the panel
+   has finished collapsing — so the two are never on screen together. */
+.sp-pill-t-enter-active {
+  transition: opacity 120ms ease-out 110ms, transform 120ms cubic-bezier(0.23, 1, 0.32, 1) 110ms;
+}
+.sp-pill-t-leave-active {
+  transition: opacity 80ms ease-in;
+}
+.sp-pill-t-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+.sp-pill-t-leave-to {
+  opacity: 0;
+}
+
+/* Rows settle in behind the panel's own motion — kept short so the two don't
+   compete, and so retyping in the search box doesn't feel busy. */
 .sp-row {
-  animation: sp-row-in 250ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: sp-row-in 160ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 @keyframes sp-row-in {
   from {
@@ -415,7 +494,9 @@ watch(panelOpen, (open) => {
 
 @media (prefers-reduced-motion: reduce) {
   .sp-panel-enter-active,
-  .sp-panel-leave-active {
+  .sp-panel-leave-active,
+  .sp-pill-t-enter-active,
+  .sp-pill-t-leave-active {
     transition: opacity 150ms ease;
   }
   .sp-panel-enter-from,

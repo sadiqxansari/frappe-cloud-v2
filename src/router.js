@@ -4,10 +4,18 @@ import { sitesByAttention } from './utils/sites'
 
 const routes = [
   { path: '/', name: 'home', component: { render: () => null } },
-  { path: '/setup', redirect: '/setup/account' },
-  { path: '/setup/account', component: () => import('./pages/setup/AccountStep.vue') },
-  { path: '/setup/app', component: () => import('./pages/setup/AppStep.vue') },
-  { path: '/setup/server', component: () => import('./pages/setup/ServerStep.vue') },
+  // Auth surface (mocked — no backend). MinimalAuthShell, no stepper.
+  { path: '/login', name: 'login', component: () => import('./pages/auth/LoginPage.vue') },
+  { path: '/signup', name: 'signup', component: () => import('./pages/auth/SignupPage.vue') },
+  { path: '/signup/verify', name: 'signup-verify', component: () => import('./pages/auth/VerifyEmailPage.vue') },
+  { path: '/forgot-password', name: 'forgot-password', component: () => import('./pages/auth/ForgotPasswordPage.vue') },
+  // Old signup links now land on the new signup route.
+  { path: '/setup', redirect: '/signup' },
+  { path: '/setup/account', redirect: '/signup' },
+  { path: '/setup/app', component: () => import('./pages/setup/SiteSetupPage.vue') },
+  // The server/plan step is gone from onboarding (the server is implied on the
+  // site-setup screen, matching Central) — keep old links working.
+  { path: '/setup/server', redirect: '/setup/app' },
   { path: '/setup/provisioning', component: () => import('./pages/setup/ProvisioningStep.vue') },
   { path: '/app', component: () => import('./pages/app/AppShell.vue') },
   // Mock payment gateway — the Pay round-trip's destination (returns to origin).
@@ -18,6 +26,14 @@ const routes = [
   { path: '/billing', name: 'billing', component: () => import('./pages/manage/CentralBillingPage.vue') },
   { path: '/billing/invoices', name: 'billing-invoices', component: () => import('./pages/manage/CentralBillingPage.vue') },
   { path: '/billing/limit-tiers', name: 'billing-limit-tiers', component: () => import('./pages/manage/LimitTiersPage.vue') },
+  // Add-ons — services you buy by consumption, not by the month. The index is
+  // the catalogue (hub); each service that's on gets its own page (spoke) and
+  // graduates into the sidebar. Account-level, like billing.
+  { path: '/addons', name: 'addons', component: () => import('./pages/manage/AddonsPage.vue') },
+  { path: '/addons/ai', name: 'addon-ai', component: () => import('./pages/manage/addons/AiAddonPage.vue') },
+  { path: '/addons/storage', name: 'addon-storage', component: () => import('./pages/manage/addons/StorageAddonPage.vue') },
+  { path: '/addons/email', name: 'addon-email', component: () => import('./pages/manage/addons/EmailAddonPage.vue') },
+  { path: '/addons/pdf', name: 'addon-pdf', component: () => import('./pages/manage/addons/PdfAddonPage.vue') },
   { path: '/settings', name: 'central-settings', component: () => import('./pages/manage/CentralSettingsPage.vue') },
   { path: '/users', redirect: '/settings' },
   // Server (operational) level. Marketplace lives here, scoped to the server.
@@ -36,6 +52,7 @@ const routes = [
     },
   },
   { path: '/manage/:serverId/empty', name: 'server-empty', component: () => import('./pages/manage/ServerEmptyPage.vue') },
+  { path: '/manage/:serverId/server', name: 'server-storage', component: () => import('./pages/manage/ServerStoragePage.vue') },
   { path: '/manage/:serverId/sites/:siteId', name: 'site-detail', component: () => import('./pages/manage/SiteDetailPage.vue') },
   { path: '/manage/:serverId/analytics', name: 'server-analytics', component: () => import('./pages/manage/AnalyticsPage.vue') },
   // Settings moved into a modal on the brand dropdown; keep old links working.
@@ -63,7 +80,11 @@ router.beforeEach((to) => {
   const store = useCloudStore()
 
   if (to.path === '/') {
-    if (!store.server) return '/setup/account'
+    // Not signed in ⇒ start the funnel. A signed-in but server-less account
+    // (a non-product signup that hasn't created a site yet) lands in Central,
+    // whose empty state invites them to add their first server.
+    if (!store.isAuthed) return '/signup'
+    if (!store.server) return '/servers'
     // The landing fork (decisions 1 & 9): a single-server owner lives in the
     // Desk; a fleet operator — or anyone who's ever graduated to a 2nd server
     // (sticky `centralUnlocked`) — lands in Central, their home for the fleet.
@@ -71,10 +92,16 @@ router.beforeEach((to) => {
     return '/app'
   }
 
-  // Screens that need at least one server to exist.
+  // The Desk, the pay round-trip, and per-server surfaces can't exist without a
+  // server; bounce a server-less visitor to Central (if signed in) or signup.
+  const needsServer = to.path === '/app' || to.path === '/pay' || to.path.startsWith('/manage')
+  if (needsServer && !store.allServers.length) return store.isAuthed ? '/servers' : '/signup'
+
+  // Central (account-level) surfaces exist for a server-less account too, so
+  // they only require sign-in — not a server.
   const central = ['/servers', '/settings', '/users', '/account']
-  const needsServer = to.path === '/app' || to.path === '/pay' || to.path.startsWith('/manage') || to.path.startsWith('/billing') || central.includes(to.path)
-  if (needsServer && !store.allServers.length) return '/'
+  const needsAuth = to.path.startsWith('/billing') || to.path.startsWith('/addons') || central.includes(to.path)
+  if (needsAuth && !store.isAuthed) return '/signup'
 })
 
 export default router
