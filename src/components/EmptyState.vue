@@ -1,9 +1,9 @@
 <template>
-  <div class="rounded-lg border border-dashed border-outline-gray-2 px-6 py-10 text-center">
-    <span v-if="icon" class="mx-auto mb-3 grid size-9 place-items-center rounded-full bg-surface-gray-2 text-ink-gray-5">
-      <span :class="icon" class="size-4.5" />
+  <div class="flex flex-col items-center justify-center px-6 py-12 text-center">
+    <span v-if="icon" class="mb-3 grid size-10 place-items-center rounded-full bg-surface-gray-2 text-ink-gray-5">
+      <span :class="icon" class="size-4" />
     </span>
-    <p class="text-p-base font-medium text-ink-gray-7">{{ title }}</p>
+    <p class="text-p-base text-ink-gray-7">{{ title }}</p>
     <p v-if="description" class="mx-auto mt-1 max-w-sm text-p-sm text-ink-gray-5">{{ description }}</p>
     <div v-if="$slots.default" class="mt-4 flex justify-center">
       <slot />

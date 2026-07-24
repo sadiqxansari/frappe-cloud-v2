@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { toast } from 'frappe-ui'
+import { planById } from '../data/catalog'
 
 // Shared open-state for the "All sites" pill ⇄ panel on the site page, so it
 // stays open (or collapsed) while walking between sites. Session-only on
@@ -39,6 +40,15 @@ export function siteStorageGb(site) {
   const hash = [...site.id].reduce((a, c) => (a * 33 + c.charCodeAt(0)) >>> 0, 5381)
   const base = 0.4 + ((hash % 1000) / 1000) * 2 // spread ~0.4–2.4 GB
   return Math.round((base + (site.apps?.length ?? 0) * 0.6) * 10) / 10
+}
+
+// The disk this server's sites share — its plan's base disk plus any bought
+// add-on. This is the honest denominator for a per-site storage bar: a single
+// site is only a slice of the whole disk, so the bar always shows real
+// headroom (unlike scaling to the heaviest site, which pins it to 100%).
+export function serverDiskGb(server) {
+  const specs = server.planId === 'custom' && server.customSpec ? server.customSpec : planById(server.planId)?.specs
+  return (specs?.disk ?? 40) + (server.diskAddonGb ?? 0)
 }
 
 // The per-site overflow menu shared by map cards and panel rows.

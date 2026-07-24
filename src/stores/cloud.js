@@ -98,13 +98,16 @@ function dnsRecordsFor(name, inboundIp) {
 
 // A site is identified by its subdomain — there is no separate friendly name.
 // `subdomain` is the slug; `name` is the full address shown everywhere.
-function makeSite(subdomain, appKeys, status = 'live') {
+function makeSite(subdomain, appKeys, status = 'live', opts = {}) {
   const slug = slugify(subdomain)
   return {
     id: uid('site'),
     subdomain: slug,
     name: slug + '.frappe.cloud',
-    createdAt: Date.now(),
+    // Backdated by default so established sites don't all read "created today";
+    // scenarios can override via opts for a specific date/creator.
+    createdAt: opts.createdAt ?? Date.now() - 20 * DAY,
+    createdBy: opts.createdBy ?? null, // display name; null → falls back to the account owner
     status, // 'live' | 'creating' | 'restoring' | 'moving' | 'suspended'
     apps: appKeys.map(makeApp),
     domains: [], // custom domains added on top of the default `name` host
@@ -269,7 +272,7 @@ function grownState() {
   s.scenario = 'grown'
   s.user = { id: 'u-1', name: 'Rahul Mehta', email: 'rahul@mycompany.in', role: 'individual' }
 
-  const company = makeSite('My Company', ['erpnext', 'hr'])
+  const company = makeSite('My Company', ['erpnext', 'hr'], 'live', { createdAt: Date.now() - 214 * DAY, createdBy: 'Rahul Mehta' })
   company.backups = [
     makeBackup(10 * HOUR, '412 MB'),
     makeBackup(34 * HOUR, '408 MB'),
@@ -278,7 +281,7 @@ function grownState() {
   // A custom app pulled from their own GitHub repo — shows up in the
   // Marketplace's "Your custom apps" section, same shape addCustomApp() makes.
   company.apps.push({ id: uid('app'), key: 'gh-acme-portal', name: 'Acme Portal', version: 'main' })
-  const shop = makeSite('My Shop', ['erpnext', 'crm'])
+  const shop = makeSite('My Shop', ['erpnext', 'crm'], 'live', { createdAt: Date.now() - 96 * DAY, createdBy: 'Sara Khan' })
   shop.backups = [makeBackup(10 * HOUR, '96 MB')]
 
   const server = makeServer({
@@ -294,29 +297,41 @@ function grownState() {
       { id: uid('ph'), date: '3 Sep 2025', from: 'Starter', to: 'Business', direction: 'upgrade' },
     ],
   })
+  // EU Staging keeps a couple of recent backups.
+  const euStaging = makeSite('EU Staging', ['erpnext'], 'live', { createdAt: Date.now() - 41 * DAY, createdBy: 'Dev Sharma' })
+  euStaging.backups = [makeBackup(12 * HOUR, '88 MB'), makeBackup(36 * HOUR, '86 MB')]
   const euServer = makeServer({
     name: 'atlas-eu-01',
     regionId: 'hetzner-nuremberg',
     planId: 'starter',
     creditBalance: 21,
     creditTotal: 25,
-    sites: [makeSite('EU Staging', ['erpnext'])],
+    sites: [euStaging],
     health: { cpuPct: 9, memUsedGb: 0.8, memTotalGb: 1.0, diskFrac: 0.2 },
   })
+  // APAC Shop is a busy live store — a fuller backup history.
+  const apacShop = makeSite('APAC Shop', ['erpnext', 'crm'], 'live', { createdAt: Date.now() - 133 * DAY, createdBy: 'Sara Khan' })
+  apacShop.backups = [
+    makeBackup(8 * HOUR, '214 MB'),
+    makeBackup(32 * HOUR, '210 MB'),
+    makeBackup(56 * HOUR, '207 MB'),
+    makeBackup(80 * HOUR, '205 MB', 'manual'),
+  ]
   const sgServer = makeServer({
     name: 'atlas-sg-01',
     regionId: 'aws-singapore',
     creditBalance: 16,
-    sites: [makeSite('APAC Shop', ['erpnext', 'crm'])],
+    sites: [apacShop],
     health: { cpuPct: 22, memUsedGb: 1.4, memTotalGb: 1.9, diskFrac: 0.31 },
   })
+  // US Marketing is freshly created — no backups yet (shows the empty state).
   const usServer = makeServer({
     name: 'atlas-us-01',
     regionId: 'do-nyc',
     planId: 'starter',
     creditBalance: 25,
     creditTotal: 25,
-    sites: [makeSite('US Marketing', ['erpnext'])],
+    sites: [makeSite('US Marketing', ['erpnext'], 'live', { createdAt: Date.now() - 3 * DAY, createdBy: 'Priya Patel' })],
     health: { cpuPct: 18, memUsedGb: 1.1, memTotalGb: 3.0, diskFrac: 0.16 },
     planHistory: [
       { id: uid('ph'), date: '28 Apr 2026', from: 'Business', to: 'Enterprise', direction: 'upgrade' },
@@ -437,7 +452,7 @@ function soloState() {
   s.scenario = 'solo'
   s.user = { id: 'u-1', name: 'Ravi Kumar', email: 'ravi@ravibakes.in', role: 'individual' }
 
-  const site = makeSite('ravibakes', ['erpnext', 'hr'])
+  const site = makeSite('ravibakes', ['erpnext', 'hr'], 'live', { createdAt: Date.now() - 12 * DAY, createdBy: 'Ravi Kumar' })
   site.backups = [makeBackup(9 * HOUR, '128 MB'), makeBackup(33 * HOUR, '126 MB')]
   // A custom app pulled from their own GitHub repo — shows up in the
   // Marketplace's "Your custom apps" section, same shape addCustomApp() makes.
@@ -826,7 +841,7 @@ export const useCloudStore = defineStore('cloud', {
       const running = this.activity.find((e) => e.status === 'running')
       if (running) this.flipActivity(running.id, { title: 'Server ready' })
       const subdomain = (this.onboarding.subdomain || '').trim() || 'mysite'
-      const site = makeSite(subdomain, [this.onboarding.appKey])
+      const site = makeSite(subdomain, [this.onboarding.appKey], 'live', { createdAt: Date.now(), createdBy: this.user.name })
       srv.sites.push(site)
       this.currentSiteId = site.id
       this.logActivity(`Created ${site.name}`, { tag: 'site' })
@@ -843,7 +858,7 @@ export const useCloudStore = defineStore('cloud', {
       const srv = this.findServer(serverId)
       if (!srv) return null
       const keys = (Array.isArray(appKeys) ? appKeys : [appKeys]).filter(Boolean)
-      const site = makeSite(subdomain, keys, 'creating')
+      const site = makeSite(subdomain, keys, 'creating', { createdAt: Date.now(), createdBy: this.user.name })
       srv.sites.push(site)
       // The signature moment: the second site gently reveals the structure.
       if (srv.sites.length === 2) {
