@@ -205,3 +205,11 @@ div:has(> .fc-listview) {
 [class*='size-7'][aria-selected='true'] {
   color: var(--ink-base) !important;
 }
+
+/* Dialog overlay has no z-index of its own (frappe-ui leaves it `auto`), so a
+   positioned floating panel with an explicit z-index — e.g. SitesPanel's
+   `z-30` — paints above it even though the dialog teleports later in the DOM.
+   Pin it above every in-app floating layer (highest is DemoSwitch's z-50). */
+.dialog-overlay {
+  z-index: 60;
+}

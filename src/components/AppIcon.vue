@@ -20,7 +20,7 @@ const logos = import.meta.glob('../assets/apps/*.png', { eager: true, import: 'd
 
 const props = defineProps({
   appKey: { type: String, required: true },
-  size: { type: String, default: 'md' }, // sm | md | lg | xl
+  size: { type: String, default: 'md' }, // sm | smd | md | lg | xl
 })
 
 // Unknown keys (e.g. apps installed from GitHub) fall back to a letter tile,
@@ -46,6 +46,7 @@ const imgClasses = computed(
   () =>
     ({
       sm: 'size-5 rounded-3',
+      smd: 'size-7 rounded-4',
       md: 'size-8 rounded-4',
       lg: 'size-12 rounded-4',
       xl: 'size-16 rounded-4',
@@ -56,6 +57,7 @@ const sizeClasses = computed(
   () =>
     ({
       sm: 'size-5 text-xs rounded-3',
+      smd: 'size-7 text-sm rounded-4',
       md: 'size-8 text-sm rounded-4',
       lg: 'size-12 text-lg rounded-4',
       xl: 'size-16 text-2xl rounded-4',
